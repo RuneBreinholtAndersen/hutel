@@ -14,6 +14,10 @@ import {
   DEFAULT_LOOK,
   footprint,
   isWallItem,
+  MARKET_FEE,
+  MARKET_MAX_LISTINGS,
+  MARKET_MAX_PRICE,
+  type MarketListing,
   PET_FEED_PRICE,
   PET_FEED_XP,
   PET_KIND_IDS,
@@ -441,6 +445,10 @@ function handle(msg: ServerMsg) {
       return;
     case 'room':
       return setRoom(msg.room);
+    case 'market':
+      market = { listings: msg.listings, mine: msg.mine };
+      if (panelKind === 'market') renderMarket();
+      return;
     case 'pets':
       if (me) {
         me.pets = msg.pets;
@@ -546,6 +554,7 @@ function handle(msg: ServerMsg) {
       if (!me) return;
       me.inventory = msg.items;
       if (panelKind === 'shop') renderShop();
+      if (panelKind === 'market') renderMarket();
       if (trade) renderTrade();
       return;
     case 'tradeAsk':
@@ -1118,6 +1127,71 @@ function renderPets() {
   });
 }
 
+let market: { listings: MarketListing[]; mine: MarketListing[] } | null = null;
+let marketQ = '';
+let marketTimer = 0;
+function openMarket() {
+  renderMarket();
+  net?.send({ t: 'market', q: marketQ || undefined });
+}
+function renderMarket() {
+  if (!me) return;
+  const card = (l: MarketListing, own: boolean) => {
+    const c = FURNITURE[l.item.type] as FurnitureDef;
+    const col = c.colors?.[l.item.color ?? 0];
+    return `<div class="item mk"><div class="ic">${c.icon}</div><div class="n">${esc(c.name)}</div>
+      ${col !== undefined ? `<div class="dots"><i style="background:#${col.toString(16).padStart(6, '0')}"></i></div>` : ''}
+      <div class="p">${l.price} ${COIN}</div><small class="sub">${own ? 'Din vare' : `Af ${esc(l.sellerName)}`}</small>
+      ${own ? `<button data-mcancel="${esc(l.id)}">Tag tilbage</button>` : `<button data-mbuy="${esc(l.id)}" ${me!.coins < l.price ? 'disabled' : ''}>Køb</button>`}</div>`;
+  };
+  const inv = me.inventory;
+  const sell = inv.length
+    ? `<div class="row" style="display:flex;gap:6px;flex-wrap:wrap"><select id="mkItem" style="flex:1">${inv
+        .map(
+          (it, i) =>
+            `<option value="${i}">${FURNITURE[it.type].icon} ${esc(FURNITURE[it.type].name)}</option>`,
+        )
+        .join(
+          '',
+        )}</select><input id="mkPrice" type="number" min="1" max="${MARKET_MAX_PRICE}" value="10" style="width:90px"><button id="mkSell" class="small primary">Sæt til salg</button></div>
+       <p class="sub">Hutel tager ${Math.round(MARKET_FEE * 100)} % af salgsprisen. Du får mønterne, også selvom du er offline.</p>`
+    : '<p class="sub">Dit inventar er tomt. Gem møbler væk (📦 i byggetilstand) for at kunne sælge dem.</p>';
+  openPanel(
+    'market',
+    head('🏪 Markedet', 'Køb og sælg møbler med andre gæster.') +
+      `<div class="row"><input id="mkQ" maxlength="30" placeholder="🔍 Søg efter møbel eller sælger…" value="${esc(marketQ)}" style="width:100%"></div>` +
+      `<h3>Til salg</h3><div class="grid">${market ? market.listings.map((l) => card(l, false)).join('') || '<p class="sub">Ingen varer lige nu.</p>' : '<p class="sub">Henter…</p>'}</div>` +
+      `<h3>💰 Sælg noget</h3>${sell}` +
+      (market?.mine.length
+        ? `<h3>Dine varer (${market.mine.length}/${MARKET_MAX_LISTINGS})</h3><div class="grid">${market.mine.map((l) => card(l, true)).join('')}</div>`
+        : ''),
+  );
+  const p = $('panel');
+  p.querySelectorAll<HTMLElement>('[data-mbuy]').forEach((b) =>
+    b.addEventListener('click', () => net?.send({ t: 'marketBuy', id: b.dataset.mbuy! })),
+  );
+  p.querySelectorAll<HTMLElement>('[data-mcancel]').forEach((b) =>
+    b.addEventListener('click', () => net?.send({ t: 'marketCancel', id: b.dataset.mcancel! })),
+  );
+  $('mkSell')?.addEventListener('click', () => {
+    const price = Math.round(Number($<HTMLInputElement>('mkPrice').value));
+    if (!(price >= 1 && price <= MARKET_MAX_PRICE)) return toast('Vælg en pris', 'error');
+    net?.send({ t: 'marketSell', index: Number($<HTMLSelectElement>('mkItem').value), price });
+  });
+  const q = $<HTMLInputElement>('mkQ');
+  q.addEventListener('input', () => {
+    clearTimeout(marketTimer);
+    marketTimer = window.setTimeout(() => {
+      marketQ = q.value.trim();
+      net?.send({ t: 'market', q: marketQ || undefined });
+    }, 300);
+  });
+  if (marketQ) {
+    q.focus();
+    q.setSelectionRange(q.value.length, q.value.length);
+  }
+}
+
 function levelBox() {
   if (!me) return '';
   const l = levelOf(me);
@@ -1436,6 +1510,7 @@ function renderProfile(p: ProfileView) {
       (p.badges.length
         ? `<div class="badges">${p.badges.map((b) => `<span class="badge">${BADGES[b].icon} ${BADGES[b].name}</span>`).join('')}</div>`
         : '') +
+      (p.bot ? '' : profileHome(p, self)) +
       (!self && !p.bot
         ? `<div class="chips" style="margin-top:12px">
           ${p.here ? `<button data-a="hush">🤫 Hvisk</button>` : ''}
@@ -1474,6 +1549,29 @@ function renderProfile(p: ProfileView) {
         if (a !== 'report') setTimeout(() => net?.send({ t: 'profile', userId: p.id }), 300);
       }),
     );
+  $('panel')
+    .querySelectorAll<HTMLElement>('[data-prof]')
+    .forEach((b) =>
+      b.addEventListener('click', () => net?.send({ t: 'profile', userId: b.dataset.prof! })),
+    );
+  $('panel')
+    .querySelectorAll<HTMLElement>('[data-proom]')
+    .forEach((b) => b.addEventListener('click', () => goTo(b.dataset.proom!)));
+  $('panel')
+    .querySelectorAll<HTMLElement>('[data-gbdel]')
+    .forEach((b) =>
+      b.addEventListener('click', () =>
+        net?.send({ t: 'guestbookDelete', userId: p.id, id: b.dataset.gbdel! }),
+      ),
+    );
+  $('gbSend')?.addEventListener('click', () => {
+    const text = $<HTMLTextAreaElement>('gbText').value.trim();
+    if (text) net?.send({ t: 'guestbookWrite', userId: p.id, text });
+  });
+  $('mottoSave')?.addEventListener('click', () => {
+    net?.send({ t: 'motto', motto: $<HTMLInputElement>('mottoIn').value });
+    setTimeout(() => net?.send({ t: 'profile', userId: p.id }), 300);
+  });
   $('repSend')?.addEventListener('click', () => {
     const r = $<HTMLTextAreaElement>('repText').value.trim();
     if (r.length >= 3) {
@@ -1481,6 +1579,43 @@ function renderProfile(p: ProfileView) {
       closePanel();
     }
   });
+}
+
+/** The "home page" part of a profile: level, pet, friends, rooms and the guestbook. */
+function profileHome(p: ProfileView, self: boolean) {
+  const when = (at: number) =>
+    new Date(at).toLocaleDateString('da-DK', { day: 'numeric', month: 'short' });
+  const pet = p.pet ? `${PET_KINDS[p.pet.kind].icon} ${esc(p.pet.name)} (lv ${p.pet.level})` : '';
+  const facts = [
+    p.online ? '<span class="status-on">● Online</span>' : 'Offline',
+    p.level ? `⭐ Level ${p.level}` : '',
+    pet,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  const friends = (p.friends ?? [])
+    .map((f) => `<button class="small" data-prof="${esc(f.id)}">${esc(f.name)}</button>`)
+    .join('');
+  const rooms = (p.rooms ?? [])
+    .map(
+      (r) =>
+        `<div class="li"><div class="grow"><b>${esc(r.name)}</b></div><span class="users">👤 ${r.users}</span><button class="small" data-proom="${esc(r.id)}">Gå</button></div>`,
+    )
+    .join('');
+  const book = (p.guestbook ?? [])
+    .map((e) => {
+      const canDel = self || e.fromId === me?.id || me?.role !== 'user';
+      // Guestbook text is shown with textContent semantics via esc() (never as HTML).
+      return `<div class="gb"><div><b data-prof="${esc(e.fromId)}" style="cursor:pointer">${esc(e.fromName)}</b> <small>${when(e.at)}</small>${canDel ? ` <button class="small" data-gbdel="${esc(e.id)}" title="Slet">✕</button>` : ''}</div><div>${esc(e.text)}</div></div>`;
+    })
+    .join('');
+  return `<p class="sub">${facts}</p>
+    ${self ? `<div class="row" style="display:flex;gap:6px"><input id="mottoIn" maxlength="60" placeholder="Dit motto" value="${esc(p.motto)}" style="flex:1"><button id="mottoSave" class="small">Gem motto</button></div>` : ''}
+    <h3>👥 Venner (${p.friendCount ?? 0})</h3><div class="chips">${friends || '<span class="sub">Ingen venner endnu</span>'}</div>
+    ${rooms ? `<h3>🏠 Værelser</h3><div class="list">${rooms}</div>` : ''}
+    <h3>📖 Gæstebog</h3>
+    ${self ? '' : `<div style="display:flex;gap:6px;margin-bottom:8px"><textarea id="gbText" rows="2" maxlength="200" placeholder="Skriv en hilsen til ${esc(p.name)}…" style="flex:1"></textarea><button id="gbSend" class="small primary">Skriv</button></div>`}
+    <div class="gbook">${book || '<p class="sub">Ingen hilsner endnu.</p>'}</div>`;
 }
 
 function renderPassword(roomId: string) {
@@ -1731,7 +1866,10 @@ function onHover() {
   const onDoor = !build && ray.intersectObject(roomGfx.doorGroup, true).length > 0;
   const onActor = !build && !!hitActor();
   cv.style.cursor =
-    onDoor || onActor || (it && (build || furniture(it.type).seat || furniture(it.type).states))
+    onDoor ||
+    onActor ||
+    (it &&
+      (build || furniture(it.type).seat || furniture(it.type).states || it.type === 'teleport'))
       ? 'pointer'
       : 'default';
   if (t && ((!build && !it && !onActor) || (build && terrain))) {
@@ -1781,6 +1919,7 @@ function onClick() {
   const it = hitItem(false);
   if (it && furniture(it.type).states && (room?.canBuild || me?.role !== 'user'))
     return net.send({ t: 'use', itemId: it.id });
+  if (it && it.type === 'teleport') return net.send({ t: 'teleport', itemId: it.id });
   if (it && furniture(it.type).seat) return net.send({ t: 'sit', itemId: it.id });
   const t = hitTile();
   if (t) {
@@ -1997,6 +2136,7 @@ $('bNav').addEventListener(
 $('bFriends').addEventListener('click', toggle('friends', renderFriends));
 $('bFig').addEventListener('click', toggle('fig', renderFigure));
 $('bPets').addEventListener('click', toggle('pets', renderPets));
+$('bMarket').addEventListener('click', toggle('market', openMarket));
 $('bShop').addEventListener('click', toggle('shop', renderShop));
 $('bBuild').addEventListener('click', () => {
   closePanel();

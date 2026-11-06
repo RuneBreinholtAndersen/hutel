@@ -781,6 +781,84 @@ describe('multiplayer', () => {
     c.ws.close();
   });
 
+  it('shows a home page profile with friends, rooms and a guestbook', async () => {
+    const a = await login('Profilejer');
+    const b = await login('Hilsner');
+    b.c.send({ t: 'guestbookWrite', userId: a.g.userId, text: 'Fedt værelse! 👋' });
+    const p = await b.c.waitFor('profile', (m) => (m.profile.guestbook ?? []).length === 1);
+    expect(p.profile.guestbook![0]!.fromName).toBe('Hilsner');
+    expect(p.profile.rooms!.length).toBeGreaterThan(0);
+    expect(p.profile.level).toBe(1);
+    expect(p.profile.online).toBe(true);
+    await a.c.waitFor('toast', (m) => /gæstebog/.test(m.text));
+    // The owner may delete it.
+    const id = p.profile.guestbook![0]!.id;
+    a.c.send({ t: 'guestbookDelete', userId: a.g.userId, id });
+    await a.c.waitFor(
+      'profile',
+      (m) => m.profile.id === a.g.userId && m.profile.guestbook!.length === 0,
+    );
+    a.c.ws.close();
+    b.c.ws.close();
+  });
+
+  it('sells and buys on the market, also when the seller is offline', async () => {
+    const s1 = await login('Sælgeren');
+    const b1 = await login('Køberen');
+    const seller = app.store.getUser(s1.g.userId)!;
+    const buyer = app.store.getUser(b1.g.userId)!;
+    seller.inventory = [{ type: 'lamp' }];
+    buyer.coins = 50;
+    const sellerCoins = seller.coins;
+    s1.c.send({ t: 'marketSell', index: 0, price: 20 });
+    const mk = await s1.c.waitFor('market', (m) => m.mine.length === 1);
+    expect(seller.inventory).toEqual([]);
+    s1.c.ws.close(); // seller goes offline
+    await new Promise((r) => setTimeout(r, 100));
+    b1.c.send({ t: 'market' });
+    const list = await b1.c.waitFor('market', (m) =>
+      m.listings.some((l) => l.id === mk.mine[0]!.id),
+    );
+    expect(list.listings.find((l) => l.id === mk.mine[0]!.id)!.sellerName).toBe('Sælgeren');
+    b1.c.send({ t: 'marketBuy', id: mk.mine[0]!.id });
+    await b1.c.waitFor('inventory', (m) => m.items.some((i) => i.type === 'lamp'));
+    expect(buyer.coins).toBe(30);
+    expect(seller.coins).toBe(sellerCoins + 19); // 5 % fee
+    // Buying the same listing twice is impossible.
+    b1.c.send({ t: 'marketBuy', id: mk.mine[0]!.id });
+    await b1.c.waitFor('toast', (m) => /solgt/.test(m.text));
+    expect(buyer.coins).toBe(30);
+    b1.c.ws.close();
+  });
+
+  it('teleports between two rooms with a pair of linked teleporters', async () => {
+    const { c, g } = await login('Teleportør');
+    const u = app.store.getUser(g.userId)!;
+    u.onlineSec = 3600 * 2;
+    u.coins = 300;
+    c.send({ t: 'buy', type: 'teleport', x: 5, z: 1, rot: 0 });
+    const put = await c.waitFor('itemPut', (m) => m.item.type === 'teleport');
+    const inv = await c.waitFor('inventory', (m) => m.items.some((i) => i.type === 'teleport'));
+    const twin = inv.items.find((i) => i.type === 'teleport')!;
+    expect(twin.pair).toBe(put.item.pair);
+    // Not placed yet: nothing happens.
+    c.send({ t: 'teleport', itemId: put.item.id });
+    await c.waitFor('toast', (m) => /ikke stillet op/.test(m.text), 8000);
+    c.send({ t: 'buyRoom', kind: 'bedroom' });
+    const apt = await c.waitFor('apartment');
+    const bedroom = apt.rooms.find((r) => r.kind === 'bedroom')!;
+    await c.waitFor('room', (m) => m.room.id === bedroom.id);
+    c.send({ t: 'placeInv', index: inv.items.indexOf(twin), x: 2, z: 5, rot: 0 });
+    await c.waitFor('itemPut', (m) => m.item.type === 'teleport' && m.item.pair === twin.pair);
+    c.send({ t: 'join', roomId: u.homeRoomId });
+    await c.waitFor('room', (m) => m.room.id === u.homeRoomId);
+    c.send({ t: 'teleport', itemId: put.item.id });
+    const arrived = await c.waitFor('room', (m) => m.room.id === bedroom.id, 8000);
+    const me = arrived.room.players.find((p) => p.id === g.userId)!;
+    expect(Math.max(Math.abs(me.x - 2), Math.abs(me.z - 5))).toBeLessThanOrEqual(1);
+    c.ws.close();
+  }, 15_000);
+
   it('whispers only to someone in the same room, hidden from others', async () => {
     const a = await login('Hviskeren');
     const b = await login('Lytteren');

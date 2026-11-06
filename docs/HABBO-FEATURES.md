@@ -2,7 +2,7 @@
 
 Listen sammenligner Hutel med de klassiske funktioner fra Habbo Hotel. Navne, grafik og møbler kopieres ikke: vi laver vores egen version af idéen.
 
-_Senest opdateret: 6. november 2026 (trapper og platforme, navigator med søgning og kategorier)._
+_Senest opdateret: 6. november 2026 (profil med gæstebog, teleportere og marked)._
 
 **Sådan læses den**
 - **Værdi**: hvor meget det betyder for spillerne (★–★★★)
@@ -15,16 +15,13 @@ _Senest opdateret: 6. november 2026 (trapper og platforme, navigator med søgnin
 
 Det her mener jeg giver mest spil for pengene, i den rækkefølge:
 
-- [ ] **1. Profil-side ("hjem-side")** – motto, badges, venner, værelser, et gæstebog-felt. ★★ · M
-- [ ] **2. Rum-spil som møbler** – frysekamp/snebold-arena, farvefelter man løber på (som "Battle Banzai"), stoleleg, kapløb. Serveren styrer reglerne. ★★★ · L
-- [ ] **3. Wired light: møbler der reagerer** – trykplader, "når nogen går her → tænd lampe / teleportér / sig noget". Giver brugerne mulighed for at bygge deres egne spil. ★★★ · L
-- [ ] **4. Teleportere mellem rum** – to møbler der hænger sammen, også mellem forskellige brugeres værelser. ★★ · M
-- [ ] **5. Grupper/klubber** – navn, logo-generator (vores egen), medlemsliste, gruppe-rum, gruppe-badge ved navnet. ★★ · M
-- [ ] **6. Sjældne møbler ("rares")** – begrænsede møbler, der kun sælges en uge eller i et bestemt antal, med serienummer. Driver byttehandel. ★★★ · S (vi har allerede bytte + inventar)
-- [ ] **7. Marked** – sæt ting til salg for mønter; andre kan købe, mens du er offline. Kræver transaktioner og log (findes allerede for bytte). ★★ · M
-- [ ] **8. Lyd og musik** – jukebox med egne korte melodier, lyde ved klik, dør, mønter. Generér selv musik/lyde, så intet kopieres. ★★ · M
-- [ ] **9. Mobil-kontroller** – tryk-for-at-gå er der, men knapper og paneler skal tilpasses små skærme. ★★★ · M
-- [ ] **10. Hutel Junior** – menu-chat, forældrekonto, vennekoder, egen server/database (se PLAN.md). ★★★ · L
+- [ ] **1. Rum-spil som møbler** – frysekamp/snebold-arena, farvefelter man løber på (som "Battle Banzai"), stoleleg, kapløb. Serveren styrer reglerne. ★★★ · L
+- [ ] **2. Wired light: møbler der reagerer** – trykplader, "når nogen går her → tænd lampe / teleportér / sig noget". Giver brugerne mulighed for at bygge deres egne spil. ★★★ · L
+- [ ] **3. Grupper/klubber** – navn, logo-generator (vores egen), medlemsliste, gruppe-rum, gruppe-badge ved navnet. ★★ · M
+- [ ] **4. Sjældne møbler ("rares")** – begrænsede møbler, der kun sælges en uge eller i et bestemt antal, med serienummer. Driver byttehandel. ★★★ · S (vi har allerede bytte + inventar)
+- [ ] **5. Lyd og musik** – jukebox med egne korte melodier, lyde ved klik, dør, mønter. Generér selv musik/lyde, så intet kopieres. ★★ · M
+- [ ] **6. Mobil-kontroller** – tryk-for-at-gå er der, men knapper og paneler skal tilpasses små skærme. ★★★ · M
+- [ ] **7. Hutel Junior** – menu-chat, forældrekonto, vennekoder, egen server/database (se PLAN.md). ★★★ · L
 
 ## 💡 Habbo-funktioner vi mangler (fuld liste)
 
@@ -35,7 +32,7 @@ Det her mener jeg giver mest spil for pengene, i den rækkefølge:
 - [ ] **Flere handlinger** – kram, high-five, sove (zzz), "tænke", sidde på gulvet (`:sit`). S
 - [ ] **Gå hen til en ven ("follow")** – fra venne-listen direkte ind i deres rum. ✓ findes som "Gå til" – mangler privatlivsindstilling "må ikke følges". S
 - [ ] **Relationer** – marker venner som ❤️ / 😊 / 💀 på profilen. S
-- [ ] **Gæstebog / vægbeskeder i rum** – post-it-sedler ejeren kan godkende. M
+- [ ] **Vægbeskeder i rum** – post-it-sedler ejeren kan godkende (gæstebog på profilen findes). M
 - [ ] **Offline-meddelelser til grupper**. M
 
 ### Rum og byggeri
@@ -101,6 +98,9 @@ Det her mener jeg giver mest spil for pengene, i den rækkefølge:
 - ✅ Store offentlige rum (lobby og café 12×12) og loft på 25 gæster pr. rum
 - ✅ Eget værelse + lejlighed med soveværelse, badeværelse, køkken og altan
 - ✅ Byg-tilstand: flyt, rotér, gem væk og placér møbler; farvevarianter
+- ✅ Profil som hjemmeside med venner, værelser, kæledyr og gæstebog
+- ✅ Teleportere i par – også mellem forskellige brugeres værelser
+- ✅ Marked: sælg og køb møbler, også når sælgeren er offline (5 % gebyr, alt logges)
 - ✅ Trapper og platforme: felter i 0–3 trin, man går ét trin ad gangen
 - ✅ Navigator med søgning, kategorier (fest, chill, spil, handel), favoritter og populære rum
 - ✅ Byg om: egne rum fra 7×7 til 12×12 i fem former (kvadrat, bred, L, spejlet L, U)

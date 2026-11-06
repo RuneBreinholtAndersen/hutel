@@ -7,6 +7,8 @@ import type {
   Look,
   PlacedItem,
   PetKind,
+  GuestbookEntry,
+  MarketListing,
   RoomShape,
   RoomCategory,
   TileHeights,
@@ -52,7 +54,8 @@ export interface UserRecord {
   /** Minutes at the current event (key: date:eventId). */
   eventMins?: { key: string; mins: number };
   /** Furniture not placed in a room. */
-  inventory?: { type: PlacedItem['type']; color?: number }[];
+  inventory?: { type: PlacedItem['type']; color?: number; pair?: string }[];
+  guestbook?: GuestbookEntry[];
   /** Today's daily quests (rolls over at Danish midnight). */
   daily?: {
     date: string;
@@ -136,6 +139,15 @@ export interface AdminLogRecord {
   detail?: string;
 }
 
+export interface MarketLogRecord {
+  at: string;
+  listingId: string;
+  sellerId: string;
+  buyerId: string;
+  item: string;
+  price: number;
+}
+
 export interface TradeRecord {
   at: string;
   a: string;
@@ -152,6 +164,8 @@ interface Data {
   chatlog: ChatLogRecord[];
   trades?: TradeRecord[];
   adminLog?: AdminLogRecord[];
+  market?: MarketListing[];
+  marketLog?: MarketLogRecord[];
 }
 
 /**
@@ -187,6 +201,10 @@ export interface Store {
   /** Every completed trade is logged (for support and fraud checks). */
   logTrade(entry: TradeRecord): void;
   listReports(): ReportRecord[];
+  /** Open market listings (the items are held here, out of the seller's inventory). */
+  market(): MarketListing[];
+  /** Every market sale is logged. */
+  logMarket(entry: MarketLogRecord): void;
   /** Every moderator action is logged. */
   logAdmin(entry: AdminLogRecord): void;
   recentChat(roomId: string, limit: number): ChatLogRecord[];
@@ -374,6 +392,15 @@ export class JsonFileStore implements Store {
   logAdmin(entry: AdminLogRecord) {
     (this.data.adminLog ??= []).push(entry);
     if (this.data.adminLog.length > 5000) this.data.adminLog.splice(0, 500);
+    this.touch();
+  }
+
+  market() {
+    return (this.data.market ??= []);
+  }
+  logMarket(entry: MarketLogRecord) {
+    (this.data.marketLog ??= []).push(entry);
+    if (this.data.marketLog.length > 20_000) this.data.marketLog.splice(0, 1000);
     this.touch();
   }
 

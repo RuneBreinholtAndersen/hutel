@@ -986,3 +986,22 @@ button.badge.on {
 .navtabs {
   margin: 8px 0 4px;
 }
+.gbook {
+  max-height: 260px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.gb {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 6px 10px;
+  overflow-wrap: anywhere;
+}
+.gb small {
+  color: var(--muted);
+}
+.mk {
+  text-align: center;
+}

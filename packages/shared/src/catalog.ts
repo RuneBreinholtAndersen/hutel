@@ -24,6 +24,8 @@ export interface FurnitureDef {
   /** Clicking switches between this many states (0 = off). `defaultState` when bought. */
   states?: number;
   defaultState?: number;
+  /** Sold as a linked pair: one is placed, the twin goes to your inventory. */
+  pair?: boolean;
   /**
    * Hangs on a wall instead of standing on the floor. `w` is the width along the wall.
    * rot 0 = back wall, rot 1 = left wall; `x` is the tile index along that wall.
@@ -195,6 +197,16 @@ export const FURNITURE = {
   },
   pool: { name: 'Pool', icon: '🏊', price: 0, w: 3, d: 2, noShop: true },
   arcade: { name: 'Spilleautomat', icon: '🕹️', price: 0, w: 1, d: 1, noShop: true },
+  teleport: {
+    name: 'Teleporter (par)',
+    icon: '🌀',
+    price: 35,
+    w: 1,
+    d: 1,
+    pair: true,
+    minLevel: 2,
+    colors: [0x5a8fd6, 0xc94f3d, 0x3d7a5a, 0x6f4a8f],
+  },
   // ---- On the wall ----
   painting: {
     name: 'Maleri',

@@ -14,6 +14,8 @@ export interface PlacedItem {
   color?: number;
   /** For switchable items (lamps, TV…): 0 = off, 1.. = on / channel. */
   state?: number;
+  /** Teleporters: both twins share this id. */
+  pair?: string;
 }
 
 /** Current state of a switchable item (falls back to its default). */

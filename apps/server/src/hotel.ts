@@ -45,6 +45,13 @@ import {
   themeWallBlocks,
   canPlace,
   isFloorTile,
+  WALK_SPEED,
+  MARKET_FEE,
+  MARKET_MAX_LISTINGS,
+  MARKET_MAX_PRICE,
+  buildGrid,
+  isFree,
+  canStep,
   MAX_USER_ROOM_SIZE,
   SIZE_PRICES,
   renovationPrice,
@@ -154,6 +161,13 @@ const LIMIT_FOR: Partial<Record<ClientMsg['t'], LimitKind>> = {
   petFeed: 'build',
   renovate: 'build',
   setHeight: 'build',
+  teleport: 'move',
+  market: 'nav',
+  marketSell: 'build',
+  marketBuy: 'build',
+  marketCancel: 'build',
+  guestbookWrite: 'chat',
+  guestbookDelete: 'build',
   petTrick: 'social',
   petRename: 'build',
   admin: 'build',
@@ -463,7 +477,7 @@ export class Hotel {
     return QUESTS.every((q) => u.quests.includes(q.id));
   }
 
-  private join(s: Session, roomId: string, password?: string) {
+  private join(s: Session, roomId: string, password?: string, at?: [number, number]) {
     const user = s.user!;
     const room = this.loadRoom(roomId);
     if (!room) return this.toast(s, 'Rummet findes ikke længere.', 'error');
@@ -503,7 +517,7 @@ export class Hotel {
       level: levelOf(user).level,
       pet: this.activePetView(user),
     };
-    room.add(player);
+    room.add(player, at);
     s.room = room;
     user.lastRoom = { id: room.meta.id, at: Date.now() };
     s.player = player;
@@ -1129,6 +1143,20 @@ export class Hotel {
         return this.petOut(s, user, msg.id);
       case 'setHeight':
         return this.setHeight(s, user, msg.x, msg.z, msg.h);
+      case 'market':
+        return this.sendMarket(s, user, msg.q);
+      case 'marketSell':
+        return this.marketSell(s, user, msg.index, msg.price);
+      case 'marketBuy':
+        return this.marketBuy(s, user, msg.id);
+      case 'marketCancel':
+        return this.marketCancel(s, user, msg.id);
+      case 'guestbookWrite':
+        return this.guestbookWrite(s, user, msg.userId, msg.text);
+      case 'guestbookDelete':
+        return this.guestbookDelete(s, user, msg.userId, msg.id);
+      case 'teleport':
+        return this.teleport(s, user, msg.itemId);
       case 'renovate':
         return this.renovate(s, user, msg.size, msg.shape as RoomShape);
       case 'petFeed':
@@ -1271,8 +1299,7 @@ export class Hotel {
     const inv = (user.inventory ??= []);
     if (inv.length + moved.length > 200)
       return this.toast(s, 'Der er ikke plads i dit inventar til møblerne.', 'error');
-    for (const it of moved)
-      inv.push(it.color ? { type: it.type, color: it.color } : { type: it.type });
+    for (const it of moved) inv.push(this.invOf(it));
     rec.items.splice(0, rec.items.length, ...keep);
     rec.heights = room.meta.heights = heights;
     rec.size = room.meta.size = size;
@@ -1502,6 +1529,16 @@ export class Hotel {
     own.rec.items.push(item);
     user.stats.buys++;
     this.coins(s, user, -def.price);
+    if (def.pair) {
+      // Teleporters come in pairs: the twin goes to your inventory.
+      item.pair = newId('tp');
+      (user.inventory ??= []).push(this.invOf(item));
+      this.sendInventory(s, user);
+      this.toast(
+        s,
+        '🌀 Den anden teleporter ligger i dit inventar – stil den i et andet rum, eller giv den til en ven.',
+      );
+    }
     own.room.broadcast({ t: 'itemPut', item });
     this.quest(s, user, 'buy');
     if (user.stats.buys >= 5) this.badge(s, user, 'shopper');
@@ -1573,6 +1610,225 @@ export class Hotel {
     this.send(s, { t: 'inventory', items: u.inventory ?? [] });
   }
 
+  /** Inventory entry for a placed item (keeps colour and teleporter twin). */
+  private invOf(it: PlacedItem) {
+    const e: { type: PlacedItem['type']; color?: number; pair?: string } = { type: it.type };
+    if (it.color) e.color = it.color;
+    if (it.pair) e.pair = it.pair;
+    return e;
+  }
+
+  /* ---------------- market ---------------- */
+
+  private sendMarket(s: Session, user: UserRecord, q?: string) {
+    const query = (q ?? '').trim().toLowerCase();
+    const all = this.store.market();
+    const listings = all
+      .filter((l) => l.sellerId !== user.id)
+      .filter(
+        (l) =>
+          !query ||
+          furniture(l.item.type).name.toLowerCase().includes(query) ||
+          l.sellerName.toLowerCase().includes(query),
+      )
+      .sort((a, b) => b.at - a.at)
+      .slice(0, 80);
+    const mine = all.filter((l) => l.sellerId === user.id);
+    this.send(s, { t: 'market', listings, mine });
+  }
+
+  /** Put an inventory item up for sale. It leaves your inventory until it sells or you cancel. */
+  private marketSell(s: Session, user: UserRecord, index: number, price: number) {
+    const inv = user.inventory ?? [];
+    const entry = inv[index];
+    if (!entry) return;
+    if (furniture(entry.type).noShop) return;
+    if (price < 1 || price > MARKET_MAX_PRICE) return;
+    if (this.store.market().filter((l) => l.sellerId === user.id).length >= MARKET_MAX_LISTINGS)
+      return this.toast(s, `Du kan højst have ${MARKET_MAX_LISTINGS} ting til salg.`, 'error');
+    if (this.trades.has(user.id)) return this.toast(s, 'Afslut din byttehandel først.', 'error');
+    inv.splice(index, 1);
+    this.store.market().push({
+      id: newId('mk'),
+      sellerId: user.id,
+      sellerName: user.name,
+      item: { ...entry },
+      price,
+      at: Date.now(),
+    });
+    this.store.touch();
+    this.sendInventory(s, user);
+    this.toast(s, `🏪 ${furniture(entry.type).name} er sat til salg for ${price} mønter`);
+    this.sendMarket(s, user);
+  }
+
+  /**
+   * Buying is one synchronous step (no awaits), so nothing can change in between: the listing is
+   * removed, the coins move and the item lands in the buyer's inventory together. Every sale is logged.
+   */
+  private marketBuy(s: Session, user: UserRecord, id: string) {
+    const market = this.store.market();
+    const idx = market.findIndex((l) => l.id === id);
+    const l = market[idx];
+    if (!l) {
+      this.toast(s, 'Den er allerede solgt 🙃');
+      return this.sendMarket(s, user);
+    }
+    if (l.sellerId === user.id) return;
+    if (user.coins < l.price) return this.toast(s, 'Du har ikke mønter nok.', 'error');
+    const inv = (user.inventory ??= []);
+    if (inv.length >= 200) return this.toast(s, 'Dit inventar er fyldt.', 'error');
+    const seller = this.store.getUser(l.sellerId);
+    market.splice(idx, 1);
+    inv.push({ ...l.item });
+    this.coins(s, user, -l.price);
+    const earned = l.price - Math.floor(l.price * MARKET_FEE);
+    if (seller) {
+      seller.coins += earned;
+      const ss = this.byUser.get(seller.id);
+      if (ss) {
+        this.send(ss, { t: 'coins', coins: seller.coins, reason: 'sold' });
+        this.toast(ss, `🏪 ${user.name} købte din ${furniture(l.item.type).name} · +${earned} 🪙`);
+      }
+    }
+    this.store.logMarket({
+      at: new Date().toISOString(),
+      listingId: l.id,
+      sellerId: l.sellerId,
+      buyerId: user.id,
+      item: l.item.type,
+      price: l.price,
+    });
+    this.store.touch();
+    this.sendInventory(s, user);
+    this.toast(s, `🏪 Du købte ${furniture(l.item.type).name} – den ligger i dit inventar`);
+    this.sendMarket(s, user);
+  }
+
+  private marketCancel(s: Session, user: UserRecord, id: string) {
+    const market = this.store.market();
+    const idx = market.findIndex((l) => l.id === id && l.sellerId === user.id);
+    const l = market[idx];
+    if (!l) return;
+    market.splice(idx, 1);
+    (user.inventory ??= []).push({ ...l.item });
+    this.store.touch();
+    this.sendInventory(s, user);
+    this.sendMarket(s, user);
+  }
+
+  /* ---------------- guestbook ---------------- */
+
+  private guestbookWrite(s: Session, user: UserRecord, targetId: string, raw: string) {
+    const target = this.store.getUser(targetId);
+    if (!target) return;
+    if (target.blocked.includes(user.id)) return this.toast(s, 'Du kan ikke skrive her.', 'error');
+    if (user.mutedUntil && user.mutedUntil > Date.now())
+      return this.toast(s, 'Du er sat på pause i chatten et stykke tid.', 'error');
+    const text = filterChat(sanitizeChat(raw)).slice(0, 200);
+    if (!text) return;
+    const book = (target.guestbook ??= []);
+    book.unshift({ id: newId('gb'), fromId: user.id, fromName: user.name, text, at: Date.now() });
+    if (book.length > 50) book.length = 50;
+    this.store.touch();
+    // Logged like chat, so moderators can see it in reports.
+    this.store.logChat({
+      at: Date.now(),
+      roomId: `gb:${target.id}`,
+      userId: user.id,
+      name: user.name,
+      text,
+    });
+    const ts = this.byUser.get(target.id);
+    if (ts && ts !== s) this.toast(ts, `📖 ${user.name} skrev i din gæstebog`);
+    this.profile(s, user, target.id);
+  }
+
+  private guestbookDelete(s: Session, user: UserRecord, targetId: string, id: string) {
+    const target = this.store.getUser(targetId);
+    if (!target) return;
+    const entry = (target.guestbook ?? []).find((e) => e.id === id);
+    if (!entry) return;
+    // The owner, the writer and moderators may delete an entry.
+    if (target.id !== user.id && entry.fromId !== user.id && user.role === 'user') return;
+    target.guestbook = (target.guestbook ?? []).filter((e) => e.id !== id);
+    this.store.touch();
+    this.profile(s, user, target.id);
+  }
+
+  /* ---------------- teleporters ---------------- */
+
+  /** Where the twin of a teleporter stands (any room), if it is placed. */
+  private findTwin(pair: string, notId: number, roomId: string) {
+    for (const rec of this.store.listRooms()) {
+      const it = rec.items.find((i) => i.pair === pair && !(rec.id === roomId && i.id === notId));
+      if (it) return { rec, it };
+    }
+    return null;
+  }
+
+  private teleport(s: Session, user: UserRecord, itemId: number) {
+    const room = s.room;
+    const player = s.player;
+    if (!room || !player) return;
+    const it = room.items.find((i) => i.id === itemId);
+    if (!it || it.type !== 'teleport' || !it.pair) return;
+    const here = room.tileOf(player);
+    const near = Math.max(Math.abs(here[0] - it.x), Math.abs(here[1] - it.z)) <= 1;
+    if (!near) {
+      // Walk up to it first, then step in.
+      const n = this.freeNeighbour(room, it.x, it.z);
+      if (!n || !room.walk(player, n))
+        return this.toast(s, 'Du kan ikke komme hen til teleporteren.');
+      const ms = (player.path.length / WALK_SPEED) * 1000 + 250;
+      setTimeout(() => {
+        if (s.room === room && s.player === player) this.teleport(s, user, itemId);
+      }, ms);
+      return;
+    }
+    const twin = this.findTwin(it.pair, it.id, room.meta.id);
+    if (!twin) return this.toast(s, '🌀 Den anden teleporter er ikke stillet op endnu.');
+    const target = this.loadRoom(twin.rec.id);
+    if (!target) return;
+    const mine = twin.rec.ownerId === user.id || twin.rec.rights.includes(user.id);
+    if (!mine && user.role === 'user' && twin.rec.access !== 'open')
+      return this.toast(s, '🔒 Teleporteren fører til et låst rum.');
+    if (!mine && user.role === 'user' && target !== room && target.humans().length >= ROOM_CAPACITY)
+      return this.toast(s, `${target.meta.name} er fyldt lige nu.`);
+    room.broadcast({ t: 'action', id: player.id, kind: 'wave' });
+    setTimeout(() => {
+      if (s.room !== room) return;
+      const spot = this.freeNeighbour(target, twin.it.x, twin.it.z) ?? undefined;
+      if (target === room && spot) {
+        // Same room: just appear at the other booth.
+        room.remove(player.id);
+        room.add(player, spot);
+        this.send(s, { t: 'room', room: room.roomView(user.id), serverTime: Date.now() });
+      } else this.join(s, target.meta.id, undefined, spot);
+      this.toast(s, `🌀 Teleporteret til ${target.meta.name}`);
+    }, 600);
+  }
+
+  /** A walkable tile next to (x, z), preferring the front. */
+  private freeNeighbour(room: RoomInstance, x: number, z: number): [number, number] | null {
+    const grid = buildGrid(room.floor(), room.items);
+    for (const [dx, dz] of [
+      [0, 1],
+      [1, 0],
+      [-1, 0],
+      [0, -1],
+      [1, 1],
+      [-1, 1],
+      [1, -1],
+      [-1, -1],
+    ] as const) {
+      const nx = x + dx;
+      const nz = z + dz;
+      if (isFree(grid, nx, nz) && canStep(grid, x, z, nx, nz)) return [nx, nz];
+    }
+    return null;
+  }
+
   private stash(s: Session, user: UserRecord, id: number) {
     const own = this.ownRoom(s, user);
     if (!own || own.rec.ownerId !== user.id)
@@ -1584,7 +1840,7 @@ export class Hotel {
       return this.toast(s, 'Dit inventar er fyldt.', 'error');
     own.rec.items.splice(idx, 1);
     own.room.standUpFrom(id);
-    user.inventory.push(it.color ? { type: it.type, color: it.color } : { type: it.type });
+    user.inventory.push(this.invOf(it));
     this.store.touch();
     own.room.broadcast({ t: 'itemRemove', id });
     this.sendInventory(s, user);
@@ -1600,6 +1856,7 @@ export class Hotel {
     if (own.rec.items.length >= 120) return this.toast(s, 'Værelset er fyldt helt op.', 'error');
     const item: PlacedItem = { id: own.rec.nextItemId, type: entry.type, x, z, rot };
     if (entry.color) item.color = entry.color;
+    if (entry.pair) item.pair = entry.pair;
     if (!own.room.placeable(item)) return this.toast(s, 'Det kan ikke stå der 🙃', 'error');
     own.rec.nextItemId++;
     own.rec.items.push(item);
@@ -1993,6 +2250,17 @@ export class Hotel {
       });
     }
     if (!target) return;
+    const ts = this.byUser.get(target.id);
+    const friends = target.friends
+      .map((id) => this.store.getUser(id))
+      .filter((u): u is UserRecord => !!u)
+      .slice(0, 12)
+      .map((u) => ({ id: u.id, name: u.name }));
+    const rooms = this.store
+      .listRooms()
+      .filter((r) => r.ownerId === target.id && (r.access === 'open' || target.id === user.id))
+      .slice(0, 10)
+      .map((r) => ({ id: r.id, name: r.name, users: this.rooms.get(r.id)?.humans().length ?? 0 }));
     this.send(s, {
       t: 'profile',
       profile: {
@@ -2005,7 +2273,14 @@ export class Hotel {
         bot: false,
         friend: user.friends.includes(target.id),
         blocked: user.blocked.includes(target.id),
-        here: !!s.room && this.byUser.get(target.id)?.room === s.room,
+        here: !!s.room && s.room.players.has(target.id),
+        online: !!ts,
+        level: levelOf(target).level,
+        friends,
+        friendCount: target.friends.length,
+        rooms,
+        pet: this.activePetView(target),
+        guestbook: (target.guestbook ?? []).slice(0, 20),
       },
     });
   }

@@ -50,6 +50,18 @@ export const ClientMsgSchema = z.discriminatedUnion('t', [
   /** Take a pet out (it follows you) or send it home (null). */
   z.object({ t: z.literal('petOut'), id: z.string().max(40).nullable() }),
   z.object({ t: z.literal('petFeed') }),
+  /** Step into a teleporter (walks there first if needed). */
+  z.object({ t: z.literal('teleport'), itemId: z.number().int() }),
+  z.object({ t: z.literal('guestbookWrite'), userId, text: z.string().min(1).max(200) }),
+  z.object({ t: z.literal('guestbookDelete'), userId, id: z.string().max(40) }),
+  z.object({ t: z.literal('market'), q: z.string().max(30).optional() }),
+  z.object({
+    t: z.literal('marketSell'),
+    index: z.number().int().min(0).max(500),
+    price: z.number().int().min(1).max(10_000),
+  }),
+  z.object({ t: z.literal('marketBuy'), id: z.string().max(40) }),
+  z.object({ t: z.literal('marketCancel'), id: z.string().max(40) }),
   /** Raise or lower one floor tile in my own room (0 = floor level). */
   z.object({
     t: z.literal('setHeight'),
@@ -275,7 +287,31 @@ export interface AdminReport {
 export interface InvItem {
   type: FurnitureType;
   color?: number;
+  /** Teleporter twin id. */
+  pair?: string;
 }
+
+export interface GuestbookEntry {
+  id: string;
+  fromId: string;
+  fromName: string;
+  text: string;
+  at: number;
+}
+
+export interface MarketListing {
+  id: string;
+  sellerId: string;
+  sellerName: string;
+  item: InvItem;
+  price: number;
+  at: number;
+}
+
+/** Share of a market sale that disappears (keeps the economy from inflating). */
+export const MARKET_FEE = 0.05;
+export const MARKET_MAX_LISTINGS = 20;
+export const MARKET_MAX_PRICE = 10_000;
 
 export interface TradeOfferView {
   coins: number;
@@ -334,6 +370,15 @@ export interface ProfileView {
   blocked: boolean;
   /** In the same room as you right now (so you can trade). */
   here?: boolean;
+  online?: boolean;
+  level?: number;
+  /** A few friends and how many there are in all. */
+  friends?: { id: string; name: string }[];
+  friendCount?: number;
+  /** Rooms the player owns. */
+  rooms?: { id: string; name: string; users: number }[];
+  pet?: PetView;
+  guestbook?: GuestbookEntry[];
 }
 
 export type ServerMsg =
@@ -355,6 +400,7 @@ export type ServerMsg =
   | { t: 'sys'; text: string; id?: string }
   | { t: 'wardrobe'; wardrobe: string[] }
   | { t: 'heights'; heights: TileHeights }
+  | { t: 'market'; listings: MarketListing[]; mine: MarketListing[] }
   | { t: 'pets'; pets: PetInfo[]; active: string | null }
   | { t: 'petView'; ownerId: string; pet: PetView | null }
   | { t: 'petAct'; ownerId: string; act: PetAct; say?: string }

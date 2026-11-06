@@ -766,6 +766,33 @@ const BUILD: Record<FurnitureType, (c: number, state: number) => T.Group> = {
     }
     return g;
   },
+  teleport(c) {
+    // A booth with a glowing door (built in code, our own design).
+    const g = new T.Group();
+    const shell = M(c, { roughness: 0.4, metalness: 0.2 });
+    g.add(rbox(0.86, 0.12, 0.86, M(0x2a2a35, { roughness: 0.5 }), 0, 0.06, 0, 0.04));
+    g.add(rbox(0.12, 1.9, 0.86, shell, -0.37, 1.07, 0, 0.05));
+    g.add(rbox(0.12, 1.9, 0.86, shell, 0.37, 1.07, 0, 0.05));
+    g.add(rbox(0.86, 1.9, 0.12, shell, 0, 1.07, -0.37, 0.05));
+    g.add(rbox(0.86, 0.14, 0.86, shell, 0, 2.06, 0, 0.05));
+    const glow = new T.Mesh(
+      new T.PlaneGeometry(0.62, 1.75),
+      new T.MeshStandardMaterial({
+        color: 0xbfe8ff,
+        emissive: 0x7ac8ff,
+        emissiveIntensity: 1.4,
+        transparent: true,
+        opacity: 0.55,
+      }),
+    );
+    glow.position.set(0, 1.02, 0.3);
+    g.add(glow);
+    g.add(sph(0.06, M(0xffffff, { emissive: 0x7ac8ff, emissiveIntensity: 2 }), 0, 2.2, 0.32));
+    const l = new T.PointLight(0x7ac8ff, 0.5, 2.5, 2);
+    l.position.set(0, 1.2, 0.6);
+    g.add(l);
+    return g;
+  },
   desk() {
     const g = new T.Group();
     g.add(rbox(2.8, 1.0, 0.7, wood, 0, 0.5, 0));

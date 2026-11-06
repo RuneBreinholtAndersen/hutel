@@ -25,6 +25,9 @@ Sidst opdateret: 6. november 2026. Rækkefølge: voksen-Hutel i lukket beta før
 
 ## Færdigt 6. november (eftermiddag)
 
+- ✅ Profil som hjemmeside: level, online, kæledyr, venner, værelser, motto og gæstebog (ejer, skribent og moderatorer kan slette)
+- ✅ Teleportere: købes i par (lv 2); den ene placeres, tvillingen ryger i inventaret og kan stilles i et andet rum eller byttes til en ven
+- ✅ Marked: sæt ting fra inventaret til salg, køb fra andre også når sælger er offline, 5 % gebyr, alle salg logges
 - ✅ Trapper og platforme: hæv/sænk felter 0–3 trin i byggetilstand; man går ét trin ad gangen, møbler står vandret
 - ✅ Navigator: søgning (rum og ejere), kategorier (fest, chill, spil, handel), favoritter ⭐ og "populære lige nu"
 - ✅ Byg om: egne rum kan være 7×7 til 12×12 og have form som kvadrat, bred, L, spejlet L eller U; møbler der ikke passer lægges i inventaret
