@@ -74,6 +74,8 @@ const GuestSchema = z.object({
 
 const ProfileSchema = z.object({
   name: z.string().min(2).max(16),
+  /** Optional: password of an existing name+password account to link instead of creating one. */
+  password: z.string().min(1).max(72).optional(),
   look: LookSchema,
   invite: z.string().max(40).optional(),
   adult: z.literal(true),
@@ -250,6 +252,17 @@ export function createApp(
       }
       const profile = parsed.data.profile;
       if (!profile) return json(res, 200, { ok: true, needsProfile: true });
+      const old = profile.password ? store.getUserByName(profile.name.trim()) : undefined;
+      if (old && profile.password) {
+        const key = `${ip}:${old.name.toLowerCase()}`;
+        if (!loginLimiter.take(key))
+          return json(res, 429, { ok: false, error: 'For mange forsøg – vent et kvarter.' });
+        if (old.authId || !verifyPassword(profile.password, old.passwordHash))
+          return json(res, 401, { ok: false, error: 'Forkert adgangskode til den konto.' });
+        old.authId = who.id;
+        store.touch();
+        return json(res, 200, { ok: true, token: store.rotateToken(old), userId: old.id });
+      }
       if (!signupLimiter.take(ip)) return json(res, 429, { ok: false, error: 'Prøv igen senere.' });
       const bad = checkProfile(profile);
       if (bad) return json(res, bad[0], { ok: false, error: bad[1] });

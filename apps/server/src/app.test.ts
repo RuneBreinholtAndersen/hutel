@@ -198,6 +198,23 @@ describe('social login (Supabase)', () => {
     expect(again.body.token).toBeTruthy();
     const dup = await post({ accessToken: 'good-user-2', profile });
     expect(dup.status).toBe(409);
+    // an old name+password account can be linked to a new social login
+    const pw = await fetch(`http://127.0.0.1:${port}/api/guest`, {
+      method: 'POST',
+      body: JSON.stringify({ ...profile, name: 'Gammel', password: 'hemmelig123' }),
+    });
+    const oldId = ((await pw.json()) as { userId: string }).userId;
+    const wrong = await post({
+      accessToken: 'good-user-3',
+      profile: { ...profile, name: 'Gammel', password: 'forkert' },
+    });
+    expect(wrong.status).toBe(401);
+    const linked = await post({
+      accessToken: 'good-user-3',
+      profile: { ...profile, name: 'gammel', password: 'hemmelig123' },
+    });
+    expect(linked.body.userId).toBe(oldId);
+    expect((await post({ accessToken: 'good-user-3' })).body.userId).toBe(oldId);
     await sb.close();
   });
 

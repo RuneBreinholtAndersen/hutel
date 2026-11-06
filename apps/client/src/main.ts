@@ -36,7 +36,7 @@ import { T, tw } from './gfx/helpers';
 import { createRoom } from './gfx/room';
 import { createStage } from './gfx/scene';
 import { Net } from './net';
-import { $, confetti, esc, logLine, lookEditor, pop, toast } from './ui';
+import { $, COIN, confetti, setCoinText, esc, logLine, lookEditor, pop, toast } from './ui';
 
 const envServer = (import.meta.env.VITE_SERVER_URL as string | undefined) || '';
 // Dev (Vite on :5173) talks to the server on :2567; in production the server serves the client itself.
@@ -234,23 +234,25 @@ function renderQuests() {
   if (!me) return;
   $('qlist').innerHTML = QUESTS.map((q) => {
     const done = me!.quests.includes(q.id);
-    return `<li class="${done ? 'done' : ''}"><span>${done ? '✅' : '⬜'}</span><span class="t">${esc(q.text)}</span><span class="r">+${q.reward} 🪙</span></li>`;
+    return `<li class="${done ? 'done' : ''}"><span>${done ? '✅' : '⬜'}</span><span class="t">${esc(q.text)}</span><span class="r">+${q.reward} ${COIN}</span></li>`;
   }).join('');
   $('qCount').textContent = `${me.quests.length}/${QUESTS.length}`;
 }
 function setCoins(c: number) {
   if (!me) return;
   me.coins = c;
-  $('coinVal').textContent = `🪙 ${c}`;
+  setCoinText($('coinVal'), `🪙 ${c}`);
   if (panelKind === 'shop') renderShop();
 }
 function setOnline(sec: number) {
   if (!me) return;
   me.onlineSec = sec;
-  $('online').textContent =
+  setCoinText(
+    $('online'),
     innerWidth < 760
       ? `⏱ ${Math.floor(sec / 60)} min · +1/min`
-      : `⏱ Online ${Math.floor(sec / 60)} min · +1 🪙 pr. minut`;
+      : `⏱ Online ${Math.floor(sec / 60)} min · +1 🪙 pr. minut`,
+  );
 }
 
 /* ---------------- server messages ---------------- */
@@ -448,7 +450,7 @@ function renderShop() {
       `<div class="grid">${list
         .map((k) => {
           const c = FURNITURE[k];
-          return `<div class="item"><div class="ic">${c.icon}</div><div class="n">${c.name}</div><div class="p">${c.price} 🪙 · ${c.w}×${c.d}</div><button data-buy="${k}" ${me!.coins < c.price ? 'disabled' : ''}>Køb</button></div>`;
+          return `<div class="item"><div class="ic">${c.icon}</div><div class="n">${c.name}</div><div class="p">${c.price} ${COIN} · ${c.w}×${c.d}</div><button data-buy="${k}" ${me!.coins < c.price ? 'disabled' : ''}>Køb</button></div>`;
         })
         .join('')}</div>`,
   );
@@ -990,8 +992,15 @@ function showSignup(error = '', mode: AuthMode = social() ? 'social' : 'signup')
   $('loginForm').classList.toggle('hidden', mode !== 'login');
   // A social account has no Hutel password – the profile step only asks for name and figure.
   const profile = mode === 'profile';
-  $('suPwRow').classList.toggle('hidden', profile);
+  // In the profile step the password is optional: it links an old name+password account.
+  $('suPwLabel').textContent = profile
+    ? 'Gammel adgangskode (kun hvis du har en konto)'
+    : 'Adgangskode';
   $<HTMLInputElement>('suPw').required = !profile;
+  $<HTMLInputElement>('suPw').placeholder = profile
+    ? 'Behold din gamle figur og dine mønter'
+    : 'Mindst 8 tegn';
+  $<HTMLInputElement>('suPw').minLength = profile ? 0 : 8;
   $('toLoginRow').classList.toggle('hidden', profile || social());
   $('toSocialRow').classList.toggle('hidden', !social());
   $('signupForm').querySelector('h1')!.textContent = profile
@@ -1102,7 +1111,8 @@ $('signupForm').addEventListener('submit', async (e) => {
   const invite = $<HTMLInputElement>('suInvite').value.trim() || undefined;
   if (authMode === 'profile') {
     try {
-      await exchange({ name, look: signupLook, invite, adult, terms });
+      const password = $<HTMLInputElement>('suPw').value || undefined;
+      await exchange({ name, look: signupLook, invite, adult, terms, password });
     } catch {
       $('suError').textContent = 'Kan ikke nå hotellet lige nu. Prøv igen om lidt.';
     }

@@ -10,9 +10,26 @@ export const esc = (s: string) =>
 const hex = (n: number) => '#' + n.toString(16).padStart(6, '0');
 
 let toastT: number | undefined;
+/** Hutel's own gold coin (the 🪙 emoji looks silver on some systems). */
+export const COIN = '<i class="coin" aria-label="mønter"></i>';
+
+/** Put text in an element safely, drawing every 🪙 as a gold coin. */
+export function setCoinText(el: HTMLElement, text: string) {
+  el.textContent = '';
+  text.split('🪙').forEach((part, i) => {
+    if (i) {
+      const c = document.createElement('i');
+      c.className = 'coin';
+      c.setAttribute('aria-label', 'mønter');
+      el.append(c);
+    }
+    el.append(part);
+  });
+}
+
 export function toast(text: string, kind: 'info' | 'error' = 'info') {
   const el = $('toast');
-  el.textContent = text;
+  setCoinText(el, text);
   el.className = 'show' + (kind === 'error' ? ' error' : '');
   clearTimeout(toastT);
   toastT = window.setTimeout(() => (el.className = ''), 2600);
@@ -21,7 +38,7 @@ export function toast(text: string, kind: 'info' | 'error' = 'info') {
 export function pop(text: string) {
   const d = document.createElement('div');
   d.className = 'pop';
-  d.textContent = text;
+  setCoinText(d, text);
   document.body.appendChild(d);
   setTimeout(() => d.remove(), 1700);
 }
