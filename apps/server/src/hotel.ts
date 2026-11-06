@@ -714,6 +714,20 @@ export class Hotel {
     text: string,
   ): boolean {
     const [cmd, arg] = text.slice(1).toLowerCase().split(/\s+/);
+    if (cmd === 'penge') {
+      // Admin-only cheat for testing: +100 coins, logged in the admin log.
+      if (user.role === 'user') return false;
+      this.coins(s, user, 100, 'cheat');
+      this.store.logAdmin({
+        at: new Date().toISOString(),
+        by: user.id,
+        action: 'cheatCoins',
+        target: user.id,
+        detail: '+100',
+      });
+      this.toast(s, '🪙 +100 mønter');
+      return true;
+    }
     if (cmd === 'terning' || cmd === 'dice') {
       const n = 1 + Math.floor(Math.random() * 6);
       this.sys(

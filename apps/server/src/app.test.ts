@@ -7,7 +7,7 @@ import { QUIZ as QUIZ_FOR_TEST } from './games';
 
 const cfg = {
   allowReset: true,
-  adminNames: ['chefen'],
+  adminNames: ['chefen', 'kassereren'],
   clientOrigins: ['http://localhost:5173'],
   dataFile: null,
   clientDist: null,
@@ -493,6 +493,21 @@ describe('multiplayer', () => {
     expect(app.store.getUser(troll.g.userId)!.bannedUntil).toBeGreaterThan(Date.now());
     boss.c.ws.close();
     victim.c.ws.close();
+  });
+
+  it('gives admins 100 coins with /penge, but not normal users', async () => {
+    const boss = await login('Kassereren');
+    const before = app.store.getUser(boss.g.userId)!.coins;
+    boss.c.send({ t: 'chat', text: '/penge' });
+    await boss.c.waitFor('coins', (m) => m.reason === 'cheat');
+    expect(app.store.getUser(boss.g.userId)!.coins).toBe(before + 100);
+    const pleb = await login('Almindelig');
+    const start = app.store.getUser(pleb.g.userId)!.coins;
+    pleb.c.send({ t: 'chat', text: '/penge' });
+    await new Promise((r) => setTimeout(r, 200));
+    expect(app.store.getUser(pleb.g.userId)!.coins).toBe(start);
+    boss.c.ws.close();
+    pleb.c.ws.close();
   });
 
   it('switches lamps, lets you lie in bed and shows a level', async () => {
