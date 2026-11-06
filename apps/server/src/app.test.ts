@@ -166,6 +166,50 @@ describe('login', () => {
   });
 });
 
+describe('social login (Supabase)', () => {
+  it('maps a verified identity to one game account, asking for a profile the first time', async () => {
+    const sb = createApp({
+      ...cfg,
+      supabaseUrl: 'https://x.supabase.co',
+      supabaseAnonKey: 'anon',
+      verifyAuthToken: async (t) => (t.startsWith('good-') ? { id: t.slice(5) } : null),
+    });
+    await new Promise<void>((r) => sb.server.listen(0, r));
+    const port = (sb.server.address() as AddressInfo).port;
+    const post = async (body: unknown) => {
+      const r = await fetch(`http://127.0.0.1:${port}/api/session`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      });
+      return { status: r.status, body: (await r.json()) as Record<string, unknown> };
+    };
+    const conf = (await (await fetch(`http://127.0.0.1:${port}/api/config`)).json()) as {
+      auth: string;
+    };
+    expect(conf.auth).toBe('supabase');
+    expect((await post({ accessToken: 'bad-token-123' })).status).toBe(401);
+    const first = await post({ accessToken: 'good-user-1' });
+    expect(first.body.needsProfile).toBe(true);
+    const profile = { name: 'Googler', look: DEFAULT_LOOK, adult: true, terms: true };
+    const created = await post({ accessToken: 'good-user-1', profile });
+    expect(created.body.ok).toBe(true);
+    const again = await post({ accessToken: 'good-user-1' });
+    expect(again.body.userId).toBe(created.body.userId);
+    expect(again.body.token).toBeTruthy();
+    const dup = await post({ accessToken: 'good-user-2', profile });
+    expect(dup.status).toBe(409);
+    await sb.close();
+  });
+
+  it('reports password mode when Supabase is not configured', async () => {
+    const r = (await (await fetch(`http://${base}/api/config`)).json()) as { auth: string };
+    expect(r.auth).toBe('password');
+    expect((await fetch(`http://${base}/api/session`, { method: 'POST', body: '{}' })).status).toBe(
+      404,
+    );
+  });
+});
+
 describe('multiplayer', () => {
   it('puts a new guest in their own room with default furniture and 30 coins', async () => {
     const { welcome, room, c } = await login('Rune');

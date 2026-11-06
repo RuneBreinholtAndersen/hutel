@@ -10,6 +10,8 @@ export interface UserRecord {
   tokenHash: string;
   /** scrypt$salt$hash – absent for very old dev accounts. */
   passwordHash?: string;
+  /** Id from the external login provider (Supabase Auth: e-mail, Google, Facebook). */
+  authId?: string;
   look: Look;
   coins: number;
   onlineSec: number;
@@ -75,7 +77,12 @@ export interface Store {
   getUser(id: string): UserRecord | undefined;
   getUserByName(name: string): UserRecord | undefined;
   getUserByToken(token: string): UserRecord | undefined;
-  createUser(name: string, look: Look, password: string): { user: UserRecord; token: string };
+  getUserByAuthId(authId: string): UserRecord | undefined;
+  createUser(
+    name: string,
+    look: Look,
+    auth: { password: string } | { authId: string },
+  ): { user: UserRecord; token: string };
   /** Issues a new session token (old ones stop working). */
   rotateToken(user: UserRecord): string;
   getRoom(id: string): RoomRecord | undefined;
@@ -127,6 +134,9 @@ export class JsonFileStore implements Store {
     const lower = name.toLowerCase();
     return Object.values(this.data.users).find((u) => u.nameLower === lower);
   }
+  getUserByAuthId(authId: string) {
+    return Object.values(this.data.users).find((u) => u.authId === authId);
+  }
   getUserByToken(token: string) {
     const h = hashSecret(token);
     return Object.values(this.data.users).find((u) => u.tokenHash === h);
@@ -139,7 +149,7 @@ export class JsonFileStore implements Store {
     return token;
   }
 
-  createUser(name: string, look: Look, password: string) {
+  createUser(name: string, look: Look, auth: { password: string } | { authId: string }) {
     const token = randomBytes(32).toString('hex');
     const id = newId('u');
     const roomId = newId('r');
@@ -162,7 +172,9 @@ export class JsonFileStore implements Store {
       name,
       nameLower: name.toLowerCase(),
       tokenHash: hashSecret(token),
-      passwordHash: hashPassword(password),
+      ...('password' in auth
+        ? { passwordHash: hashPassword(auth.password) }
+        : { authId: auth.authId }),
       look,
       coins: 30,
       onlineSec: 0,

@@ -665,3 +665,56 @@ select {
     display: none;
   }
 }
+
+/* social login */
+.signup .social {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 11px 14px;
+  margin: 6px 0;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 240, 220, 0.25);
+  background: rgba(255, 248, 238, 0.95);
+  color: #3a2a1e;
+  font:
+    600 15px Fredoka,
+    sans-serif;
+  cursor: pointer;
+}
+.signup .social:hover {
+  background: #fff;
+}
+.signup .social .g,
+.signup .social .f {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  color: #fff;
+}
+.signup .social .g {
+  background: #db4437;
+}
+.signup .social .f {
+  background: #1877f2;
+}
+.signup .or {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0 4px;
+  opacity: 0.7;
+  font-size: 13px;
+}
+.signup .or::before,
+.signup .or::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 240, 220, 0.3);
+}

@@ -26,6 +26,23 @@ Data (gæster, værelser, chatlog) gemmes indtil videre i en fil på et Fly-volu
 - [ ] Hos Simply: opret en A-record (IPv4) og en AAAA-record (IPv6) for `hutel.dk`, og en CNAME for `www` til `<app-navn>.fly.dev`
 - [ ] Vent til `fly certs show hutel.dk` siger, at certifikatet er klar
 
+## Login med e-mail, Google og Facebook
+
+Spillet bruger Supabase Auth. Serveren tjekker selv hvert login hos Supabase, så ingen hemmelige nøgler ligger i browseren.
+
+1. Opret et projekt på supabase.com (region: EU, fx Frankfurt eller Stockholm).
+2. **Authentication → URL Configuration:** Site URL `https://hutel.fly.dev` (senere `https://hutel.dk`). Tilføj også `http://localhost:5173` under Redirect URLs til test.
+3. **E-mail:** er slået til som standard (magic link). Senere bør mails sendes via egen SMTP, fx Simply.
+4. **Google:** Opret en OAuth-klient i Google Cloud Console (type "Web application"). Indsæt callback-adressen, som Supabase viser under Authentication → Providers → Google. Kopiér Client ID og Secret tilbage i Supabase.
+5. **Facebook:** Opret en app på developers.facebook.com med "Facebook Login". Indsæt Supabase' callback-adresse som "Valid OAuth Redirect URI". Kopiér App ID og Secret til Supabase → Providers → Facebook. Appen skal sættes i "Live"-tilstand, før andre end dig kan logge ind.
+6. Kopiér Project URL og anon/public key fra Project Settings → API og kør:
+
+```
+fly secrets set SUPABASE_URL=https://xxxx.supabase.co SUPABASE_ANON_KEY=eyJ...
+```
+
+Når de to secrets er sat, viser loginsiden knapperne automatisk. Uden dem bruges navn + adgangskode.
+
 ## Nyttige kommandoer
 
 ```bash

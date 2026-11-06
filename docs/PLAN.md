@@ -10,9 +10,19 @@ Sidst opdateret: 6. november 2026. Rækkefølge: voksen-Hutel i lukket beta før
 
 - [ ] Opret et privat, tomt GitHub-repo `hutel` (ingen README, .gitignore eller licens), så koden kan skubbes op
 - [ ] Registrér domænet **hutel.dk** (ledigt hos Simply pr. 6. nov. 2026)
-- [ ] Opret et Supabase-projekt i EU-region (bruges når fil-lageret skal skiftes ud)
+- [ ] Opret et Supabase-projekt i EU-region og slå login med e-mail, Google og Facebook til (se `docs/DEPLOY.md` → "Login med e-mail, Google og Facebook")
+- [ ] Sæt `SUPABASE_URL` og `SUPABASE_ANON_KEY` som Fly-secrets og deploy igen
 - [ ] Opret konto hos Fly.io og følg `docs/DEPLOY.md` (Vercel er ikke nødvendigt – serveren leverer også spillet)
 - [ ] Opret en Anthropic API-nøgle til AI-beboerne og læg den i serverens secrets som `ANTHROPIC_API_KEY`
+
+---
+
+## Færdigt 6. november (eftermiddag)
+
+- ✅ Egen figur går med det samme (klienten forudser stien, serveren bekræfter bagefter) – også med piletaster
+- ✅ Login med e-mail-link, Google og Facebook via Supabase (`/api/config`, `/api/session`), slås til med to secrets
+- ✅ Første login med Google/Facebook/e-mail beder om navn, figur, 18+ og vilkår
+- ✅ Navn + adgangskode virker stadig for eksisterende beta-konti
 
 ---
 

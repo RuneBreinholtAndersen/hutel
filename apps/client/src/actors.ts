@@ -1,4 +1,11 @@
-import { positionAt, type Look, type PlacedItem, type PlayerView } from '@hutel/shared';
+import {
+  positionAt,
+  RUN_MULTIPLIER,
+  WALK_SPEED,
+  type Look,
+  type PlacedItem,
+  type PlayerView,
+} from '@hutel/shared';
 import { buildParts, makeAvatar, parts } from './gfx/avatar';
 import { lerpAngle, rnd, T, tw } from './gfx/helpers';
 
@@ -73,6 +80,21 @@ export class Actor {
   setLook(look: Look) {
     this.view.look = look;
     buildParts(this.obj, look);
+  }
+
+  /** The next waypoint the avatar is walking towards (or its tile when standing). */
+  heading(now: number): [number, number] {
+    if (!this.walking || !this.path.length) return this.tile();
+    const speed = WALK_SPEED * (this.run ? RUN_MULTIPLIER : 1);
+    let d = Math.max(0, (now - this.pathStart) / 1000) * speed;
+    let [px, pz] = this.from;
+    for (const [nx, nz] of this.path) {
+      d -= Math.hypot(nx - px, nz - pz);
+      if (d < 0) return [nx, nz];
+      px = nx;
+      pz = nz;
+    }
+    return [px, pz];
   }
 
   /** Tile the avatar is on (or heading to). */

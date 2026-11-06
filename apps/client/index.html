@@ -29,6 +29,32 @@
 
     <!-- sign-up -->
     <div id="signup" class="screen hidden">
+      <div id="authCard" class="card signup hidden">
+        <div class="logo">🏨</div>
+        <h1>Velkommen til Hutel</h1>
+        <p class="sub">Opret en konto eller log ind – det er det samme knap.</p>
+        <button type="button" id="authGoogle" class="social">
+          <span class="g">G</span> Fortsæt med Google
+        </button>
+        <button type="button" id="authFacebook" class="social">
+          <span class="f">f</span> Fortsæt med Facebook
+        </button>
+        <div class="or"><span>eller med e-mail</span></div>
+        <form id="emailForm">
+          <label
+            >Din e-mail<input
+              id="authEmail"
+              type="email"
+              required
+              autocomplete="email"
+              placeholder="dig@eksempel.dk"
+          /></label>
+          <button type="submit" class="primary">Send mig et login-link ✉️</button>
+        </form>
+        <p id="authMsg" class="sub"></p>
+        <p id="authError" class="error"></p>
+        <p class="sub"><a href="#login" id="toPwLogin">Log ind med navn og adgangskode</a></p>
+      </div>
       <form id="signupForm" class="card signup">
         <div class="logo">🏨</div>
         <h1>Velkommen til Hutel</h1>
@@ -41,7 +67,7 @@
             autocomplete="off"
             placeholder="Fx Rune"
         /></label>
-        <label
+        <label id="suPwRow"
           >Adgangskode<input
             id="suPw"
             type="password"
@@ -66,7 +92,9 @@
         >
         <p id="suError" class="error"></p>
         <button type="submit" class="primary">Tjek ind 🛎️</button>
-        <p class="sub">Har du allerede en konto? <a href="#login" id="toLogin">Log ind</a></p>
+        <p class="sub" id="toLoginRow">
+          Har du allerede en konto? <a href="#login" id="toLogin">Log ind</a>
+        </p>
       </form>
       <form id="loginForm" class="card signup hidden">
         <div class="logo">🏨</div>
@@ -83,6 +111,9 @@
         <p id="liError" class="error"></p>
         <button type="submit" class="primary">Log ind 🔑</button>
         <p class="sub">Ny på Hutel? <a href="#opret" id="toSignup">Opret en konto</a></p>
+        <p class="sub hidden" id="toSocialRow">
+          <a href="#social" id="toSocial">Tilbage til Google, Facebook og e-mail</a>
+        </p>
       </form>
       <div id="terms" class="card terms hidden">
         <h2>Vilkår og privatliv (kladde)</h2>

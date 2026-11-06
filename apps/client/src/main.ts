@@ -2,6 +2,7 @@ import {
   BADGES,
   buildGrid,
   canPlace,
+  findPath,
   DEFAULT_LOOK,
   footprint,
   furniture,
@@ -21,6 +22,15 @@ import {
   type ServerMsg,
 } from '@hutel/shared';
 import { Actor } from './actors';
+import {
+  accessToken,
+  isAuthRedirect,
+  loadConfig,
+  signInWithEmail,
+  signInWithProvider,
+  signOut,
+  type AuthConfig,
+} from './auth';
 import { buildFurniture } from './gfx/furniture';
 import { T, tw } from './gfx/helpers';
 import { createRoom } from './gfx/room';
@@ -100,6 +110,34 @@ let panelKind: string | null = null;
 let onboardingLock = true;
 
 const myActor = () => (me ? actors.get(me.id) : undefined);
+
+/* Client-side prediction: our own figure starts walking at once, and the server's echo of
+   the same walk is ignored. If the server disagrees (blocked, seat, etc.) its path wins. */
+const pending: { goal: string; at: number }[] = [];
+function expectEcho(goal: [number, number]) {
+  const now = performance.now();
+  while (pending.length && now - pending[0]!.at > 2500) pending.shift();
+  pending.push({ goal: goal.join(), at: now });
+}
+function isOwnEcho(goal: [number, number]) {
+  const i = pending.findIndex((p) => p.goal === goal.join());
+  if (i < 0) return false;
+  pending.splice(0, i + 1);
+  return true;
+}
+function predictWalk(goal: [number, number], run: boolean) {
+  const a = myActor();
+  if (!a || !net || a.seatId !== null) return;
+  const now = net.now();
+  const next = a.heading(now);
+  const grid = buildGrid(ROOM_SIZE, [...items.values()]);
+  const rest = findPath(grid, next, goal);
+  if (!rest) return;
+  const here: [number, number] = [a.x, a.z];
+  const atNext = Math.hypot(next[0] - a.x, next[1] - a.z) < 0.01;
+  a.setPath(atNext ? next : here, atNext ? rest : [next, ...rest], now, run, null);
+  expectEcho(goal);
+}
 const onboarded = () => !!me && (!onboardingLock || QUESTS.every((q) => me!.quests.includes(q.id)));
 const questsDone = () => !!me && QUESTS.every((q) => me!.quests.includes(q.id));
 const isOwner = () => !!me && !!room && room.ownerId === me.id;
@@ -240,9 +278,14 @@ function handle(msg: ServerMsg) {
       }
       return;
     }
-    case 'path':
+    case 'path': {
+      if (msg.id === me?.id && msg.seatId === null) {
+        const last = msg.path[msg.path.length - 1] ?? msg.from;
+        if (isOwnEcho([last[0], last[1]])) return;
+      }
       actors.get(msg.id)?.setPath(msg.from, msg.path, msg.pathStart, msg.run, msg.seatId);
       return;
+    }
     case 'chat':
       bubble(msg.id, (msg.bot ? '🤖 ' : '') + msg.name, msg.text);
       logLine({ name: (msg.bot ? '🤖 ' : '') + msg.name, text: msg.text });
@@ -435,7 +478,7 @@ function renderFigure() {
   });
   $('logout').addEventListener('click', () => {
     store.set(TOKEN_KEY, null);
-    location.reload();
+    void signOut(authCfg).finally(() => location.reload());
   });
 }
 
@@ -705,7 +748,10 @@ function onClick() {
   const it = hitItem(false);
   if (it && furniture(it.type).seat) return net.send({ t: 'sit', itemId: it.id });
   const t = hitTile();
-  if (t) net.send({ t: 'move', x: t.x, z: t.z, run: running });
+  if (t) {
+    predictWalk([t.x, t.z], running);
+    net.send({ t: 'move', x: t.x, z: t.z, run: running });
+  }
   $('hint').style.opacity = '0';
 }
 let down: { x: number; y: number } | null = null;
@@ -873,6 +919,11 @@ function keyboardWalk() {
   }
   if (ix && iz && (!free(tx + ix, tz) || !free(tx, tz + iz))) return;
   nextStep = now + (running ? 110 : 170);
+  // Predict: extend the current walk (seamless) or start a new one right away.
+  if (a.walking && a.path.length && a.run === running && a.seatId === null) {
+    a.path.push([nx, nz]);
+    expectEcho([nx, nz]);
+  } else predictWalk([nx, nz], running);
   net.send({ t: 'move', x: nx, z: nz, run: running });
 }
 
@@ -916,15 +967,64 @@ $('chatForm').addEventListener('submit', (e) => {
   net.send({ t: 'chat', text });
 });
 
-/* ---------------- sign-up ---------------- */
+/* ---------------- sign-up / login ---------------- */
+type AuthMode = 'social' | 'signup' | 'login' | 'profile';
+let authCfg: AuthConfig = {
+  auth: 'password',
+  supabaseUrl: null,
+  supabaseAnonKey: null,
+  inviteRequired: false,
+};
+let authMode: AuthMode = 'signup';
 let signupLook: Look = { ...DEFAULT_LOOK };
-function showSignup(error = '', mode: 'signup' | 'login' = 'signup') {
+const social = () => authCfg.auth === 'supabase';
+function showSignup(error = '', mode: AuthMode = social() ? 'social' : 'signup') {
+  authMode = mode;
   $('signup').classList.remove('hidden');
-  $('signupForm').classList.toggle('hidden', mode !== 'signup');
+  $('authCard').classList.toggle('hidden', mode !== 'social');
+  $('signupForm').classList.toggle('hidden', mode !== 'signup' && mode !== 'profile');
   $('loginForm').classList.toggle('hidden', mode !== 'login');
-  $('suError').textContent = mode === 'signup' ? error : '';
+  // A social account has no Hutel password – the profile step only asks for name and figure.
+  const profile = mode === 'profile';
+  $('suPwRow').classList.toggle('hidden', profile);
+  $<HTMLInputElement>('suPw').required = !profile;
+  $('toLoginRow').classList.toggle('hidden', profile || social());
+  $('toSocialRow').classList.toggle('hidden', !social());
+  $('signupForm').querySelector('h1')!.textContent = profile
+    ? 'Lav din figur'
+    : 'Velkommen til Hutel';
+  $('authError').textContent = mode === 'social' ? error : '';
+  $('suError').textContent = mode === 'signup' || profile ? error : '';
   $('liError').textContent = mode === 'login' ? error : '';
   lookEditor($('suLook'), signupLook, (l) => (signupLook = l));
+}
+/** Trade a Supabase login for a Hutel game token (and create the figure the first time). */
+async function exchange(profile?: object): Promise<boolean> {
+  const at = await accessToken(authCfg).catch(() => null);
+  if (!at) return false;
+  const res = await fetch(`${SERVER}/api/session`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ accessToken: at, profile }),
+  });
+  const data = (await res.json()) as {
+    ok: boolean;
+    token?: string;
+    needsProfile?: boolean;
+    error?: string;
+  };
+  if (data.ok && data.needsProfile) {
+    showSignup('', 'profile');
+    return true;
+  }
+  if (!data.ok || !data.token) {
+    showSignup(data.error ?? 'Noget gik galt.', profile ? 'profile' : 'social');
+    return true;
+  }
+  store.set(TOKEN_KEY, data.token);
+  $('signup').classList.add('hidden');
+  start(data.token);
+  return true;
 }
 $('termsLink').addEventListener('click', (e) => {
   e.preventDefault();
@@ -936,7 +1036,36 @@ $('toLogin').addEventListener('click', (e) => {
 });
 $('toSignup').addEventListener('click', (e) => {
   e.preventDefault();
-  showSignup('', 'signup');
+  showSignup('', social() ? 'social' : 'signup');
+});
+$('toPwLogin').addEventListener('click', (e) => {
+  e.preventDefault();
+  showSignup('', 'login');
+});
+$('toSocial').addEventListener('click', (e) => {
+  e.preventDefault();
+  showSignup('', 'social');
+});
+for (const [id, provider] of [
+  ['authGoogle', 'google'],
+  ['authFacebook', 'facebook'],
+] as const)
+  $(id).addEventListener('click', () => {
+    $('authError').textContent = '';
+    signInWithProvider(authCfg, provider).catch(
+      () => ($('authError').textContent = 'Det login virker ikke lige nu. Prøv e-mail i stedet.'),
+    );
+  });
+$('emailForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = $<HTMLInputElement>('authEmail').value.trim();
+  $('authError').textContent = '';
+  try {
+    await signInWithEmail(authCfg, email);
+    $('authMsg').textContent = `Tjek din mail (${email}) – klik på linket for at komme ind. ✉️`;
+  } catch {
+    $('authError').textContent = 'Kunne ikke sende mailen. Tjek adressen og prøv igen om lidt.';
+  }
 });
 $('loginForm').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -966,6 +1095,15 @@ $('signupForm').addEventListener('submit', async (e) => {
   const terms = $<HTMLInputElement>('suTerms').checked;
   if (!adult || !terms)
     return ($('suError').textContent = 'Du skal være fyldt 18 og acceptere vilkårene.');
+  const invite = $<HTMLInputElement>('suInvite').value.trim() || undefined;
+  if (authMode === 'profile') {
+    try {
+      await exchange({ name, look: signupLook, invite, adult, terms });
+    } catch {
+      $('suError').textContent = 'Kan ikke nå hotellet lige nu. Prøv igen om lidt.';
+    }
+    return;
+  }
   try {
     const res = await fetch(`${SERVER}/api/guest`, {
       method: 'POST',
@@ -974,7 +1112,7 @@ $('signupForm').addEventListener('submit', async (e) => {
         name,
         look: signupLook,
         password: $<HTMLInputElement>('suPw').value,
-        invite: $<HTMLInputElement>('suInvite').value.trim() || undefined,
+        invite,
         adult,
         terms,
       }),
@@ -997,7 +1135,7 @@ function start(token: string) {
   net.onFatal = (code) => {
     if (code === 4001) {
       store.set(TOKEN_KEY, null);
-      showSignup('Du er blevet logget ud – log ind igen.', 'login');
+      showSignup('Du er blevet logget ud – log ind igen.', social() ? 'social' : 'login');
     } else if (code === 4003) toast('Din konto er midlertidigt udelukket.', 'error');
     else if (code === 4000) toast('Du er logget ind et andet sted.', 'error');
   };
@@ -1048,7 +1186,18 @@ function loop() {
 }
 
 roomGfx.setTheme('home');
-const saved = store.get(TOKEN_KEY);
-if (saved) start(saved);
-else showSignup();
+async function boot() {
+  authCfg = await loadConfig(SERVER);
+  const saved = store.get(TOKEN_KEY);
+  if (social() && (isAuthRedirect() || !saved)) {
+    try {
+      if (await exchange()) return;
+    } catch {
+      /* fall through to the login screen */
+    }
+  }
+  if (saved) start(saved);
+  else showSignup();
+}
+void boot();
 loop();
