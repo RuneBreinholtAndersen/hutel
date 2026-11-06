@@ -14,6 +14,7 @@ Børn og voksne må aldrig kunne mødes: Junior kører på egen server og egen d
 ## Læs først
 
 - `docs/PLAN.md` – milepæle og tjekliste. Opdatér den, når en opgave er færdig (✅), og hold åbne punkter øverst.
+- `docs/HABBO-FEATURES.md` – hvad vi mangler i forhold til Habbo. **Opdatér den hver gang en feature er færdig**: fjern punktet fra de åbne lister, tilføj det under ✅, hold nummereringen fortløbende og ret datoen øverst.
 - `prototype/index.html` – den fungerende enkeltspiller-prototype. Den er facitlisten for udseende, figurer, møbler, lys og stemning. Port koden herfra i stedet for at opfinde en ny stil.
 
 ## Arkitektur

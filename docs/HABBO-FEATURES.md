@@ -2,6 +2,8 @@
 
 Listen sammenligner Hutel med de klassiske funktioner fra Habbo Hotel. Navne, grafik og møbler kopieres ikke: vi laver vores egen version af idéen.
 
+_Senest opdateret: 6. november 2026 (byg om: størrelse og form)._
+
 **Sådan læses den**
 - **Værdi**: hvor meget det betyder for spillerne (★–★★★)
 - **Indsats**: hvor stor opgaven er med vores teknik i dag (S = en aften, M = 1–3 dage, L = en uge+)
@@ -19,12 +21,12 @@ Det her mener jeg giver mest spil for pengene, i den rækkefølge:
 - [ ] **4. Rum-spil som møbler** – frysekamp/snebold-arena, farvefelter man løber på (som "Battle Banzai"), stoleleg, kapløb. Serveren styrer reglerne. ★★★ · L
 - [ ] **5. Wired light: møbler der reagerer** – trykplader, "når nogen går her → tænd lampe / teleportér / sig noget". Giver brugerne mulighed for at bygge deres egne spil. ★★★ · L
 - [ ] **6. Teleportere mellem rum** – to møbler der hænger sammen, også mellem forskellige brugeres værelser. ★★ · M
-- [ ] **8. Grupper/klubber** – navn, logo-generator (vores egen), medlemsliste, gruppe-rum, gruppe-badge ved navnet. ★★ · M
-- [ ] **9. Sjældne møbler ("rares")** – begrænsede møbler, der kun sælges en uge eller i et bestemt antal, med serienummer. Driver byttehandel. ★★★ · S (vi har allerede bytte + inventar)
-- [ ] **10. Marked** – sæt ting til salg for mønter; andre kan købe, mens du er offline. Kræver transaktioner og log (findes allerede for bytte). ★★ · M
-- [ ] **11. Lyd og musik** – jukebox med egne korte melodier, lyde ved klik, dør, mønter. Generér selv musik/lyde, så intet kopieres. ★★ · M
-- [ ] **12. Mobil-kontroller** – tryk-for-at-gå er der, men knapper og paneler skal tilpasses små skærme. ★★★ · M
-- [ ] **13. Hutel Junior** – menu-chat, forældrekonto, vennekoder, egen server/database (se PLAN.md). ★★★ · L
+- [ ] **7. Grupper/klubber** – navn, logo-generator (vores egen), medlemsliste, gruppe-rum, gruppe-badge ved navnet. ★★ · M
+- [ ] **8. Sjældne møbler ("rares")** – begrænsede møbler, der kun sælges en uge eller i et bestemt antal, med serienummer. Driver byttehandel. ★★★ · S (vi har allerede bytte + inventar)
+- [ ] **9. Marked** – sæt ting til salg for mønter; andre kan købe, mens du er offline. Kræver transaktioner og log (findes allerede for bytte). ★★ · M
+- [ ] **10. Lyd og musik** – jukebox med egne korte melodier, lyde ved klik, dør, mønter. Generér selv musik/lyde, så intet kopieres. ★★ · M
+- [ ] **11. Mobil-kontroller** – tryk-for-at-gå er der, men knapper og paneler skal tilpasses små skærme. ★★★ · M
+- [ ] **12. Hutel Junior** – menu-chat, forældrekonto, vennekoder, egen server/database (se PLAN.md). ★★★ · L
 
 ## 💡 Habbo-funktioner vi mangler (fuld liste)
 
