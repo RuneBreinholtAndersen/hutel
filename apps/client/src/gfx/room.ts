@@ -52,6 +52,22 @@ const THEMES: Record<RoomTheme, { wall: T.Texture; wain: number; floor: [number,
     wain: 0x16102a,
     floor: [0x2a2040, 0x3a2a5a],
   },
+  bedroom: {
+    wall: wallpaper('#d6dff0', '#cbd6ea', 'rgba(90,110,170,.3)'),
+    wain: 0x5a6a8f,
+    floor: [0xb08a6a, 0xa07a5c],
+  },
+  bathroom: {
+    wall: wallpaper('#e8f2f2', '#dcecec', 'rgba(60,140,160,.28)', true),
+    wain: 0x5aa3b8,
+    floor: [0xb8c8cb, 0x6f9fac],
+  },
+  kitchen: {
+    wall: wallpaper('#f3ead6', '#ecdfc4', 'rgba(200,120,60,.3)'),
+    wain: 0x6e5a3a,
+    floor: [0x2f2f36, 0xe8e2d6],
+  },
+  balcony: { wall: nightSky(), wain: 0x6a6f76, floor: [0x9a7a5a, 0x8a6a4c] },
   pool: {
     wall: wallpaper('#bfe0e4', '#b2d6db', 'rgba(40,120,150,.35)'),
     wain: 0x3f8aa0,
@@ -278,6 +294,33 @@ function decor(theme: RoomTheme): { group: T.Group; lights: T.Light[]; windowLig
     }
     return { group, lights, windowLight: false };
   }
+  if (theme === 'bedroom') {
+    windowOnLeftWall(group, -1.5);
+    painting(group, 1.2, 2.0);
+    return { group, lights, windowLight: true };
+  }
+  if (theme === 'bathroom') {
+    windowOnLeftWall(group, 1.5);
+    return { group, lights, windowLight: true };
+  }
+  if (theme === 'kitchen') {
+    windowOnLeftWall(group, 1.2);
+    for (const px of [-1.2, 0.8]) {
+      group.add(cyl(0.01, 0.01, 0.5, M(0x222222), px, 2.75, -1.6));
+      group.add(
+        sph(0.09, M(0xfff1c9, { emissive: 0xffb35c, emissiveIntensity: 1.8 }), px, 2.45, -1.6),
+      );
+      const l = new T.PointLight(0xffb35c, 0.5, 5, 2);
+      l.position.set(px, 2.3, -1.6);
+      lights.push(l);
+      group.add(l);
+    }
+    return { group, lights, windowLight: true };
+  }
+  if (theme === 'balcony') {
+    stringLights(group, lights, false);
+    return { group, lights, windowLight: false };
+  }
   if (theme === 'roof') {
     stringLights(group, lights, true);
     stringLights(group, lights, false);
@@ -490,7 +533,7 @@ export function createRoom(scene: T.Scene) {
       (t.material as T.MeshStandardMaterial).color.copy(lin(th.floor[t.userData.alt as number]));
     winSpot.visible = current.windowLight;
     dust.visible = current.windowLight;
-    const wz = theme === 'cafe' ? 1.5 : theme === 'pool' ? -2 : -1.5;
+    const wz = theme === 'cafe' || theme === 'bathroom' ? 1.5 : theme === 'kitchen' ? 1.2 : -1.5;
     winSpot.position.set(-N / 2 + 0.25, 2.5, wz);
     winSpot.target.position.set(1.6, 0, wz + 0.9);
   }

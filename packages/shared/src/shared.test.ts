@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  APARTMENT_START_ITEMS,
   scheduledEvents,
   dailyQuestsFor,
   danishDate,
@@ -43,6 +44,9 @@ describe('placement', () => {
     const rooms = [
       ...PUBLIC_ROOMS.map((r) => r.items),
       DEFAULT_HOME_ITEMS.map((it, i) => ({ ...it, id: i + 1 })),
+      ...Object.values(APARTMENT_START_ITEMS).map((list) =>
+        list.map((it, i) => ({ ...it, id: i + 1 })),
+      ),
     ];
     for (const items of rooms) {
       for (const it of items) expect(canPlace(ROOM_SIZE, items, it)).toBe(true);

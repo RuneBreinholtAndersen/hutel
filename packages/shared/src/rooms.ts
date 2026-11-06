@@ -1,6 +1,60 @@
 import type { PlacedItem } from './placement';
 
-export type RoomTheme = 'home' | 'lobby' | 'cafe' | 'roof' | 'arcade' | 'pool';
+export type RoomTheme =
+  | 'home'
+  | 'lobby'
+  | 'cafe'
+  | 'roof'
+  | 'arcade'
+  | 'pool'
+  | 'bedroom'
+  | 'bathroom'
+  | 'kitchen'
+  | 'balcony';
+
+/** Extra rooms you can buy for your apartment. Your first room is the living room. */
+export const APARTMENT_ROOMS = [
+  { kind: 'bedroom', name: 'Soveværelse', icon: '🛏️', price: 60, level: 3, theme: 'bedroom' },
+  { kind: 'bathroom', name: 'Badeværelse', icon: '🛁', price: 80, level: 4, theme: 'bathroom' },
+  { kind: 'kitchen', name: 'Køkken', icon: '🍳', price: 100, level: 5, theme: 'kitchen' },
+  { kind: 'balcony', name: 'Altan', icon: '🌿', price: 120, level: 6, theme: 'balcony' },
+] as const satisfies readonly {
+  kind: string;
+  name: string;
+  icon: string;
+  price: number;
+  level: number;
+  theme: RoomTheme;
+}[];
+export type ApartmentKind = (typeof APARTMENT_ROOMS)[number]['kind'];
+
+/** Starting furniture for each bought room. */
+export const APARTMENT_START_ITEMS: Record<ApartmentKind, Omit<PlacedItem, 'id'>[]> = {
+  bedroom: [
+    { type: 'bed', x: 1, z: 1, rot: 0 },
+    { type: 'nightstand', x: 3, z: 1, rot: 0 },
+    { type: 'rug', x: 1, z: 3, rot: 0, color: 3 },
+  ],
+  bathroom: [
+    { type: 'bathtub', x: 1, z: 0, rot: 0 },
+    { type: 'sink', x: 4, z: 0, rot: 0 },
+    { type: 'plant', x: 0, z: 7, rot: 0 },
+  ],
+  kitchen: [
+    { type: 'kitchen', x: 1, z: 0, rot: 0 },
+    { type: 'fridge', x: 3, z: 0, rot: 0 },
+    { type: 'table', x: 3, z: 4, rot: 0 },
+    { type: 'chair', x: 2, z: 4, rot: 1 },
+    { type: 'chair', x: 4, z: 4, rot: 3 },
+  ],
+  balcony: [
+    { type: 'grill', x: 1, z: 1, rot: 0 },
+    { type: 'plant', x: 0, z: 0, rot: 0 },
+    { type: 'plant', x: 7, z: 7, rot: 0 },
+    { type: 'lounger', x: 4, z: 3, rot: 0 },
+    { type: 'cactus', x: 0, z: 6, rot: 0 },
+  ],
+};
 export type RoomAccess = 'open' | 'locked' | 'password';
 
 /** The door tile in every room (in front of the door on the back wall). */

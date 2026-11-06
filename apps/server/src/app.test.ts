@@ -510,6 +510,37 @@ describe('multiplayer', () => {
     c.ws.close();
   });
 
+  it('sells extra apartment rooms from a level', async () => {
+    const { c, g, welcome } = await login('Lejer');
+    expect(welcome.me.apartment.map((r) => r.kind)).toEqual(['living']);
+    c.send({ t: 'buyRoom', kind: 'bedroom' });
+    expect((await c.waitFor('toast', (m) => /level 3/.test(m.text))).kind).toBe('error');
+    const u = app.store.getUser(g.userId)!;
+    u.onlineSec = 3 * 3600;
+    u.coins = 200;
+    c.send({ t: 'buyRoom', kind: 'bedroom' });
+    const ap = await c.waitFor('apartment');
+    expect(ap.rooms.map((r) => r.kind)).toEqual(['living', 'bedroom']);
+    const r = await c.waitFor('room', (m) => m.room.id === ap.rooms[1]!.id);
+    expect(r.room.theme).toBe('bedroom');
+    expect(r.room.canBuild).toBe(true);
+    expect(r.room.items.some((i) => i.type === 'bed')).toBe(true);
+    c.ws.close();
+  });
+
+  it('puts you back in the same room after a reconnect', async () => {
+    const { c, g } = await login('Tilbage');
+    c.send({ t: 'join', roomId: 'cafe' });
+    await c.waitFor('room', (m) => m.room.id === 'cafe');
+    c.ws.close();
+    await new Promise((r) => setTimeout(r, 100));
+    const c2 = new TestClient();
+    await c2.open();
+    c2.send({ t: 'auth', token: g.token });
+    expect((await c2.waitFor('room')).room.id).toBe('cafe');
+    c2.ws.close();
+  });
+
   it('handles friends, whispers, password rooms and blocking', async () => {
     const a = await login('Anna');
     const b = await login('Bo');

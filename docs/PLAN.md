@@ -14,7 +14,8 @@ Sidst opdateret: 6. november 2026. Rækkefølge: voksen-Hutel i lukket beta før
 - [ ] Sæt `SUPABASE_URL` og `SUPABASE_ANON_KEY` som Fly-secrets og deploy igen
 - [ ] Facebook-login (sat på pause): opret Meta-app, indsæt App ID/Secret i Supabase, og sæt `AUTH_PROVIDERS=google,facebook`
 - [ ] Sæt dig selv som admin: `fly secrets set ADMIN_NAMES=rune` (log ind med Google med totrinsbekræftelse)
-- [ ] Køb ekstra plads på værelset (større gulv) eller et ekstra værelse
+- [ ] Større gulv på værelser (kræver at rumstørrelsen ikke længere er fast 8×8)
+- [ ] Hvisken til alle i samme rum + beskeder til venner, der ikke er online
 - [ ] Før lancering: slå "Start forfra" fra med `fly secrets set ALLOW_RESET=false`
 - [ ] Udgiv Google-login for alle (kræver hutel.dk og en side med privatlivspolitik) – indtil da: tilføj beta-testere som testbrugere i Google Cloud → Audience
 - ✅ Supabase-projekt `hutel` oprettet (gratis org "Hutel", EU/Irland), redirect-URL'er sat
@@ -26,6 +27,8 @@ Sidst opdateret: 6. november 2026. Rækkefølge: voksen-Hutel i lukket beta før
 
 ## Færdigt 6. november (eftermiddag)
 
+- ✅ Min lejlighed: køb soveværelse (lv 3), badeværelse (lv 4), køkken (lv 5) og altan (lv 6) med egne temaer og møbler (badekar, håndvask, køkkenbord, køleskab, grill, natbord)
+- ✅ Efter genforbindelse eller opdatering kommer man tilbage til det rum, man var i (inden for 15 min)
 - ✅ Interaktive møbler: klik for at tænde/slukke lamper, pejs og jukebox; fjernsynet har 3 kanaler (Hutel Nyt, Fiskekanalen, Hutel FM); læg dig i sengen og på liggestole
 - ✅ Level efter navnet (XP for tid, opgaver og badges) med XP-bjælke under Figur
 - ✅ Byttehandel: inventar (📦 Gem i inventar under Byg), byt mønter, møbler og tøj med en anden i samme rum – begge skal godkende, alt logges

@@ -17,6 +17,8 @@ export interface FurnitureDef {
   unlock?: BadgeId;
   /** Colour choices for the main fabric/paint (first is the default). */
   colors?: readonly number[];
+  /** Only for sale from this hotel level. */
+  minLevel?: number;
   /** Avatars lie down instead of sitting (beds, loungers). */
   lie?: boolean;
   /** Clicking switches between this many states (0 = off). `defaultState` when bought. */
@@ -134,6 +136,57 @@ export const FURNITURE = {
     lie: true,
     unlock: 'hotelkender',
     colors: [0x3f7f86, 0xc94f3d, 0xe0a93b, 0x2f4a7a, 0x5b8f4a],
+  },
+  // Apartment furniture (from a hotel level)
+  nightstand: {
+    name: 'Natbord',
+    icon: '🌙',
+    price: 10,
+    w: 1,
+    d: 1,
+    minLevel: 3,
+    states: 2,
+    defaultState: 1,
+  },
+  bathtub: {
+    name: 'Badekar',
+    icon: '🛁',
+    price: 30,
+    w: 2,
+    d: 1,
+    seat: true,
+    lie: true,
+    minLevel: 4,
+    colors: [0xf4f1ea, 0xd98fa8, 0x8fc6d9, 0x2a2a35],
+  },
+  sink: { name: 'Håndvask', icon: '🚰', price: 14, w: 1, d: 1, minLevel: 4 },
+  kitchen: {
+    name: 'Køkkenbord',
+    icon: '🍳',
+    price: 28,
+    w: 2,
+    d: 1,
+    minLevel: 5,
+    colors: [0xf4f1ea, 0x3f7f86, 0x2a2a35, 0xc94f3d],
+  },
+  fridge: {
+    name: 'Køleskab',
+    icon: '🧊',
+    price: 24,
+    w: 1,
+    d: 1,
+    minLevel: 5,
+    colors: [0xe8eef0, 0xc94f3d, 0x5b8f4a],
+  },
+  grill: {
+    name: 'Grill',
+    icon: '🍖',
+    price: 26,
+    w: 1,
+    d: 1,
+    minLevel: 6,
+    states: 2,
+    defaultState: 0,
   },
   pool: { name: 'Pool', icon: '🏊', price: 0, w: 3, d: 2, noShop: true },
   arcade: { name: 'Spilleautomat', icon: '🕹️', price: 0, w: 1, d: 1, noShop: true },

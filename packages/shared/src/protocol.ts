@@ -81,6 +81,11 @@ export const ClientMsgSchema = z.discriminatedUnion('t', [
   }),
   /** Choose which badge is shown by my name (null hides it). */
   z.object({ t: z.literal('showBadge'), id: z.string().max(30).nullable() }),
+  /** Buy an extra room for my apartment. */
+  z.object({
+    t: z.literal('buyRoom'),
+    kind: z.enum(['bedroom', 'bathroom', 'kitchen', 'balcony']),
+  }),
   /** Test phase: wipe my progress (coins, quests, badges, room) and start over. */
   z.object({ t: z.literal('reset') }),
   z.object({
@@ -185,6 +190,8 @@ export interface Me {
   /** Furniture not placed in a room. */
   inventory: InvItem[];
   role: 'user' | 'moderator' | 'admin';
+  /** My apartment rooms (the first is my living room). */
+  apartment: { kind: string; id: string; name: string }[];
   /** Badge shown by my name; null = hidden, undefined = newest. */
   showBadge?: string | null;
 }
@@ -254,6 +261,7 @@ export interface ProfileView {
 export type ServerMsg =
   | { t: 'welcome'; me: Me; serverTime: number; onboardingLock: boolean; canReset: boolean }
   | { t: 'resetDone' }
+  | { t: 'apartment'; rooms: { kind: string; id: string; name: string }[] }
   | { t: 'tag'; id: string; badge?: string; shown?: string | null; level?: number }
   | { t: 'adminReports'; reports: AdminReport[] }
   | { t: 'events'; events: ActiveEvent[] }

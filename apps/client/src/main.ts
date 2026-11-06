@@ -1,5 +1,6 @@
 import {
   BADGES,
+  APARTMENT_ROOMS,
   levelOf,
   EVENTS,
   WEEKDAYS,
@@ -380,6 +381,12 @@ function handle(msg: ServerMsg) {
       return;
     case 'adminReports':
       return renderAdmin(msg.reports);
+    case 'apartment':
+      if (!me) return;
+      me.apartment = msg.rooms;
+      // a new room was bought – the server moves us there next
+      if (panelKind === 'nav') closePanel();
+      return;
     case 'sys':
       logLine({ text: msg.text, cls: 'game' });
       if (msg.id) bubble(msg.id, '🎮', msg.text);
@@ -560,7 +567,7 @@ function renderNavigator(rooms: NavigatorRoom[]) {
   const row = (r: NavigatorRoom) =>
     `<div class="li"><div class="grow"><b>${esc(r.name)}</b>${events.some((e) => e.roomId === r.id) ? ' <span class="evtag">🎉 Event</span>' : ''}${r.access !== 'open' ? (r.access === 'locked' ? ' 🔒' : ' 🔑') : ''}<small>${esc(r.description || (r.ownerName ? `Af ${r.ownerName}` : ''))}</small></div><span class="users">👤 ${r.users}</span><button class="small" data-go="${esc(r.id)}">${room?.id === r.id ? 'Her' : 'Gå'}</button></div>`;
   const pub = rooms.filter((r) => r.public);
-  const guest = rooms.filter((r) => !r.public);
+  const guest = rooms.filter((r) => !r.public && !me?.apartment.some((a) => a.id === r.id));
   const own =
     isOwner() && room
       ? `<h3>Dit værelse</h3><div class="row"><input id="rsName" maxlength="30" value="${esc(room.name)}" style="width:100%"></div>
@@ -568,9 +575,24 @@ function renderNavigator(rooms: NavigatorRoom[]) {
        <div class="row" style="display:flex;gap:6px;flex-wrap:wrap"><select id="rsAccess"><option value="open">Åbent for alle</option><option value="locked">Låst</option><option value="password">Adgangskode</option></select>
        <input id="rsPw" type="password" maxlength="40" placeholder="Ny adgangskode"><button id="rsSave" class="small primary">Gem</button></div>`
       : '';
+  const myLevel = me ? levelOf(me).level : 1;
+  const apt = me
+    ? `<h3>🏠 Min lejlighed</h3><div class="list">${me.apartment
+        .map(
+          (r) =>
+            `<div class="li"><div class="grow"><b>${r.kind === 'living' ? '🛋️' : (APARTMENT_ROOMS.find((a) => a.kind === r.kind)?.icon ?? '')} ${esc(r.name)}</b></div><button class="small" data-go="${esc(r.id)}">${room?.id === r.id ? 'Her' : 'Gå'}</button></div>`,
+        )
+        .join('')}${APARTMENT_ROOMS.filter((a) => !me!.apartment.some((r) => r.kind === a.kind))
+        .map((a) => {
+          const locked = myLevel < a.level;
+          return `<div class="li"><div class="grow"><b>${a.icon} ${a.name}</b><small>${locked ? `Kræver level ${a.level}` : `Køb for ${a.price} mønter`}</small></div><button class="small${locked ? '' : ' primary'}" data-buyroom="${a.kind}" ${locked || me!.coins < a.price ? 'disabled' : ''}>${locked ? `🔒 Lv ${a.level}` : `Køb · ${a.price} ${COIN}`}</button></div>`;
+        })
+        .join('')}</div>`
+    : '';
   openPanel(
     'nav',
     head('🧭 Navigator', 'Gå på opdagelse i hotellet.') +
+      apt +
       `<h3>Offentlige rum</h3><div class="list">${pub.map(row).join('')}</div>` +
       `<h3>Værelser</h3><div class="list">${guest.map(row).join('') || '<p class="sub">Ingen værelser med gæster lige nu.</p>'}</div>` +
       `<h3>📅 Ugens events</h3><p class="sub">${EVENTS.map((e) => `${e.name}: ${WEEKDAYS[e.weekday]} kl. ${e.start}–${e.end}`).join('<br>')}<br>Dobbelt mønter og et særligt badge, hvis du er med i 5 minutter.</p>` +
@@ -579,6 +601,13 @@ function renderNavigator(rooms: NavigatorRoom[]) {
   $('panel')
     .querySelectorAll<HTMLElement>('[data-go]')
     .forEach((b) => b.addEventListener('click', () => goTo(b.dataset.go!)));
+  $('panel')
+    .querySelectorAll<HTMLElement>('[data-buyroom]')
+    .forEach((b) =>
+      b.addEventListener('click', () =>
+        net?.send({ t: 'buyRoom', kind: b.dataset.buyroom as 'bedroom' }),
+      ),
+    );
   if (own && room) {
     $<HTMLSelectElement>('rsAccess').value = room.access;
     $('rsSave').addEventListener('click', () => {
@@ -599,7 +628,8 @@ function renderShop() {
   const list = FURNITURE_TYPES.filter((k) => !furniture(k).noShop);
   const card = (k: FurnitureType) => {
     const c = FURNITURE[k] as FurnitureDef;
-    const locked = !!c.unlock && !me!.badges.includes(c.unlock);
+    const lvLocked = !!c.minLevel && levelOf(me!).level < c.minLevel;
+    const locked = (!!c.unlock && !me!.badges.includes(c.unlock)) || lvLocked;
     const dots = c.colors
       ? `<div class="dots">${c.colors
           .slice(0, 6)
@@ -607,12 +637,19 @@ function renderShop() {
           .join('')}</div>`
       : '';
     const btn = locked
-      ? `<button disabled>🔒 ${esc(BADGES[c.unlock!].icon + ' ' + BADGES[c.unlock!].name)}</button>`
+      ? `<button disabled>🔒 ${lvLocked ? `Level ${c.minLevel}` : esc(BADGES[c.unlock!].icon + ' ' + BADGES[c.unlock!].name)}</button>`
       : `<button data-buy="${k}" ${me!.coins < c.price ? 'disabled' : ''}>Køb</button>`;
     return `<div class="item${locked ? ' locked' : ''}"><div class="ic">${c.icon}</div><div class="n">${c.name}</div><div class="p">${c.price} ${COIN} · ${c.w}×${c.d}</div>${dots}${btn}</div>`;
   };
-  const free = list.filter((k) => !(FURNITURE[k] as FurnitureDef).unlock);
+  const free = list.filter(
+    (k) => !(FURNITURE[k] as FurnitureDef).unlock && !(FURNITURE[k] as FurnitureDef).minLevel,
+  );
   const special = list.filter((k) => (FURNITURE[k] as FurnitureDef).unlock);
+  const lev = list
+    .filter((k) => (FURNITURE[k] as FurnitureDef).minLevel)
+    .sort(
+      (a, b) => (FURNITURE[a] as FurnitureDef).minLevel! - (FURNITURE[b] as FurnitureDef).minLevel!,
+    );
   const inv = me.inventory;
   const invHtml = inv.length
     ? `<h3>📦 Dit inventar</h3><div class="grid">${inv
@@ -630,6 +667,7 @@ function renderShop() {
     ) +
       invHtml +
       `<h3>🛒 Butikken</h3><div class="grid">${free.map(card).join('')}</div>
+      <h3>🏠 Til lejligheden (låses op med level)</h3><div class="grid">${lev.map(card).join('')}</div>
       <h3>✨ Låses op med badges</h3><div class="grid">${special.map(card).join('')}</div>`,
   );
   $('panel')

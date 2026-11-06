@@ -417,6 +417,132 @@ const BUILD: Record<FurnitureType, (c: number, state: number) => T.Group> = {
     );
     return g;
   },
+  nightstand(_c, on) {
+    const g = new T.Group();
+    g.add(rbox(0.6, 0.5, 0.5, wood, 0, 0.25, -0.1));
+    g.add(rbox(0.5, 0.04, 0.03, woodDark, 0, 0.32, 0.16));
+    g.add(sph(0.025, gold, 0, 0.26, 0.17));
+    g.add(cyl(0.08, 0.1, 0.06, gold, 0.1, 0.53, -0.12));
+    g.add(cyl(0.015, 0.015, 0.22, gold, 0.1, 0.65, -0.12, 8));
+    const sh = new T.Mesh(
+      new T.CylinderGeometry(0.08, 0.14, 0.16, 18, 1, true),
+      M(0xf6d9a8, { emissive: 0xffaa55, emissiveIntensity: on ? 1.2 : 0, side: T.DoubleSide }),
+    );
+    sh.position.set(0.1, 0.8, -0.12);
+    g.add(shade(sh));
+    if (on) {
+      const pl = new T.PointLight(0xffaa55, 0.6, 3.5, 2);
+      pl.position.set(0.1, 0.75, 0);
+      g.add(pl);
+    }
+    g.add(rbox(0.16, 0.05, 0.12, M(0x8a3b2a), -0.15, 0.53, -0.05));
+    return g;
+  },
+  bathtub(c) {
+    const g = new T.Group();
+    const m = M(c, { roughness: 0.25 });
+    g.add(rbox(1.85, 0.5, 0.85, m, 0, 0.3, 0));
+    const water = new T.Mesh(
+      new T.BoxGeometry(1.6, 0.04, 0.62),
+      M(0x8fd0e8, { emissive: 0x2a8fb8, emissiveIntensity: 0.2, roughness: 0.05 }),
+    );
+    water.position.y = 0.5;
+    g.add(water);
+    for (let i = 0; i < 5; i++)
+      g.add(
+        sph(0.08, M(0xffffff, { roughness: 0.9 }), -0.4 + i * 0.18, 0.54, (i % 2) * 0.12 - 0.05),
+      );
+    const steel = M(0xd0d4d8, { metalness: 0.8, roughness: 0.25 });
+    g.add(cyl(0.03, 0.03, 0.25, steel, 0.8, 0.65, -0.3, 8));
+    const spout = cyl(0.025, 0.025, 0.18, steel, 0.74, 0.76, -0.3, 8);
+    spout.rotation.z = Math.PI / 2;
+    g.add(spout);
+    for (const x of [-0.8, 0.8]) for (const z of [-0.32, 0.32]) g.add(sph(0.06, gold, x, 0.05, z));
+    return g;
+  },
+  sink() {
+    const g = new T.Group();
+    const white = M(0xf4f1ea, { roughness: 0.3 });
+    g.add(cyl(0.08, 0.12, 0.7, white, 0, 0.35, -0.1));
+    const bowl = cyl(0.3, 0.22, 0.16, white, 0, 0.78, -0.05, 24);
+    g.add(bowl, cyl(0.25, 0.25, 0.02, M(0x8fd0e8, { roughness: 0.1 }), 0, 0.86, -0.05, 20));
+    const steel = M(0xd0d4d8, { metalness: 0.8, roughness: 0.25 });
+    g.add(cyl(0.02, 0.02, 0.2, steel, 0, 0.95, -0.3, 8));
+    g.add(rbox(0.7, 0.9, 0.04, M(0xbfe6f2, { metalness: 0.6, roughness: 0.05 }), 0, 1.55, -0.45));
+    return g;
+  },
+  kitchen(c) {
+    const g = new T.Group();
+    const front = M(c, { roughness: 0.5 });
+    g.add(rbox(1.9, 0.85, 0.6, front, 0, 0.425, -0.15));
+    g.add(rbox(1.96, 0.06, 0.66, M(0x3a3a40, { roughness: 0.3 }), 0, 0.88, -0.15));
+    for (const x of [-0.5, 0.5]) g.add(rbox(0.6, 0.03, 0.02, gold, x, 0.7, 0.16));
+    // hob
+    for (const [x, z] of [
+      [0.45, -0.25],
+      [0.7, -0.25],
+      [0.45, -0.02],
+      [0.7, -0.02],
+    ] as const)
+      g.add(cyl(0.08, 0.08, 0.01, M(0x111111), x, 0.915, z, 16));
+    // sink
+    g.add(
+      rbox(0.45, 0.02, 0.35, M(0xd0d4d8, { metalness: 0.8, roughness: 0.25 }), -0.45, 0.915, -0.15),
+    );
+    g.add(cyl(0.12, 0.1, 0.12, M(0xc94f3d), 0.6, 0.98, -0.15));
+    return g;
+  },
+  fridge(c) {
+    const g = new T.Group();
+    const m = M(c, { roughness: 0.3 });
+    g.add(rbox(0.75, 1.85, 0.65, m, 0, 0.925, -0.1));
+    g.add(rbox(0.72, 0.02, 0.02, M(0x9aa0a6), 0, 1.25, 0.23));
+    const steel = M(0xd0d4d8, { metalness: 0.8, roughness: 0.25 });
+    g.add(
+      rbox(0.04, 0.3, 0.04, steel, 0.28, 1.5, 0.25),
+      rbox(0.04, 0.4, 0.04, steel, 0.28, 0.85, 0.25),
+    );
+    g.add(
+      rbox(0.12, 0.12, 0.01, M(0xffd24a), -0.15, 1.5, 0.235),
+      rbox(0.1, 0.14, 0.01, M(0x5ab0ff), 0.05, 1.45, 0.235),
+    );
+    return g;
+  },
+  grill(_c, on) {
+    const g = new T.Group();
+    const black = M(0x22222a, { roughness: 0.4, metalness: 0.3 });
+    g.add(cyl(0.32, 0.22, 0.32, black, 0, 0.78, 0, 24));
+    for (const a of [0, 2.1, 4.2]) {
+      const leg = cyl(0.025, 0.025, 0.65, black, Math.sin(a) * 0.2, 0.33, Math.cos(a) * 0.2, 8);
+      g.add(leg);
+    }
+    g.add(cyl(0.3, 0.3, 0.02, M(0x9aa0a6, { metalness: 0.8 }), 0, 0.95, 0, 20));
+    if (on) {
+      g.add(
+        cyl(
+          0.27,
+          0.27,
+          0.02,
+          M(0xff5a1a, { emissive: 0xff4a0a, emissiveIntensity: 1.5 }),
+          0,
+          0.93,
+          0,
+          20,
+        ),
+      );
+      for (const [x, z] of [
+        [-0.1, 0],
+        [0.1, 0.05],
+      ] as const) {
+        const s = rbox(0.16, 0.05, 0.07, M(0x8a3b2a), x, 0.99, z);
+        g.add(s);
+      }
+      const pl = new T.PointLight(0xff7a3a, 0.8, 3, 2);
+      pl.position.set(0, 1.2, 0);
+      g.add(pl);
+    }
+    return g;
+  },
   desk() {
     const g = new T.Group();
     g.add(rbox(2.8, 1.0, 0.7, wood, 0, 0.5, 0));

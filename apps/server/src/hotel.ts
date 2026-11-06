@@ -3,6 +3,9 @@ import {
   EVENTS,
   scheduledEvents,
   levelOf,
+  APARTMENT_ROOMS,
+  APARTMENT_START_ITEMS,
+  type ApartmentKind,
   type ActiveEvent,
   type AdminReport,
   CLOTHES,
@@ -104,6 +107,7 @@ const LIMIT_FOR: Partial<Record<ClientMsg['t'], LimitKind>> = {
   use: 'build',
   glide: 'glide',
   reset: 'build',
+  buyRoom: 'build',
   admin: 'build',
   showBadge: 'social',
   stash: 'build',
@@ -249,6 +253,7 @@ export class Hotel {
 
   private onClose(s: Session) {
     this.sessions.delete(s);
+    if (s.user && s.room) s.user.lastRoom = { id: s.room.meta.id, at: Date.now() };
     if (s.user && this.byUser.get(s.user.id) === s) {
       this.byUser.delete(s.user.id);
       s.user.lastSeen = new Date().toISOString();
@@ -285,7 +290,18 @@ export class Hotel {
     });
     this.sendFriends(user);
     this.notifyFriendsOf(user);
-    this.join(s, user.homeRoomId);
+    // Back to the room you were in if you were only gone a little while (reconnect, update).
+    const last = user.lastRoom;
+    const exists = (id: string) =>
+      PUBLIC_ROOMS.some((r) => r.id === id) || !!this.store.getRoom(id);
+    if (
+      last &&
+      Date.now() - last.at < 15 * 60_000 &&
+      last.id !== user.homeRoomId &&
+      exists(last.id)
+    )
+      this.join(s, last.id);
+    if (!s.room) this.join(s, user.homeRoomId);
     this.daily(s, user, 'd_login');
     this.send(s, { t: 'events', events: this.currentEvents() });
   }
@@ -304,6 +320,7 @@ export class Hotel {
       daily: this.dailyView(u),
       wardrobe: u.wardrobe ?? [],
       inventory: u.inventory ?? [],
+      apartment: this.apartment(u),
       role: u.role,
       showBadge: u.showBadge,
     };
@@ -354,7 +371,7 @@ export class Hotel {
         id: rec.id,
         name: rec.name,
         description: rec.description,
-        theme: 'home',
+        theme: rec.theme ?? 'home',
         isPublic: false,
         ownerId: rec.ownerId,
         ownerName: owner?.name ?? null,
@@ -380,7 +397,8 @@ export class Hotel {
     if (!isHome && this.cfg.onboardingLock && !this.onboarded(user))
       return this.toast(s, 'Klar dine startopgaver først – så åbner døren 🚪');
     const rec = this.roomRecord(room);
-    if (rec && !isHome && !rec.rights.includes(user.id) && user.role === 'user') {
+    const mine = isHome || rec?.ownerId === user.id;
+    if (rec && !mine && !rec.rights.includes(user.id) && user.role === 'user') {
       if (rec.access === 'locked') return this.toast(s, 'Værelset er låst 🔒');
       if (rec.access === 'password') {
         if (!password) return this.send(s, { t: 'needPassword', roomId });
@@ -409,6 +427,7 @@ export class Hotel {
     };
     room.add(player);
     s.room = room;
+    user.lastRoom = { id: room.meta.id, at: Date.now() };
     s.player = player;
     this.send(s, { t: 'room', room: room.roomView(user.id), serverTime: Date.now() });
     if (room.meta.id === user.homeRoomId && !this.onboarded(user))
@@ -975,6 +994,8 @@ export class Hotel {
         return this.tradeAccept(s, user);
       case 'tradeCancel':
         return this.endTrade(user.id, `${user.name} afbrød byttehandlen.`);
+      case 'buyRoom':
+        return this.buyRoom(s, user, msg.kind);
       case 'buyClothes': {
         const item = CLOTHES[msg.key];
         const owned = (user.wardrobe ??= []);
@@ -1065,6 +1086,8 @@ export class Hotel {
     if (def.noShop) return;
     if (def.unlock && !user.badges.includes(def.unlock))
       return this.toast(s, `🔒 Kræver badget "${BADGES[def.unlock].name}"`, 'error');
+    if (def.minLevel && levelOf(user).level < def.minLevel)
+      return this.toast(s, `🔒 Kræver level ${def.minLevel}`, 'error');
     if (own.rec.items.length >= 120) return this.toast(s, 'Værelset er fyldt helt op.', 'error');
     if (user.coins < def.price) return this.toast(s, 'Du har ikke mønter nok.', 'error');
     const item: PlacedItem = { id: own.rec.nextItemId, type, x, z, rot };
@@ -1103,6 +1126,40 @@ export class Hotel {
     user.stats.moves++;
     if (user.homeRoomId === own.rec.id) this.quest(s, user, 'move');
     if (user.stats.moves >= 25) this.badge(s, user, 'decorator');
+  }
+
+  /* ---------------- apartment ---------------- */
+
+  private apartment(u: UserRecord) {
+    const main = this.store.getRoom(u.homeRoomId);
+    const out = [{ kind: 'living', id: u.homeRoomId, name: main?.name ?? 'Stue' }];
+    for (const def of APARTMENT_ROOMS) {
+      const id = u.apartment?.[def.kind];
+      const rec = id && this.store.getRoom(id);
+      if (rec) out.push({ kind: def.kind, id: rec.id, name: rec.name });
+    }
+    return out;
+  }
+
+  private buyRoom(s: Session, user: UserRecord, kind: ApartmentKind) {
+    const def = APARTMENT_ROOMS.find((r) => r.kind === kind)!;
+    if (user.apartment?.[kind] && this.store.getRoom(user.apartment[kind]!))
+      return this.toast(s, `Du har allerede et ${def.name.toLowerCase()}.`);
+    if (levelOf(user).level < def.level)
+      return this.toast(s, `🔒 ${def.name} kræver level ${def.level}.`, 'error');
+    if (user.coins < def.price) return this.toast(s, 'Du har ikke mønter nok.', 'error');
+    const rec = this.store.createRoom(
+      user.id,
+      `${user.name}s ${def.name.toLowerCase()}`,
+      def.theme,
+      APARTMENT_START_ITEMS[kind],
+    );
+    (user.apartment ??= {})[kind] = rec.id;
+    this.coins(s, user, -def.price);
+    this.store.touch();
+    this.send(s, { t: 'apartment', rooms: this.apartment(user) });
+    this.toast(s, `${def.icon} Dit nye ${def.name.toLowerCase()} er klar!`);
+    this.join(s, rec.id);
   }
 
   /* ---------------- inventory ---------------- */

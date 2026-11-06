@@ -1,7 +1,15 @@
 import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import { mkdirSync, readFileSync, renameSync, writeFileSync, existsSync } from 'node:fs';
 import { dirname } from 'node:path';
-import type { BadgeId, DailyId, Look, PlacedItem, QuestId, RoomAccess } from '@hutel/shared';
+import type {
+  BadgeId,
+  DailyId,
+  Look,
+  PlacedItem,
+  QuestId,
+  RoomAccess,
+  RoomTheme,
+} from '@hutel/shared';
 
 export interface UserRecord {
   id: string;
@@ -23,8 +31,12 @@ export interface UserRecord {
   requests: string[];
   blocked: string[];
   stats: { chats: number; buys: number; moves: number };
+  /** Room the user was last in (to come back after a reconnect or update). */
+  lastRoom?: { id: string; at: number };
   /** Clothes bought in the shop. */
   wardrobe?: string[];
+  /** Extra apartment rooms: kind → room id. */
+  apartment?: Record<string, string>;
   /** Minutes at the current event (key: date:eventId). */
   eventMins?: { key: string; mins: number };
   /** Furniture not placed in a room. */
@@ -60,6 +72,8 @@ export interface RoomRecord {
   items: PlacedItem[];
   nextItemId: number;
   createdAt: string;
+  /** Look of the room; home rooms default to 'home'. */
+  theme?: RoomTheme;
 }
 
 export interface ReportRecord {
@@ -126,6 +140,14 @@ export interface Store {
   /** Wipes progress (coins, quests, badges, stats, home room) but keeps the account and name. */
   resetProgress(user: UserRecord): void;
   getRoom(id: string): RoomRecord | undefined;
+  /** Creates an extra room owned by a user. */
+  createRoom(
+    ownerId: string,
+    name: string,
+    theme: RoomTheme,
+    items: Omit<PlacedItem, 'id'>[],
+  ): RoomRecord;
+  deleteRoom(id: string): void;
   listRooms(): RoomRecord[];
   addReport(r: Omit<ReportRecord, 'id' | 'createdAt' | 'status'>): void;
   logChat(entry: ChatLogRecord): void;
@@ -197,6 +219,8 @@ export class JsonFileStore implements Store {
     user.daily = undefined;
     user.wardrobe = [];
     user.inventory = [];
+    for (const id of Object.values(user.apartment ?? {})) delete this.data.rooms[id];
+    user.apartment = {};
     user.look = { ...user.look, top: undefined, hat: undefined };
     const room = this.data.rooms[user.homeRoomId];
     if (room) {
@@ -266,6 +290,29 @@ export class JsonFileStore implements Store {
 
   getRoom(id: string) {
     return this.data.rooms[id];
+  }
+  createRoom(ownerId: string, name: string, theme: RoomTheme, items: Omit<PlacedItem, 'id'>[]) {
+    const id = newId('r');
+    const rec: RoomRecord = {
+      id,
+      ownerId,
+      name,
+      description: '',
+      access: 'open',
+      passwordHash: null,
+      rights: [],
+      items: items.map((it, i) => ({ ...it, id: i + 1 })),
+      nextItemId: items.length + 1,
+      createdAt: new Date().toISOString(),
+      theme,
+    };
+    this.data.rooms[id] = rec;
+    this.touch();
+    return rec;
+  }
+  deleteRoom(id: string) {
+    delete this.data.rooms[id];
+    this.touch();
   }
   listRooms() {
     return Object.values(this.data.rooms);
