@@ -41,6 +41,13 @@ import {
   type ServerMsg,
   type Tile,
   ROOM_CAPACITY,
+  themeWindowTile,
+  themeWallBlocks,
+  canPlace,
+  MAX_USER_ROOM_SIZE,
+  SIZE_PRICES,
+  renovationPrice,
+  type RoomShape,
   decorDef,
   decorKey,
   type DecorKind,
@@ -143,6 +150,7 @@ const LIMIT_FOR: Partial<Record<ClientMsg['t'], LimitKind>> = {
   buyPet: 'build',
   petOut: 'build',
   petFeed: 'build',
+  renovate: 'build',
   petTrick: 'social',
   petRename: 'build',
   admin: 'build',
@@ -203,6 +211,8 @@ export class Hotel {
         description: def.description,
         theme: def.theme,
         size: def.size ?? ROOM_SIZE,
+        shape: 'square' as const,
+        paidSize: def.size ?? ROOM_SIZE,
         wall: null,
         floor: null,
         isPublic: true,
@@ -394,7 +404,13 @@ export class Hotel {
         )
       )
         this.quest(s, user, 'aquarium');
-      if (room.meta.id === user.homeRoomId && tile[0] <= 1 && tile[1] >= 1 && tile[1] <= 3)
+      const win = themeWindowTile(room.meta.theme, room.floor());
+      if (
+        room.meta.id === user.homeRoomId &&
+        win !== null &&
+        tile[0] <= 1 &&
+        Math.abs(tile[1] - win) <= 1
+      )
         this.quest(s, user, 'walk');
     },
     canBuild: (room, userId) =>
@@ -418,7 +434,9 @@ export class Hotel {
         name: rec.name,
         description: rec.description,
         theme: rec.theme ?? 'home',
-        size: ROOM_SIZE,
+        size: rec.size ?? ROOM_SIZE,
+        shape: rec.shape ?? 'square',
+        paidSize: rec.paidSize ?? ROOM_SIZE,
         wall: rec.wall ?? null,
         floor: rec.floor ?? null,
         isPublic: false,
@@ -1069,6 +1087,8 @@ export class Hotel {
         return this.buyPet(s, user, msg.kind as PetKind, msg.name, msg.color);
       case 'petOut':
         return this.petOut(s, user, msg.id);
+      case 'renovate':
+        return this.renovate(s, user, msg.size, msg.shape as RoomShape);
       case 'petFeed':
         return this.petFeed(s, user);
       case 'petTrick':
@@ -1154,6 +1174,56 @@ export class Hotel {
       case 'profile':
         return this.profile(s, user, msg.userId);
     }
+  }
+
+  /* ---------------- renovation ---------------- */
+
+  /**
+   * New size and floor plan for one of your own rooms. Furniture that no longer fits goes to your
+   * inventory; everyone in the room starts again at the door.
+   */
+  private renovate(s: Session, user: UserRecord, size: number, shape: RoomShape) {
+    const room = s.room;
+    const rec = room && this.roomRecord(room);
+    if (!room || !rec || rec.ownerId !== user.id)
+      return this.toast(s, 'Du kan kun bygge om i dine egne rum.', 'error');
+    const paid = rec.paidSize ?? ROOM_SIZE;
+    const tier = SIZE_PRICES[size];
+    if (!tier || size > MAX_USER_ROOM_SIZE) return;
+    if (size > paid && levelOf(user).level < tier.minLevel)
+      return this.toast(s, `🔒 ${size}×${size} kræver level ${tier.minLevel}`, 'error');
+    const price = renovationPrice(paid, size);
+    if (user.coins < price) return this.toast(s, 'Du har ikke mønter nok.', 'error');
+    const floor = { size, shape };
+    const blocks = themeWallBlocks(room.meta.theme, floor);
+    const keep: PlacedItem[] = [];
+    const moved: PlacedItem[] = [];
+    for (const it of rec.items) (canPlace(floor, keep, it, [], blocks) ? keep : moved).push(it);
+    const inv = (user.inventory ??= []);
+    if (inv.length + moved.length > 200)
+      return this.toast(s, 'Der er ikke plads i dit inventar til møblerne.', 'error');
+    for (const it of moved)
+      inv.push(it.color ? { type: it.type, color: it.color } : { type: it.type });
+    rec.items.splice(0, rec.items.length, ...keep);
+    rec.size = room.meta.size = size;
+    rec.shape = room.meta.shape = shape;
+    rec.paidSize = room.meta.paidSize = Math.max(paid, size);
+    if (price) this.coins(s, user, -price);
+    this.store.touch();
+    // Everyone starts again at the door of the new floor plan.
+    const here = [...room.players.values()];
+    for (const p of here) room.remove(p.id);
+    for (const p of here) room.add(p);
+    for (const p of here) {
+      const ps = this.byUser.get(p.id);
+      if (ps && !p.bot)
+        this.send(ps, { t: 'room', room: room.roomView(p.id), serverTime: Date.now() });
+    }
+    if (moved.length) this.sendInventory(s, user);
+    this.toast(
+      s,
+      `📐 Rummet er bygget om til ${size}×${size}${moved.length ? ` · ${moved.length} møbler lagt i dit inventar` : ''}`,
+    );
   }
 
   /* ---------------- pets ---------------- */

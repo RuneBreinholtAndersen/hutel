@@ -1,6 +1,7 @@
 import { furniture, type FurnitureType } from './catalog';
 import { createGrid, type Grid, type Tile } from './grid';
 import { DOOR_TILE } from './rooms';
+import { floorSize, isFloorTile, leftWallLength, type Floor } from './layout';
 
 export interface PlacedItem {
   id: number;
@@ -43,8 +44,13 @@ export function tilesOf(it: Pick<PlacedItem, 'type' | 'rot' | 'x' | 'z'>): Tile[
 }
 
 /** Grid where non-walkable furniture blocks tiles. */
-export function buildGrid(size: number, items: readonly PlacedItem[], excludeId?: number): Grid {
+export function buildGrid(floor: Floor, items: readonly PlacedItem[], excludeId?: number): Grid {
+  const size = floorSize(floor);
   const g = createGrid(size, size);
+  // Tiles outside the floor plan are blocked (-2; -1 means "no seat" in findPath).
+  if (typeof floor !== 'number')
+    for (let x = 0; x < size; x++)
+      for (let z = 0; z < size; z++) if (!isFloorTile(floor, x, z)) g.cells[x]![z] = -2;
   for (const it of items) {
     if (it.id === excludeId || furniture(it.type).walk) continue;
     for (const [x, z] of tilesOf(it))
@@ -58,18 +64,20 @@ export function buildGrid(size: number, items: readonly PlacedItem[], excludeId?
  * collides with non-rug furniture and with tiles where avatars stand (`occupied`).
  */
 export function canPlace(
-  size: number,
+  floor: Floor,
   items: readonly PlacedItem[],
   it: PlacedItem,
   occupied: readonly Tile[] = [],
   blocked: { back?: readonly number[]; left?: readonly number[] } = {},
 ): boolean {
+  const size = floorSize(floor);
   if (isWallItem(it.type)) {
     // rot 0 = back wall, rot 1 = left wall. Never over the door, never on top of another wall item.
     if (it.rot !== 0 && it.rot !== 1) return false;
     if (it.z !== 0) return false;
     const span = wallSpan(it);
-    if (span[0]! < 0 || span[span.length - 1]! >= size) return false;
+    const wallLen = it.rot === 0 ? size : leftWallLength(floor);
+    if (span[0]! < 0 || span[span.length - 1]! >= wallLen) return false;
     if (it.rot === 0 && span.includes(DOOR_TILE[0])) return false;
     const taken = (it.rot === 0 ? blocked.back : blocked.left) ?? [];
     if (span.some((x) => taken.includes(x))) return false;
@@ -83,7 +91,7 @@ export function canPlace(
   }
   const walk = !!furniture(it.type).walk;
   for (const [x, z] of tilesOf(it)) {
-    if (x < 0 || z < 0 || x >= size || z >= size) return false;
+    if (!isFloorTile(floor, x, z)) return false;
     for (const o of items) {
       if (o.id === it.id || !!furniture(o.type).walk !== walk) continue;
       if (tilesOf(o).some(([a, b]) => a === x && b === z)) return false;

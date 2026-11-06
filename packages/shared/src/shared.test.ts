@@ -21,6 +21,13 @@ import {
   ROOM_SIZE,
   DOOR_TILE,
   findPath,
+  MIN_USER_ROOM_SIZE,
+  MAX_USER_ROOM_SIZE,
+  ROOM_SHAPE_IDS,
+  isFloorTile,
+  floorTileCount,
+  leftWallLength,
+  renovationPrice,
   petLevel,
   type PlacedItem,
 } from './index';
@@ -83,6 +90,43 @@ describe('placement', () => {
               `${r.id} ${x},${z}`,
             ).not.toBeNull();
     }
+  });
+});
+
+describe('floor plans', () => {
+  it('keeps the door on the floor and every tile reachable in every size and shape', () => {
+    for (let n = MIN_USER_ROOM_SIZE; n <= MAX_USER_ROOM_SIZE; n++)
+      for (const shape of ROOM_SHAPE_IDS) {
+        const f = { size: n, shape };
+        expect(isFloorTile(f, DOOR_TILE[0], DOOR_TILE[1]), `${shape} ${n}`).toBe(true);
+        const g = buildGrid(f, []);
+        let free = 0;
+        for (let x = 0; x < n; x++)
+          for (let z = 0; z < n; z++)
+            if (g.cells[x]![z] === 0) {
+              free++;
+              expect(
+                findPath(g, [DOOR_TILE[0], DOOR_TILE[1]], [x, z]),
+                `${shape} ${n} ${x},${z}`,
+              ).not.toBeNull();
+            }
+        expect(free).toBe(floorTileCount(f));
+        // Holes are never mistaken for a seat.
+        let hole: [number, number] | null = null;
+        for (let x = 0; x < n && !hole; x++)
+          for (let z = 0; z < n && !hole; z++) if (!isFloorTile(f, x, z)) hole = [x, z];
+        if (shape !== 'square') expect(hole).not.toBeNull();
+        if (hole) expect(findPath(g, [DOOR_TILE[0], DOOR_TILE[1]], hole, -1)).toBeNull();
+      }
+  });
+  it('blocks furniture on holes and wall items beyond a short left wall', () => {
+    const f = { size: 8, shape: 'J' as const };
+    expect(canPlace(f, [], { id: 1, type: 'plant', x: 0, z: 7, rot: 0 })).toBe(false);
+    expect(canPlace(f, [], { id: 1, type: 'plant', x: 7, z: 7, rot: 0 })).toBe(true);
+    expect(leftWallLength(f)).toBe(4);
+    expect(canPlace(f, [], { id: 1, type: 'painting', x: 5, z: 0, rot: 1 })).toBe(false);
+    expect(renovationPrice(8, 10)).toBe(80);
+    expect(renovationPrice(10, 9)).toBe(0);
   });
 });
 

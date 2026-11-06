@@ -1,4 +1,5 @@
 import type { PlacedItem } from './placement';
+import { leftWallLength, type Floor } from './layout';
 
 export type RoomTheme =
   | 'home'
@@ -57,18 +58,31 @@ export const APARTMENT_START_ITEMS: Record<ApartmentKind, Omit<PlacedItem, 'id'>
 };
 export type RoomAccess = 'open' | 'locked' | 'password';
 
-/**
- * Wall tiles taken by a theme's built-in window, so pictures can't hang on top of it.
- * Index along the wall (back wall = x, left wall = z).
- */
-export const THEME_WALL_BLOCKS: Partial<
-  Record<RoomTheme, { back?: readonly number[]; left?: readonly number[] }>
-> = {
-  home: { left: [1, 2, 3] },
-  bedroom: { left: [1, 2, 3] },
-  bathroom: { left: [4, 5, 6] },
-  kitchen: { left: [3, 4, 5, 6] },
+/** Built-in window on the left wall per theme: tile index (z) of its centre. */
+const THEME_WINDOW: Partial<Record<RoomTheme, number>> = {
+  home: 2,
+  bedroom: 2,
+  bathroom: 5,
+  kitchen: 5,
 };
+
+/** Where the theme's window sits on the left wall for this floor plan (null = no window). */
+export function themeWindowTile(theme: RoomTheme, floor: Floor): number | null {
+  const c = THEME_WINDOW[theme];
+  if (c === undefined) return null;
+  const len = leftWallLength(floor);
+  if (len < 3) return null;
+  return Math.min(c, len - 2);
+}
+
+/** Wall tiles taken by the built-in window, so pictures can't hang on top of it. */
+export function themeWallBlocks(
+  theme: RoomTheme,
+  floor: Floor,
+): { back?: readonly number[]; left?: readonly number[] } {
+  const c = themeWindowTile(theme, floor);
+  return c === null ? {} : { left: [c - 1, c, c + 1] };
+}
 
 /** The door tile in every room (in front of the door on the back wall). */
 export const DOOR_TILE = [6, 0] as const;

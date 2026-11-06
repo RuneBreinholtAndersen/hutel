@@ -8,11 +8,12 @@ import {
   RUN_MULTIPLIER,
   WALK_SPEED,
   tilesOf,
-  THEME_WALL_BLOCKS,
+  themeWallBlocks,
   type Look,
   type PlacedItem,
   type PlayerView,
   type PetView,
+  type RoomShape,
   type RoomAccess,
   type RoomTheme,
   type RoomView,
@@ -52,6 +53,8 @@ export interface RoomMeta {
   theme: RoomTheme;
   /** Floor size in tiles (square). */
   size: number;
+  shape: RoomShape;
+  paidSize: number;
   wall: string | null;
   floor: string | null;
   isPublic: boolean;
@@ -74,6 +77,11 @@ export class RoomInstance {
     public items: PlacedItem[],
     private readonly hooks: RoomHooks,
   ) {}
+
+  /** Size and floor plan, for the grid and placement rules. */
+  floor() {
+    return { size: this.meta.size, shape: this.meta.shape };
+  }
 
   humans(): PlayerState[] {
     return [...this.players.values()].filter((p) => !p.bot);
@@ -117,6 +125,8 @@ export class RoomInstance {
       description: this.meta.description,
       theme: this.meta.theme,
       size: this.meta.size,
+      shape: this.meta.shape,
+      paidSize: this.meta.paidSize,
       wall: this.meta.wall,
       floor: this.meta.floor,
       ownerId: this.meta.ownerId,
@@ -138,7 +148,7 @@ export class RoomInstance {
 
   /** Adds a player at the door (or the nearest free tile). */
   add(p: PlayerState, at: Tile = DOOR_TILE) {
-    const grid = buildGrid(this.meta.size, this.items);
+    const grid = buildGrid(this.floor(), this.items);
     const taken = new Set(this.occupiedTiles(p.id).map((t) => t.join()));
     const free = (x: number, z: number) => grid.cells[x]![z] === 0 && !taken.has(`${x},${z}`);
     let start: Tile = at;
@@ -198,7 +208,7 @@ export class RoomInstance {
     const tx = Math.round(x);
     const tz = Math.round(z);
     const here = tx === Math.round(cur.x) && tz === Math.round(cur.z);
-    const grid = buildGrid(this.meta.size, this.items);
+    const grid = buildGrid(this.floor(), this.items);
     const ok =
       here ||
       (tx >= 0 &&
@@ -230,7 +240,7 @@ export class RoomInstance {
   walk(p: PlayerState, goal: Tile, run = false, seatItem?: PlacedItem): boolean {
     const now = Date.now();
     const start = this.settle(p, now);
-    const grid = buildGrid(this.meta.size, this.items);
+    const grid = buildGrid(this.floor(), this.items);
     const path = findPath(grid, start, goal, seatItem?.id ?? -1);
     if (!path) return false;
     p.seatId = null;
@@ -319,6 +329,12 @@ export class RoomInstance {
     const occupied = [...this.players.values()]
       .filter((p) => p.seatId !== it.id)
       .map((p) => this.tileOf(p));
-    return canPlace(this.meta.size, others, it, occupied, THEME_WALL_BLOCKS[this.meta.theme]);
+    return canPlace(
+      this.floor(),
+      others,
+      it,
+      occupied,
+      themeWallBlocks(this.meta.theme, this.floor()),
+    );
   }
 }

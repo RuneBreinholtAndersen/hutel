@@ -693,6 +693,36 @@ describe('multiplayer', () => {
     for (const x of [a, b, c3]) x.c.ws.close();
   });
 
+  it('renovates your own room: size costs coins and level, shapes move furniture to the inventory', async () => {
+    const { c, g } = await login('Arkitekt');
+    const u = app.store.getUser(g.userId)!;
+    c.send({ t: 'renovate', size: 10, shape: 'square' });
+    expect((await c.waitFor('toast', (m) => /level 3/.test(m.text))).kind).toBe('error');
+    u.onlineSec = 3 * 3600;
+    u.coins = 100;
+    c.send({ t: 'renovate', size: 10, shape: 'L' });
+    const r = await c.waitFor('room', (m) => m.room.size === 10);
+    expect(r.room.shape).toBe('L');
+    expect(u.coins).toBe(20);
+    const rec = app.store.getRoom(u.homeRoomId)!;
+    expect(rec.paidSize).toBe(10);
+    // Down to a small J-shape (free): things in the hole go to the inventory.
+    const before = rec.items.length;
+    c.send({ t: 'renovate', size: 7, shape: 'J' });
+    await c.waitFor('room', (m) => m.room.size === 7 && m.room.shape === 'J');
+    expect(u.coins).toBe(20);
+    expect(rec.items.length + (u.inventory ?? []).length).toBe(before);
+    // Back to 10×10 is free: already paid.
+    c.send({ t: 'renovate', size: 10, shape: 'square' });
+    await c.waitFor('room', (m) => m.room.size === 10 && m.room.shape === 'square');
+    expect(u.coins).toBe(20);
+    c.send({ t: 'join', roomId: 'cafe' });
+    await c.waitFor('room', (m) => m.room.id === 'cafe');
+    c.send({ t: 'renovate', size: 8, shape: 'U' });
+    expect((await c.waitFor('toast', (m) => /egne rum/.test(m.text))).kind).toBe('error');
+    c.ws.close();
+  });
+
   it('whispers only to someone in the same room, hidden from others', async () => {
     const a = await login('Hviskeren');
     const b = await login('Lytteren');

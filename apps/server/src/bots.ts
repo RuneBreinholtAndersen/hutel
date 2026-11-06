@@ -428,7 +428,7 @@ class Bot {
       const seats = room.items.filter((i) => furniture(i.type).seat);
       if (seats.length && room.sit(this.state, pick(seats).id)) return;
     }
-    const grid = buildGrid(room.meta.size, room.items);
+    const grid = buildGrid(room.floor(), room.items);
     for (let k = 0; k < 20; k++) {
       const x = Math.floor(Math.random() * room.meta.size);
       const z = Math.floor(Math.random() * room.meta.size);

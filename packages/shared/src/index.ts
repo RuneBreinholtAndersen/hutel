@@ -11,3 +11,4 @@ export * from './movement';
 export * from './events';
 export * from './decor';
 export * from './pets';
+export * from './layout';

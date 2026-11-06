@@ -946,3 +946,29 @@ button.badge.on {
   border-color: var(--acc);
   box-shadow: 0 0 0 2px var(--acc);
 }
+.fplan {
+  display: grid;
+  gap: 1px;
+}
+.fplan i {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 1px;
+}
+.fplan i.f {
+  background: #d8a066;
+}
+.shapes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.shapebtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+}
+.shapebtn span {
+  font-size: 12px;
+}

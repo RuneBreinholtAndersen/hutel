@@ -13,7 +13,7 @@ Listen sammenligner Hutel med de klassiske funktioner fra Habbo Hotel. Navne, gr
 
 Det her mener jeg giver mest spil for pengene, i den rækkefølge:
 
-- [ ] **1. Større og flere rum til brugere** – vælg gulvplan og størrelse (6×6 til 12×12, L-form, trapper/niveauer). Vi har lige gjort rumstørrelse variabel, så det er nu en M-opgave. ★★★ · M
+- [ ] **1. Trapper og niveauer** – forhøjede felter og trapper i egne rum (størrelse og form er lavet). ★★ · M
 - [ ] **2. Rum-kategorier og søgning i navigatoren** – "Fest", "Chill", "Spil", "Handel", favoritter og "mest populære lige nu". ★★★ · S
 - [ ] **3. Profil-side ("hjem-side")** – motto, badges, venner, værelser, et gæstebog-felt. ★★ · M
 - [ ] **4. Rum-spil som møbler** – frysekamp/snebold-arena, farvefelter man løber på (som "Battle Banzai"), stoleleg, kapløb. Serveren styrer reglerne. ★★★ · L
@@ -101,6 +101,7 @@ Det her mener jeg giver mest spil for pengene, i den rækkefølge:
 - ✅ Store offentlige rum (lobby og café 12×12) og loft på 25 gæster pr. rum
 - ✅ Eget værelse + lejlighed med soveværelse, badeværelse, køkken og altan
 - ✅ Byg-tilstand: flyt, rotér, gem væk og placér møbler; farvevarianter
+- ✅ Byg om: egne rum fra 7×7 til 12×12 i fem former (kvadrat, bred, L, spejlet L, U)
 - ✅ Kæledyr (hund, kat, drage) med mad, tricks og level
 - ✅ Tapet og gulve man køber og skifter selv
 - ✅ Vægmøbler: malerier, plakater, vinduer, hylder, ur, spejl, neonskilt

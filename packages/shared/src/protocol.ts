@@ -6,6 +6,7 @@ import type { PlacedItem } from './placement';
 import type { RoomAccess, RoomTheme } from './rooms';
 import type { BadgeId, DailyView, QuestId } from './progress';
 import type { ActiveEvent } from './events';
+import { MAX_USER_ROOM_SIZE, MIN_USER_ROOM_SIZE, ROOM_SHAPE_IDS, type RoomShape } from './layout';
 import { PET_KIND_IDS, PET_TRICK_IDS, type PetAct, type PetInfo, type PetView } from './pets';
 
 const tileCoord = z.number().int().min(0).max(31);
@@ -42,6 +43,12 @@ export const ClientMsgSchema = z.discriminatedUnion('t', [
   /** Take a pet out (it follows you) or send it home (null). */
   z.object({ t: z.literal('petOut'), id: z.string().max(40).nullable() }),
   z.object({ t: z.literal('petFeed') }),
+  /** Change the size and floor plan of my own room. */
+  z.object({
+    t: z.literal('renovate'),
+    size: z.number().int().min(MIN_USER_ROOM_SIZE).max(MAX_USER_ROOM_SIZE),
+    shape: z.enum(ROOM_SHAPE_IDS as [string, ...string[]]),
+  }),
   z.object({ t: z.literal('petTrick'), trick: z.enum(PET_TRICK_IDS as [string, ...string[]]) }),
   z.object({ t: z.literal('petRename'), id: z.string().max(40), name: z.string().min(2).max(14) }),
   /** Buy (if needed) and use a wallpaper or floor in the room I am in. null = room default. */
@@ -194,6 +201,10 @@ export interface RoomView {
   theme: RoomTheme;
   /** Floor size in tiles (square). */
   size: number;
+  /** Floor plan (holes in the square). */
+  shape: RoomShape;
+  /** Biggest size the owner has paid for (renovating up to it again is free). */
+  paidSize: number;
   /** Wallpaper / floor chosen by the owner (null = the theme's own). */
   wall: string | null;
   floor: string | null;

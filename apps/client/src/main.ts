@@ -28,7 +28,15 @@ import {
   type PetKindDef,
   type PetTrick,
   type PetView,
-  THEME_WALL_BLOCKS,
+  themeWallBlocks,
+  isFloorTile,
+  floorTileCount,
+  renovationPrice,
+  ROOM_SHAPES,
+  ROOM_SHAPE_IDS,
+  SIZE_PRICES,
+  type RoomShape,
+  type Floor,
   WALLPAPERS,
   FLOORS,
   type WallpaperDef,
@@ -154,6 +162,8 @@ function makeGrid(n: number) {
 }
 /** Size of the room we are in. */
 const rs = () => room?.size ?? ROOM_SIZE;
+/** Size and floor plan of the room we are in. */
+const fl = (): Floor => (room ? { size: room.size, shape: room.shape } : ROOM_SIZE);
 
 /* ---------------- state ---------------- */
 let net: Net | null = null;
@@ -214,7 +224,7 @@ function predictWalk(goal: [number, number], run: boolean) {
   if (!a || !net || a.seatId !== null) return;
   const now = net.now();
   const next = a.heading(now);
-  const grid = buildGrid(rs(), [...items.values()]);
+  const grid = buildGrid(fl(), [...items.values()]);
   const found = findPath(grid, next, goal);
   const rest = found?.map(([x, z]): [number, number] => [x, z]);
   if (!rest) return;
@@ -300,7 +310,7 @@ function setRoom(view: RoomView) {
     gridHelper.geometry.dispose();
     gridHelper = makeGrid(view.size);
   }
-  roomGfx.setSize(view.size);
+  roomGfx.setSize(view.size, view.shape);
   stage.setRoomSize(view.size);
   roomGfx.setTheme(view.theme);
   applyDecor();
@@ -714,7 +724,8 @@ function renderNavigator(rooms: NavigatorRoom[]) {
       ? `<h3>Dit værelse</h3><div class="row"><input id="rsName" maxlength="30" value="${esc(room.name)}" style="width:100%"></div>
        <div class="row"><input id="rsDesc" maxlength="80" placeholder="Beskrivelse" value="${esc(room.description)}" style="width:100%"></div>
        <div class="row" style="display:flex;gap:6px;flex-wrap:wrap"><select id="rsAccess"><option value="open">Åbent for alle</option><option value="locked">Låst</option><option value="password">Adgangskode</option></select>
-       <input id="rsPw" type="password" maxlength="40" placeholder="Ny adgangskode"><button id="rsSave" class="small primary">Gem</button></div>`
+       <input id="rsPw" type="password" maxlength="40" placeholder="Ny adgangskode"><button id="rsSave" class="small primary">Gem</button></div>
+       <div class="row"><button id="rsRenovate" class="small">📐 Byg om: størrelse og form (${room.size}×${room.size}, ${ROOM_SHAPES[room.shape].name})</button></div>`
       : '';
   const myLevel = me ? levelOf(me).level : 1;
   const apt = me
@@ -751,6 +762,10 @@ function renderNavigator(rooms: NavigatorRoom[]) {
     );
   if (own && room) {
     $<HTMLSelectElement>('rsAccess').value = room.access;
+    $('rsRenovate').addEventListener('click', () => {
+      reno = { size: room!.size, shape: room!.shape };
+      renderRenovate();
+    });
     $('rsSave').addEventListener('click', () => {
       const pw = $<HTMLInputElement>('rsPw').value;
       net?.send({
@@ -762,6 +777,66 @@ function renderNavigator(rooms: NavigatorRoom[]) {
       });
     });
   }
+}
+
+let reno: { size: number; shape: RoomShape } = { size: ROOM_SIZE, shape: 'square' };
+/** Little map of a floor plan made of squares. */
+function floorPreview(size: number, shape: RoomShape, px = 6) {
+  let cells = '';
+  for (let z = 0; z < size; z++)
+    for (let x = 0; x < size; x++)
+      cells += `<i class="${isFloorTile({ size, shape }, x, z) ? 'f' : ''}"></i>`;
+  return `<div class="fplan" style="grid-template-columns:repeat(${size},${px}px);grid-auto-rows:${px}px">${cells}</div>`;
+}
+function renderRenovate() {
+  if (!me || !room || !isOwner()) return;
+  const lv = levelOf(me).level;
+  const paid = room.paidSize;
+  const sizes = Object.keys(SIZE_PRICES)
+    .map(Number)
+    .map((n) => {
+      const t = SIZE_PRICES[n]!;
+      const locked = n > paid && lv < t.minLevel;
+      const price = renovationPrice(paid, n);
+      return `<button class="${reno.size === n ? 'on' : ''}" data-size="${n}" ${locked ? 'disabled' : ''}>${n}×${n}${locked ? ` · 🔒 lv ${t.minLevel}` : price ? ` · ${price} ${COIN}` : ''}</button>`;
+    })
+    .join('');
+  const shapes = ROOM_SHAPE_IDS.map(
+    (id) =>
+      `<button class="shapebtn${reno.shape === id ? ' on' : ''}" data-shape="${id}">${floorPreview(reno.size, id, 5)}<span>${ROOM_SHAPES[id].name}</span></button>`,
+  ).join('');
+  const price = renovationPrice(paid, reno.size);
+  const same = reno.size === room.size && reno.shape === room.shape;
+  openPanel(
+    'renovate',
+    head(
+      '📐 Byg om',
+      'Vælg størrelse og gulvplan for dit rum. Mindre størrelser er altid gratis.',
+    ) +
+      `<h3>Størrelse</h3><div class="chips">${sizes}</div>
+       <h3>Form</h3><div class="shapes">${shapes}</div>
+       <h3>Sådan bliver det</h3><div style="display:flex;gap:14px;align-items:center">${floorPreview(reno.size, reno.shape, 12)}
+       <p class="sub">${floorTileCount({ size: reno.size, shape: reno.shape })} felter. Møbler, der ikke passer i den nye form, lægges i dit inventar. ${paid > ROOM_SIZE ? `Du har betalt op til ${paid}×${paid}.` : ''}</p></div>
+       <p style="margin-top:10px"><button id="renoGo" class="primary" ${same || me.coins < price ? 'disabled' : ''}>${price ? `Byg om for ${price} ${COIN}` : 'Byg om (gratis)'}</button> <button id="renoBack" class="small">← Tilbage</button></p>`,
+  );
+  const p = $('panel');
+  p.querySelectorAll<HTMLElement>('[data-size]').forEach((b) =>
+    b.addEventListener('click', () => {
+      reno.size = Number(b.dataset.size);
+      renderRenovate();
+    }),
+  );
+  p.querySelectorAll<HTMLElement>('[data-shape]').forEach((b) =>
+    b.addEventListener('click', () => {
+      reno.shape = b.dataset.shape as RoomShape;
+      renderRenovate();
+    }),
+  );
+  $('renoGo').addEventListener('click', () => {
+    net?.send({ t: 'renovate', size: reno.size, shape: reno.shape });
+    closePanel();
+  });
+  $('renoBack').addEventListener('click', () => openNavigator());
 }
 
 function renderShop() {
@@ -1366,7 +1441,7 @@ function heldOk() {
   const occupied = [...actors.values()]
     .filter((a) => a.seatId !== held!.item.id)
     .map((a) => a.tile());
-  return canPlace(rs(), others, held.item, occupied, room ? THEME_WALL_BLOCKS[room.theme] : {});
+  return canPlace(fl(), others, held.item, occupied, room ? themeWallBlocks(room.theme, fl()) : {});
 }
 function updHeld() {
   if (!held) {
@@ -1761,7 +1836,7 @@ function keyboardWalk(dt: number) {
   const l = Math.hypot(ix, iz);
   ix /= l;
   iz /= l;
-  const grid = buildGrid(rs(), [...items.values()]);
+  const grid = buildGrid(fl(), [...items.values()]);
   const [cx, cz] = a.tile();
   const R = 0.28;
   const free = (x: number, z: number) => {

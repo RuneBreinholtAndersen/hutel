@@ -1,7 +1,19 @@
-import { DOOR_TILE, type FloorDef, type RoomTheme, type WallpaperDef } from '@hutel/shared';
+import {
+  DOOR_TILE,
+  isFloorTile,
+  leftWallLength,
+  themeWindowTile,
+  type FloorDef,
+  type RoomShape,
+  type RoomTheme,
+  type WallpaperDef,
+} from '@hutel/shared';
 import { box, canvasTex, cyl, lin, M, N, rbox, rnd, setRoomSizeN, sph, T, tw } from './helpers';
 
 const H = 3.0;
+/** Floor plan of the current room (set by setSize). */
+let SHAPE: RoomShape = 'square';
+const floorNow = () => ({ size: N, shape: SHAPE });
 
 const trim = M(0x7a4528, { roughness: 0.6 });
 const gold = M(0xe0b04a, { metalness: 0.6, roughness: 0.35 });
@@ -288,13 +300,19 @@ function painting(group: T.Group, px: number, py: number, onLeft = false) {
   group.add(g);
 }
 
+/** The theme's own window, placed by tile so it follows the room's size and shape. */
+function themeWindow(group: T.Group, theme: RoomTheme) {
+  const c = themeWindowTile(theme, floorNow());
+  if (c !== null) windowOnLeftWall(group, tw(c));
+}
+
 function decor(theme: RoomTheme): { group: T.Group; lights: T.Light[]; windowLight: boolean } {
   const group = new T.Group();
   const lights: T.Light[] = [];
   const z = -N / 2;
   const x = -N / 2;
   if (theme === 'home') {
-    windowOnLeftWall(group, -1.5);
+    themeWindow(group, theme);
     return { group, lights, windowLight: true };
   }
   if (theme === 'lobby') {
@@ -340,15 +358,15 @@ function decor(theme: RoomTheme): { group: T.Group; lights: T.Light[]; windowLig
     return { group, lights, windowLight: false };
   }
   if (theme === 'bedroom') {
-    windowOnLeftWall(group, -1.5);
+    themeWindow(group, theme);
     return { group, lights, windowLight: true };
   }
   if (theme === 'bathroom') {
-    windowOnLeftWall(group, 1.5);
+    themeWindow(group, theme);
     return { group, lights, windowLight: true };
   }
   if (theme === 'kitchen') {
-    windowOnLeftWall(group, 1.2);
+    themeWindow(group, theme);
     for (const px of [-1.2, 0.8]) {
       group.add(cyl(0.01, 0.01, 0.5, M(0x222222), px, 2.75, -1.6));
       group.add(
@@ -485,9 +503,14 @@ export function createRoom(scene: T.Scene) {
     }
     tiles.length = 0;
     walls.length = 0;
-    shell.add(box(N + 0.5, 0.5, N + 0.5, M(0x4e3121), 0, -0.37, 0));
+    const fl = floorNow();
+    const base = M(0x4e3121);
+    if (SHAPE === 'square') shell.add(box(N + 0.5, 0.5, N + 0.5, base, 0, -0.37, 0));
     for (let x = 0; x < N; x++)
       for (let z = 0; z < N; z++) {
+        if (!isFloorTile(fl, x, z)) continue;
+        // Other floor plans get a base block under every tile (no slab under the holes).
+        if (SHAPE !== 'square') shell.add(box(1.04, 0.5, 1.04, base, tw(x), -0.37, tw(z)));
         const t = rbox(
           0.97,
           0.12,
@@ -505,17 +528,19 @@ export function createRoom(scene: T.Scene) {
         tiles.push(t);
       }
     const back = box(N + 0.2, H, 0.2, wallMat, -0.1, H / 2, -N / 2 - 0.1);
-    const left = box(0.2, H, N, wallMat, -N / 2 - 0.1, H / 2, 0);
+    const LW = leftWallLength(fl);
+    const lz = -N / 2 + LW / 2;
+    const left = box(0.2, H, LW, wallMat, -N / 2 - 0.1, H / 2, lz);
     back.userData.wall = 0;
     left.userData.wall = 1;
     walls.push(back, left);
     shell.add(back, left);
     shell.add(box(N, 1.0, 0.06, wain, 0, 0.5, -N / 2 + 0.03));
-    shell.add(box(0.06, 1.0, N, wain, -N / 2 + 0.03, 0.5, 0));
+    shell.add(box(0.06, 1.0, LW, wain, -N / 2 + 0.03, 0.5, lz));
     shell.add(box(N, 0.08, 0.11, trim, 0, 1.03, -N / 2 + 0.05));
-    shell.add(box(0.11, 0.08, N, trim, -N / 2 + 0.05, 1.03, 0));
+    shell.add(box(0.11, 0.08, LW, trim, -N / 2 + 0.05, 1.03, lz));
     shell.add(box(N + 0.2, 0.14, 0.28, trim, -0.1, H + 0.07, -N / 2 - 0.1));
-    shell.add(box(0.28, 0.14, N, trim, -N / 2 - 0.1, H + 0.07, 0));
+    shell.add(box(0.28, 0.14, LW, trim, -N / 2 - 0.1, H + 0.07, lz));
     // The door always sits in front of the door tile on the back wall.
     doorGroup.position.set(tw(DOOR_TILE[0]) - 0.5, 0, -N / 2);
   }
@@ -615,7 +640,8 @@ export function createRoom(scene: T.Scene) {
     paint();
     winSpot.visible = current.windowLight;
     dust.visible = current.windowLight;
-    const wz = theme === 'cafe' || theme === 'bathroom' ? 1.5 : theme === 'kitchen' ? 1.2 : -1.5;
+    const wt = themeWindowTile(theme, floorNow());
+    const wz = wt !== null ? tw(wt) : theme === 'cafe' ? 1.5 : -1.5;
     winSpot.position.set(-N / 2 + 0.25, 2.5, wz);
     winSpot.target.position.set(1.6, 0, wz + 0.9);
   }
@@ -632,9 +658,10 @@ export function createRoom(scene: T.Scene) {
       paint();
     },
     /** Changes the floor size. Call setTheme afterwards to recolour the new tiles. */
-    setSize(n: number) {
-      if (n === N && tiles.length) return;
+    setSize(n: number, shape: RoomShape = 'square') {
+      if (n === N && shape === SHAPE && tiles.length) return;
       setRoomSizeN(n);
+      SHAPE = shape;
       buildShell();
     },
     setDoorUnlocked: (on: boolean) =>

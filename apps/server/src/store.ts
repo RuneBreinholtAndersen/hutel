@@ -7,6 +7,7 @@ import type {
   Look,
   PlacedItem,
   PetKind,
+  RoomShape,
   QuestId,
   RoomAccess,
   RoomTheme,
@@ -96,6 +97,9 @@ export interface RoomRecord {
   theme?: RoomTheme;
   wall?: string | null;
   floor?: string | null;
+  size?: number;
+  shape?: RoomShape;
+  paidSize?: number;
 }
 
 export interface ReportRecord {
