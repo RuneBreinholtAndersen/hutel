@@ -10,10 +10,13 @@
     "build": "tsc --noEmit"
   },
   "dependencies": {
-    "@hutel/shared": "workspace:*"
+    "@hutel/shared": "workspace:*",
+    "ws": "^8.18.0",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/node": "^22.9.0",
+    "@types/ws": "^8.5.12",
     "tsx": "^4.19.2"
   }
 }
