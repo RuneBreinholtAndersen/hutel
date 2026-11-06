@@ -30,6 +30,8 @@ export interface AppConfig extends HotelConfig {
   supabaseAnonKey?: string;
   /** Social providers shown on the login page (e.g. ['google']). E-mail link is always on. */
   authProviders?: string[];
+  /** Owner-approved claims: old name+password account name → e-mail allowed to take it over. */
+  claimNames?: Record<string, string>;
   /** Verifies a Supabase access token. Injectable for tests; defaults to Supabase's /auth/v1/user. */
   verifyAuthToken?: (accessToken: string) => Promise<AuthIdentity | null>;
 }
@@ -140,6 +142,7 @@ export function createApp(
   const perHour = cfg.signupsPerHour ?? 5;
   const signupLimiter = new KeyedLimiter(perHour, perHour / 3600);
   const loginLimiter = new KeyedLimiter(10, 10 / 900);
+  const sessionLimiter = new KeyedLimiter(30, 30 / 900);
   const invites = (cfg.inviteCodes ?? []).map((c) => c.trim().toLowerCase()).filter(Boolean);
   const verify =
     cfg.verifyAuthToken ??
@@ -224,7 +227,7 @@ export function createApp(
     if (req.method === 'POST' && url.pathname === '/api/session') {
       if (!verify) return json(res, 404, { ok: false, error: 'not_found' });
       const ip = clientIp(req);
-      if (!loginLimiter.take(`session:${ip}`))
+      if (!sessionLimiter.take(ip))
         return json(res, 429, { ok: false, error: 'For mange forsøg – vent lidt og prøv igen.' });
       let body: unknown;
       try {
@@ -252,7 +255,15 @@ export function createApp(
       }
       const profile = parsed.data.profile;
       if (!profile) return json(res, 200, { ok: true, needsProfile: true });
-      const old = profile.password ? store.getUserByName(profile.name.trim()) : undefined;
+      const claimed = store.getUserByName(profile.name.trim());
+      const claimEmail = claimed && cfg.claimNames?.[claimed.name.toLowerCase()];
+      if (claimed && !claimed.authId && claimEmail && who.email?.toLowerCase() === claimEmail) {
+        // Rune has approved (via CLAIM_NAMES) that this e-mail may take over the old account.
+        claimed.authId = who.id;
+        store.touch();
+        return json(res, 200, { ok: true, token: store.rotateToken(claimed), userId: claimed.id });
+      }
+      const old = profile.password ? claimed : undefined;
       if (old && profile.password) {
         const key = `${ip}:${old.name.toLowerCase()}`;
         if (!loginLimiter.take(key))

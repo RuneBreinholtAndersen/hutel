@@ -172,7 +172,9 @@ describe('social login (Supabase)', () => {
       ...cfg,
       supabaseUrl: 'https://x.supabase.co',
       supabaseAnonKey: 'anon',
-      verifyAuthToken: async (t) => (t.startsWith('good-') ? { id: t.slice(5) } : null),
+      claimNames: { ejer: 'ejer@example.com' },
+      verifyAuthToken: async (t) =>
+        t.startsWith('good-') ? { id: t.slice(5), email: `${t.slice(5)}@example.com` } : null,
     });
     await new Promise<void>((r) => sb.server.listen(0, r));
     const port = (sb.server.address() as AddressInfo).port;
@@ -215,6 +217,17 @@ describe('social login (Supabase)', () => {
     });
     expect(linked.body.userId).toBe(oldId);
     expect((await post({ accessToken: 'good-user-3' })).body.userId).toBe(oldId);
+    // an approved e-mail can take over an old account without its password
+    const ej = await fetch(`http://127.0.0.1:${port}/api/guest`, {
+      method: 'POST',
+      body: JSON.stringify({ ...profile, name: 'Ejer', password: 'glemtglemt' }),
+    });
+    const ejId = ((await ej.json()) as { userId: string }).userId;
+    expect(
+      (await post({ accessToken: 'good-nogen', profile: { ...profile, name: 'Ejer' } })).status,
+    ).toBe(409);
+    const took = await post({ accessToken: 'good-ejer', profile: { ...profile, name: 'Ejer' } });
+    expect(took.body.userId).toBe(ejId);
     await sb.close();
   });
 

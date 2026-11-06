@@ -20,6 +20,12 @@ const app = createApp({
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean),
+  claimNames: Object.fromEntries(
+    (process.env.CLAIM_NAMES ?? '')
+      .split(',')
+      .map((pair) => pair.split(':').map((x) => x.trim().toLowerCase()))
+      .filter((p) => p.length === 2 && p[0] && p[1]),
+  ),
   botModel: process.env.BOT_MODEL ?? 'claude-haiku-5-5',
   botMaxCallsPerDay: Number(process.env.BOT_MAX_CALLS_PER_DAY ?? 300),
 });
