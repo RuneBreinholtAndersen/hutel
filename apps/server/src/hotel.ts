@@ -45,11 +45,35 @@ import {
   decorKey,
   type DecorKind,
   ROOM_SIZE,
+  PET_FEED_COOLDOWN_MS,
+  PET_FEED_PRICE,
+  PET_FEED_XP,
+  PET_HUNGRY_AFTER_MS,
+  PET_KINDS,
+  PET_MAX,
+  PET_TRICK_COOLDOWN_MS,
+  PET_TRICK_XP,
+  PET_TRICK_XP_PER_DAY,
+  PET_TRICKS,
+  petLevel,
+  type PetInfo,
+  type PetKindDef,
+  isValidName,
+  type PetKind,
+  type PetTrick,
+  type PetView,
 } from '@hutel/shared';
 import { Bots } from './bots';
 import { createLimits, type Bucket, type LimitKind } from './ratelimit';
 import { RoomInstance, type PlayerState, type RoomHooks } from './room';
-import { hashSecret, type RoomRecord, type Store, type UserRecord } from './store';
+import {
+  hashSecret,
+  newId,
+  type PetRecord,
+  type RoomRecord,
+  type Store,
+  type UserRecord,
+} from './store';
 import {
   GAME_COINS_PER_DAY,
   HAND_ICON,
@@ -116,6 +140,11 @@ const LIMIT_FOR: Partial<Record<ClientMsg['t'], LimitKind>> = {
   reset: 'build',
   buyRoom: 'build',
   decor: 'build',
+  buyPet: 'build',
+  petOut: 'build',
+  petFeed: 'build',
+  petTrick: 'social',
+  petRename: 'build',
   admin: 'build',
   showBadge: 'social',
   stash: 'build',
@@ -333,6 +362,8 @@ export class Hotel {
       motto: u.motto,
       daily: this.dailyView(u),
       wardrobe: u.wardrobe ?? [],
+      pets: (u.pets ?? []).map((p) => this.petInfo(p)),
+      activePet: u.activePet ?? null,
       decor: u.decor ?? [],
       inventory: u.inventory ?? [],
       apartment: this.apartment(u),
@@ -444,6 +475,7 @@ export class Hotel {
       blocked: () => user.blocked,
       badge: this.badgeIcon(user),
       level: levelOf(user).level,
+      pet: this.activePetView(user),
     };
     room.add(player);
     s.room = room;
@@ -1007,6 +1039,7 @@ export class Hotel {
         if (isGreeting(text) && room.humans().some((h) => h.id !== player.id))
           this.quest(s, user, 'greetHuman');
         this.bots.onChat(room, player, text);
+        this.petHears(user, room, text);
         return;
       }
       case 'action':
@@ -1032,6 +1065,24 @@ export class Hotel {
         return this.endTrade(user.id, `${user.name} afbrød byttehandlen.`);
       case 'buyRoom':
         return this.buyRoom(s, user, msg.kind);
+      case 'buyPet':
+        return this.buyPet(s, user, msg.kind as PetKind, msg.name, msg.color);
+      case 'petOut':
+        return this.petOut(s, user, msg.id);
+      case 'petFeed':
+        return this.petFeed(s, user);
+      case 'petTrick':
+        return this.petTrick(s, user, msg.trick as PetTrick);
+      case 'petRename': {
+        const pet = (user.pets ?? []).find((p) => p.id === msg.id);
+        const name = filterChat(sanitizeChat(msg.name)).trim();
+        if (!pet || !isValidName(name)) return this.toast(s, 'Det navn kan ikke bruges.', 'error');
+        pet.name = name;
+        this.store.touch();
+        this.sendPets(s, user);
+        if (user.activePet === pet.id) this.broadcastPet(s, user);
+        return;
+      }
       case 'decor':
         return this.setDecor(s, user, msg.kind, msg.id);
       case 'buyClothes': {
@@ -1103,6 +1154,147 @@ export class Hotel {
       case 'profile':
         return this.profile(s, user, msg.userId);
     }
+  }
+
+  /* ---------------- pets ---------------- */
+
+  private petView(p: PetRecord): PetView {
+    return { kind: p.kind, name: p.name, color: p.color, level: petLevel(p.xp) };
+  }
+  private petInfo(p: PetRecord): PetInfo {
+    const now = Date.now();
+    return {
+      ...this.petView(p),
+      id: p.id,
+      xp: p.xp,
+      hungry: now - p.lastFed > PET_HUNGRY_AFTER_MS,
+      feedAt: p.lastFed + PET_FEED_COOLDOWN_MS > now ? p.lastFed + PET_FEED_COOLDOWN_MS : 0,
+    };
+  }
+  private activePet(user: UserRecord): PetRecord | undefined {
+    return (user.pets ?? []).find((p) => p.id === user.activePet);
+  }
+  private activePetView(user: UserRecord): PetView | undefined {
+    const p = this.activePet(user);
+    return p && this.petView(p);
+  }
+  private sendPets(s: Session, user: UserRecord) {
+    this.send(s, {
+      t: 'pets',
+      pets: (user.pets ?? []).map((p) => this.petInfo(p)),
+      active: user.activePet ?? null,
+    });
+  }
+  /** Tells the room which pet (if any) follows this player now. */
+  private broadcastPet(s: Session, user: UserRecord) {
+    const pet = this.activePetView(user);
+    if (s.player) s.player.pet = pet;
+    s.room?.broadcast({ t: 'petView', ownerId: user.id, pet: pet ?? null });
+  }
+  private petSound(p: PetRecord) {
+    const sounds = PET_KINDS[p.kind].sounds;
+    return sounds[Math.floor(Math.random() * sounds.length)]!;
+  }
+  private petXp(s: Session, user: UserRecord, p: PetRecord, xp: number) {
+    const before = petLevel(p.xp);
+    p.xp += xp;
+    const after = petLevel(p.xp);
+    if (after > before) {
+      this.toast(s, `🐾 ${p.name} er nu level ${after}!`);
+      if (user.activePet === p.id) this.broadcastPet(s, user);
+    }
+  }
+
+  private buyPet(s: Session, user: UserRecord, kind: PetKind, rawName: string, color: number) {
+    const def: PetKindDef = PET_KINDS[kind];
+    const pets = (user.pets ??= []);
+    if (pets.length >= PET_MAX)
+      return this.toast(s, `Du kan højst have ${PET_MAX} kæledyr.`, 'error');
+    if (def.minLevel && levelOf(user).level < def.minLevel)
+      return this.toast(s, `🔒 Kræver level ${def.minLevel}`, 'error');
+    if (user.coins < def.price) return this.toast(s, 'Du har ikke mønter nok.', 'error');
+    const name = filterChat(sanitizeChat(rawName)).trim();
+    if (!isValidName(name)) return this.toast(s, 'Det navn kan ikke bruges.', 'error');
+    const pet: PetRecord = {
+      id: newId('pet'),
+      kind,
+      name,
+      color: Math.min(color, def.colors.length - 1),
+      xp: 0,
+      lastFed: Date.now(),
+      trickXp: 0,
+      trickDate: '',
+      lastTrick: 0,
+    };
+    pets.push(pet);
+    this.coins(s, user, -def.price);
+    user.activePet = pet.id;
+    this.store.touch();
+    this.toast(
+      s,
+      `${def.icon} Velkommen til ${pet.name}! Klik på ${pet.name} for at fodre og lære tricks.`,
+    );
+    this.sendPets(s, user);
+    this.broadcastPet(s, user);
+  }
+
+  private petOut(s: Session, user: UserRecord, id: string | null) {
+    if (id !== null && !(user.pets ?? []).some((p) => p.id === id)) return;
+    user.activePet = id;
+    this.store.touch();
+    this.sendPets(s, user);
+    this.broadcastPet(s, user);
+  }
+
+  private petFeed(s: Session, user: UserRecord) {
+    const p = this.activePet(user);
+    if (!p) return this.toast(s, 'Tag et kæledyr med først 🐾', 'error');
+    const now = Date.now();
+    if (now - p.lastFed < PET_FEED_COOLDOWN_MS) return this.toast(s, `${p.name} er mæt lige nu 😋`);
+    if (user.coins < PET_FEED_PRICE) return this.toast(s, 'Du har ikke mønter nok.', 'error');
+    this.coins(s, user, -PET_FEED_PRICE);
+    p.lastFed = now;
+    this.petXp(s, user, p, PET_FEED_XP);
+    this.store.touch();
+    s.room?.broadcast({ t: 'petAct', ownerId: user.id, act: 'eat', say: 'Nam nam! 🍖' });
+    this.sendPets(s, user);
+  }
+
+  private petTrick(s: Session, user: UserRecord, trick: PetTrick) {
+    const p = this.activePet(user);
+    if (!p || !s.room) return;
+    const t = PET_TRICKS[trick];
+    if (petLevel(p.xp) < t.level)
+      return this.toast(s, `${p.name} kan først lære "${t.name}" på level ${t.level}.`, 'error');
+    const now = Date.now();
+    if (now - p.lastFed > PET_HUNGRY_AFTER_MS) {
+      s.room.broadcast({ t: 'petAct', ownerId: user.id, act: 'sulk', say: '*er for sulten…*' });
+      return this.toast(s, `${p.name} er sulten – giv mad først 🍖`);
+    }
+    if (now - p.lastTrick < PET_TRICK_COOLDOWN_MS) return;
+    p.lastTrick = now;
+    const today = danishDate();
+    if (p.trickDate !== today) {
+      p.trickDate = today;
+      p.trickXp = 0;
+    }
+    if (p.trickXp < PET_TRICK_XP_PER_DAY) {
+      p.trickXp += PET_TRICK_XP;
+      this.petXp(s, user, p, PET_TRICK_XP);
+    }
+    this.store.touch();
+    s.room.broadcast({ t: 'petAct', ownerId: user.id, act: trick, say: this.petSound(p) });
+    this.sendPets(s, user);
+  }
+
+  /** The pet answers when its owner says its name. */
+  private petHears(user: UserRecord, room: RoomInstance, text: string) {
+    const p = this.activePet(user);
+    if (!p || !text.toLowerCase().includes(p.name.toLowerCase())) return;
+    setTimeout(
+      () => room.broadcast({ t: 'petAct', ownerId: user.id, act: 'happy', say: this.petSound(p) }),
+      700,
+    );
   }
 
   /** Buys a wallpaper/floor if needed and uses it in the (own) room you are in. */

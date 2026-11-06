@@ -14,6 +14,20 @@ import {
   DEFAULT_LOOK,
   footprint,
   isWallItem,
+  PET_FEED_PRICE,
+  PET_FEED_XP,
+  PET_KIND_IDS,
+  PET_KINDS,
+  PET_MAX,
+  PET_MAX_LEVEL,
+  PET_TRICK_IDS,
+  PET_TRICK_XP,
+  PET_TRICKS,
+  petXpFor,
+  type PetKind,
+  type PetKindDef,
+  type PetTrick,
+  type PetView,
   THEME_WALL_BLOCKS,
   WALLPAPERS,
   FLOORS,
@@ -47,6 +61,7 @@ import {
   type TradeView,
 } from '@hutel/shared';
 import { Actor } from './actors';
+import { Pet } from './gfx/pets';
 import {
   accessToken,
   isAuthRedirect,
@@ -148,6 +163,25 @@ const items = new Map<number, PlacedItem>();
 const objs = new Map<number, T.Group>();
 const actors = new Map<string, Actor>();
 let friends: FriendView[] = [];
+/** Pets following players in this room, keyed by owner id. */
+const pets = new Map<string, Pet>();
+function syncPet(ownerId: string, view: PetView | null | undefined) {
+  const old = pets.get(ownerId);
+  if (
+    old &&
+    view &&
+    old.view.kind === view.kind &&
+    old.view.color === view.color &&
+    old.view.level === view.level
+  ) {
+    old.view = view;
+    return;
+  }
+  old?.dispose(stage.scene);
+  pets.delete(ownerId);
+  const a = actors.get(ownerId);
+  if (view && a) pets.set(ownerId, new Pet(view, ownerId, stage.scene, a.obj.position));
+}
 const pmLog = new Map<string, PmLine[]>();
 let pmWith: string | null = null;
 let requests: { id: string; name: string }[] = [];
@@ -255,6 +289,8 @@ function setRoom(view: RoomView) {
   room = view;
   for (const a of actors.values()) a.dispose(stage.scene);
   actors.clear();
+  for (const p of pets.values()) p.dispose(stage.scene);
+  pets.clear();
   for (const b of bubbles) b.el.remove();
   bubbles.length = 0;
   for (const id of [...objs.keys()]) removeObj(id);
@@ -272,8 +308,10 @@ function setRoom(view: RoomView) {
     items.set(it.id, it);
     placeObj(it);
   }
-  for (const p of view.players)
+  for (const p of view.players) {
     actors.set(p.id, new Actor(p, stage.scene, overlay, p.id === me?.id));
+    syncPet(p.id, p.pet);
+  }
   updateRoomUi();
   logLine({ text: `*** Du er i ${view.name}`, cls: 'sys' });
   roomGfx.openDoor(false);
@@ -382,6 +420,23 @@ function handle(msg: ServerMsg) {
       return;
     case 'room':
       return setRoom(msg.room);
+    case 'pets':
+      if (me) {
+        me.pets = msg.pets;
+        me.activePet = msg.active;
+      }
+      if (panelKind === 'pets') renderPets();
+      return;
+    case 'petView':
+      return syncPet(msg.ownerId, msg.pet);
+    case 'petAct': {
+      const p = pets.get(msg.ownerId);
+      if (!p) return;
+      p.play(msg.act);
+      if (msg.say)
+        bubble(`pet:${msg.ownerId}`, `${PET_KINDS[p.view.kind].icon} ${p.view.name}`, msg.say);
+      return;
+    }
     case 'decor':
       if (room) {
         room.wall = msg.wall;
@@ -392,8 +447,10 @@ function handle(msg: ServerMsg) {
       if (panelKind === 'shop') renderShop();
       return;
     case 'playerJoin':
-      if (!actors.has(msg.player.id))
+      if (!actors.has(msg.player.id)) {
         actors.set(msg.player.id, new Actor(msg.player, stage.scene, overlay, false));
+        syncPet(msg.player.id, msg.player.pet);
+      }
       if (!msg.player.bot) logLine({ text: `*** ${msg.player.name} kom ind`, cls: 'sys' });
       return;
     case 'playerLeave': {
@@ -402,6 +459,7 @@ function handle(msg: ServerMsg) {
         if (!a.view.bot) logLine({ text: `*** ${a.view.name} gik`, cls: 'sys' });
         a.dispose(stage.scene);
         actors.delete(msg.id);
+        syncPet(msg.id, null);
       }
       return;
     }
@@ -816,6 +874,88 @@ function decorShop() {
   );
   return `<h3>🎨 Tapet</h3><p class="sub">Køb én gang – brug det i alle dine rum. <button class="small" data-decor="wall:-">Standard</button></p><div class="grid">${walls.join('')}</div>
     <h3>🟫 Gulv</h3><p class="sub"><button class="small" data-decor="floor:-">Standard</button></p><div class="grid">${floors.join('')}</div>`;
+}
+
+let petPick: { kind: PetKind; color: number } = { kind: 'hund', color: 0 };
+function renderPets() {
+  if (!me) return;
+  const lv = levelOf(me).level;
+  const now = net ? net.now() : Date.now();
+  const mine = me.pets
+    .map((p) => {
+      const k = PET_KINDS[p.kind];
+      const next = petXpFor(p.level + 1);
+      const prev = petXpFor(p.level);
+      const pct =
+        p.level >= PET_MAX_LEVEL ? 100 : Math.round(((p.xp - prev) / (next - prev)) * 100);
+      const out = me!.activePet === p.id;
+      const feedWait = p.feedAt > now ? Math.ceil((p.feedAt - now) / 60000) : 0;
+      const tricks = PET_TRICK_IDS.map((t) => {
+        const d = PET_TRICKS[t];
+        return p.level >= d.level
+          ? `<button class="small" data-trick="${t}" ${out ? '' : 'disabled'}>${d.icon} ${d.name}</button>`
+          : `<button class="small" disabled title="Level ${d.level}">🔒 ${d.name} (lv ${d.level})</button>`;
+      }).join('');
+      return `<div class="petcard${out ? ' out' : ''}">
+        <div class="row" style="display:flex;align-items:center;gap:8px"><b style="font-size:18px">${k.icon} ${esc(p.name)}</b><span class="lvtag">Lv ${p.level}</span>${p.hungry ? '<span class="hungry">😿 Sulten</span>' : ''}<span style="flex:1"></span>
+        ${out ? `<button class="small" data-home="1">🏠 Send hjem</button>` : `<button class="small primary" data-out="${p.id}">🐾 Tag med</button>`}</div>
+        <div class="xpbar"><i style="width:${pct}%"></i></div>
+        <p class="sub">${p.xp} XP${p.level < PET_MAX_LEVEL ? ` · ${next - p.xp} til level ${p.level + 1}` : ' · max level'}. Mad giver ${PET_FEED_XP} XP, tricks ${PET_TRICK_XP} XP.</p>
+        ${out ? `<div class="chips"><button class="small" data-feed="1" ${feedWait || me!.coins < PET_FEED_PRICE ? 'disabled' : ''}>🍖 Giv mad (${PET_FEED_PRICE} ${COIN})${feedWait ? ` · om ${feedWait} min` : ''}</button>${tricks}</div>` : ''}
+        <div style="display:flex;gap:6px;margin-top:8px"><input data-name="${p.id}" maxlength="14" value="${esc(p.name)}" style="flex:1"><button class="small" data-rename="${p.id}">Omdøb</button></div>
+      </div>`;
+    })
+    .join('');
+  const kinds = PET_KIND_IDS.map((id) => {
+    const k = PET_KINDS[id] as PetKindDef;
+    const locked = !!k.minLevel && lv < k.minLevel;
+    return `<button class="chip${petPick.kind === id ? ' on' : ''}" data-kind="${id}" ${locked ? 'disabled' : ''}>${k.icon} ${k.name} · ${k.price} ${COIN}${locked ? ` · 🔒 lv ${k.minLevel}` : ''}</button>`;
+  }).join('');
+  const pk = PET_KINDS[petPick.kind] as PetKindDef;
+  const colors = pk.colors
+    .map(
+      (c, i) =>
+        `<button class="swatchbtn${petPick.color === i ? ' on' : ''}" data-pcol="${i}" style="background:#${c.toString(16).padStart(6, '0')}"></button>`,
+    )
+    .join('');
+  const full = me.pets.length >= PET_MAX;
+  openPanel(
+    'pets',
+    head(
+      '🐾 Kæledyr',
+      'Dit kæledyr følger dig rundt i hotellet. Sig dets navn i chatten, så svarer det.',
+    ) +
+      (mine || '<p class="sub">Du har ikke noget kæledyr endnu.</p>') +
+      (full
+        ? `<p class="sub">Du har ${PET_MAX} kæledyr – det er max.</p>`
+        : `<h3>🛒 Køb et kæledyr</h3><div class="chips">${kinds}</div>
+           <div class="chips" style="margin-top:8px">${colors}</div>
+           <div style="display:flex;gap:6px;margin-top:8px"><input id="petName" maxlength="14" placeholder="Navn" value="${esc(pk.defaultName)}" style="flex:1"><button id="petBuy" class="primary" ${me.coins < pk.price ? 'disabled' : ''}>Køb for ${pk.price} ${COIN}</button></div>`),
+  );
+  const p = $('panel');
+  const on = (sel: string, f: (el: HTMLElement) => void) =>
+    p.querySelectorAll<HTMLElement>(sel).forEach((b) => b.addEventListener('click', () => f(b)));
+  on('[data-out]', (b) => net?.send({ t: 'petOut', id: b.dataset.out! }));
+  on('[data-home]', () => net?.send({ t: 'petOut', id: null }));
+  on('[data-feed]', () => net?.send({ t: 'petFeed' }));
+  on('[data-trick]', (b) => net?.send({ t: 'petTrick', trick: b.dataset.trick as PetTrick }));
+  on('[data-rename]', (b) => {
+    const v = p.querySelector<HTMLInputElement>(`[data-name="${b.dataset.rename}"]`)!.value.trim();
+    net?.send({ t: 'petRename', id: b.dataset.rename!, name: v });
+  });
+  on('[data-kind]', (b) => {
+    petPick = { kind: b.dataset.kind as PetKind, color: 0 };
+    renderPets();
+  });
+  on('[data-pcol]', (b) => {
+    petPick.color = Number(b.dataset.pcol);
+    renderPets();
+  });
+  $('petBuy')?.addEventListener('click', () => {
+    const name = $<HTMLInputElement>('petName').value.trim();
+    if (name.length < 2) return toast('Giv dit kæledyr et navn', 'error');
+    net?.send({ t: 'buyPet', kind: petPick.kind, name, color: petPick.color });
+  });
 }
 
 function levelBox() {
@@ -1435,6 +1575,19 @@ function onClick() {
     if (it) pickUp(it);
     return;
   }
+  const petHit = ray.intersectObjects(
+    [...pets.values()].map((p) => p.obj),
+    true,
+  )[0];
+  if (petHit) {
+    const owner = petHit.object.userData.petOwner as string;
+    if (owner === me?.id) return renderPets();
+    const p = pets.get(owner);
+    if (p) {
+      p.play('happy');
+      return toast(`${PET_KINDS[p.view.kind].icon} ${p.view.name} · level ${p.view.level}`);
+    }
+  }
   const a = hitActor();
   if (a) return net.send({ t: 'profile', userId: a.id });
   if (ray.intersectObject(roomGfx.doorGroup, true).length) {
@@ -1659,6 +1812,7 @@ $('bNav').addEventListener(
 );
 $('bFriends').addEventListener('click', toggle('friends', renderFriends));
 $('bFig').addEventListener('click', toggle('fig', renderFigure));
+$('bPets').addEventListener('click', toggle('pets', renderPets));
 $('bShop').addEventListener('click', toggle('shop', renderShop));
 $('bBuild').addEventListener('click', () => {
   closePanel();
@@ -1896,7 +2050,10 @@ function start(token: string) {
 /* ---------------- loop ---------------- */
 const v3 = new T.Vector3();
 function screen(a: Actor, yOff: number): [number, number] {
-  v3.set(a.obj.position.x, a.obj.position.y + yOff, a.obj.position.z).project(stage.camera);
+  return screenAt(a.obj, yOff);
+}
+function screenAt(o: T.Object3D, yOff: number): [number, number] {
+  v3.set(o.position.x, o.position.y + yOff, o.position.z).project(stage.camera);
   return [((v3.x + 1) / 2) * innerWidth, ((1 - v3.y) / 2) * innerHeight];
 }
 const clock = new T.Clock();
@@ -1907,6 +2064,10 @@ function loop() {
   const now = net ? net.now() : Date.now();
   keyboardWalk(dt);
   for (const a of actors.values()) a.update(dt, now, items);
+  for (const p of pets.values()) {
+    const o = actors.get(p.ownerId);
+    if (o) p.update(dt, o.obj.position);
+  }
   roomGfx.update(dt, time);
   for (const g of objs.values()) {
     if (g.userData.tv) drawTv(g.userData.tv as Parameters<typeof drawTv>[0], time);
@@ -1924,13 +2085,14 @@ function loop() {
   for (let i = bubbles.length - 1; i >= 0; i--) {
     const b = bubbles[i]!;
     const age = (t - b.born) / 1000;
-    const a = actors.get(b.who);
-    if (age > 7 || !a) {
+    const pet = b.who.startsWith('pet:') ? pets.get(b.who.slice(4)) : undefined;
+    const anchor = pet ? pet.obj : actors.get(b.who)?.obj;
+    if (age > 7 || !anchor) {
       b.el.remove();
       bubbles.splice(i, 1);
       continue;
     }
-    const [x, y] = screen(a, 1.5);
+    const [x, y] = screenAt(anchor, pet ? 0.7 : 1.5);
     b.el.style.transform = `translate(${x}px,${y - 26 - b.off - age * 5}px) translate(-50%,-100%)`;
     b.el.style.opacity = String(age > 5.5 ? Math.max(0, (7 - age) / 1.5) : 1);
   }

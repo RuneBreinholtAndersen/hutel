@@ -6,6 +6,7 @@ import type {
   DailyId,
   Look,
   PlacedItem,
+  PetKind,
   QuestId,
   RoomAccess,
   RoomTheme,
@@ -28,6 +29,8 @@ export interface UserRecord {
   homeRoomId: string;
   motto: string;
   friends: string[];
+  pets?: PetRecord[];
+  activePet?: string | null;
   /** Owned wallpapers and floors ("wall:mint"). */
   decor?: string[];
   /** Messenger: friend id → timestamp of the last message read. */
@@ -63,6 +66,19 @@ export interface UserRecord {
   mutedUntil?: number | null;
   createdAt: string;
   lastSeen: string;
+}
+
+export interface PetRecord {
+  id: string;
+  kind: PetKind;
+  name: string;
+  color: number;
+  xp: number;
+  lastFed: number;
+  /** Trick XP earned today (capped) and the Danish date it counts for. */
+  trickXp: number;
+  trickDate: string;
+  lastTrick: number;
 }
 
 export interface RoomRecord {
@@ -225,6 +241,8 @@ export class JsonFileStore implements Store {
     user.daily = undefined;
     user.wardrobe = [];
     user.inventory = [];
+    user.pets = [];
+    user.activePet = null;
     for (const id of Object.values(user.apartment ?? {})) delete this.data.rooms[id];
     user.apartment = {};
     user.look = { ...user.look, top: undefined, hat: undefined };

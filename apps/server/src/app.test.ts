@@ -646,6 +646,53 @@ describe('multiplayer', () => {
     c.ws.close();
   });
 
+  it('buys a pet that follows you, eats, learns tricks by level and answers its name', async () => {
+    const a = await login('Hundeejer');
+    const b = await login('Nabo');
+    const u = app.store.getUser(a.g.userId)!;
+    u.coins = 100;
+    for (const x of [a, b]) {
+      x.c.send({ t: 'join', roomId: 'cafe' });
+      await x.c.waitFor('room', (m) => m.room.id === 'cafe');
+    }
+    a.c.send({ t: 'buyPet', kind: 'drage', name: 'Glød', color: 0 }); // needs level 4
+    expect((await a.c.waitFor('toast', (m) => /level 4/.test(m.text))).kind).toBe('error');
+    a.c.send({ t: 'buyPet', kind: 'hund', name: 'Fido', color: 1 });
+    const pets = await a.c.waitFor('pets', (m) => m.pets.length === 1);
+    expect(pets.active).toBe(pets.pets[0]!.id);
+    expect(u.coins).toBe(60);
+    // The neighbour sees the dog appear next to its owner.
+    const pv = await b.c.waitFor('petView', (m) => m.ownerId === a.g.userId);
+    expect(pv.pet).toMatchObject({ kind: 'hund', name: 'Fido', level: 1 });
+    // Level 1 can sit, but not roll yet.
+    a.c.send({ t: 'petTrick', trick: 'roll' });
+    expect((await a.c.waitFor('toast', (m) => /level 3/.test(m.text))).kind).toBe('error');
+    a.c.send({ t: 'petTrick', trick: 'sit' });
+    const act = await b.c.waitFor('petAct', (m) => m.act === 'sit');
+    expect(act.say).toBeTruthy();
+    // Just bought = just fed, so it is full.
+    a.c.send({ t: 'petFeed' });
+    await a.c.waitFor('toast', (m) => /mæt/.test(m.text));
+    u.pets![0]!.lastFed = 0; // starving
+    a.c.send({ t: 'petTrick', trick: 'sit' });
+    await a.c.waitFor('toast', (m) => /sulten/.test(m.text));
+    a.c.send({ t: 'petFeed' });
+    await b.c.waitFor('petAct', (m) => m.act === 'eat');
+    expect(u.pets![0]!.xp).toBeGreaterThanOrEqual(5);
+    expect(u.coins).toBe(58);
+    // Saying its name makes it answer.
+    a.c.send({ t: 'chat', text: 'Kom her Fido!' });
+    await b.c.waitFor('petAct', (m) => m.act === 'happy');
+    // Newcomers see the pet in the room view; sending it home removes it.
+    const c3 = await login('Senere');
+    c3.c.send({ t: 'join', roomId: 'cafe' });
+    const rv = await c3.c.waitFor('room', (m) => m.room.id === 'cafe');
+    expect(rv.room.players.find((p) => p.id === a.g.userId)!.pet?.name).toBe('Fido');
+    a.c.send({ t: 'petOut', id: null });
+    expect((await b.c.waitFor('petView', (m) => m.pet === null)).ownerId).toBe(a.g.userId);
+    for (const x of [a, b, c3]) x.c.ws.close();
+  });
+
   it('whispers only to someone in the same room, hidden from others', async () => {
     const a = await login('Hviskeren');
     const b = await login('Lytteren');

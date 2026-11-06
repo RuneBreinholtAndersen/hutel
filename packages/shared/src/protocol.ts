@@ -6,6 +6,7 @@ import type { PlacedItem } from './placement';
 import type { RoomAccess, RoomTheme } from './rooms';
 import type { BadgeId, DailyView, QuestId } from './progress';
 import type { ActiveEvent } from './events';
+import { PET_KIND_IDS, PET_TRICK_IDS, type PetAct, type PetInfo, type PetView } from './pets';
 
 const tileCoord = z.number().int().min(0).max(31);
 const furnitureType = z.enum(FURNITURE_TYPES as [FurnitureType, ...FurnitureType[]]);
@@ -32,6 +33,17 @@ export const ClientMsgSchema = z.discriminatedUnion('t', [
   z.object({ t: z.literal('use'), itemId: z.number().int() }),
   /** Buy a piece of clothing, key like "hat:cowboy". */
   z.object({ t: z.literal('buyClothes'), key: z.string().max(30) }),
+  z.object({
+    t: z.literal('buyPet'),
+    kind: z.enum(PET_KIND_IDS as [string, ...string[]]),
+    name: z.string().min(2).max(14),
+    color: z.number().int().min(0).max(7),
+  }),
+  /** Take a pet out (it follows you) or send it home (null). */
+  z.object({ t: z.literal('petOut'), id: z.string().max(40).nullable() }),
+  z.object({ t: z.literal('petFeed') }),
+  z.object({ t: z.literal('petTrick'), trick: z.enum(PET_TRICK_IDS as [string, ...string[]]) }),
+  z.object({ t: z.literal('petRename'), id: z.string().max(40), name: z.string().min(2).max(14) }),
   /** Buy (if needed) and use a wallpaper or floor in the room I am in. null = room default. */
   z.object({
     t: z.literal('decor'),
@@ -171,6 +183,8 @@ export interface PlayerView {
   badge?: string;
   /** Hotel level, shown after the name. */
   level?: number;
+  /** The pet following this player, if any. */
+  pet?: PetView;
 }
 
 export interface RoomView {
@@ -204,6 +218,8 @@ export interface Me {
   daily: DailyView;
   /** Clothes bought in the shop ("slot:value"). */
   wardrobe: string[];
+  pets: PetInfo[];
+  activePet: string | null;
   /** Wallpapers and floors I own, e.g. "wall:mint". */
   decor: string[];
   /** Furniture not placed in a room. */
@@ -305,6 +321,9 @@ export type ServerMsg =
   /** A system line in the room (game results etc.); shown over `id` if given. */
   | { t: 'sys'; text: string; id?: string }
   | { t: 'wardrobe'; wardrobe: string[] }
+  | { t: 'pets'; pets: PetInfo[]; active: string | null }
+  | { t: 'petView'; ownerId: string; pet: PetView | null }
+  | { t: 'petAct'; ownerId: string; act: PetAct; say?: string }
   | { t: 'decor'; wall: string | null; floor: string | null; owned?: string[] }
   | { t: 'inventory'; items: InvItem[] }
   | { t: 'tradeAsk'; from: { id: string; name: string } }

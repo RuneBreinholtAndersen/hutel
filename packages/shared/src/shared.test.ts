@@ -21,6 +21,7 @@ import {
   ROOM_SIZE,
   DOOR_TILE,
   findPath,
+  petLevel,
   type PlacedItem,
 } from './index';
 
@@ -82,6 +83,16 @@ describe('placement', () => {
               `${r.id} ${x},${z}`,
             ).not.toBeNull();
     }
+  });
+});
+
+describe('pets', () => {
+  it('levels up with XP', () => {
+    expect(petLevel(0)).toBe(1);
+    expect(petLevel(9)).toBe(1);
+    expect(petLevel(10)).toBe(2);
+    expect(petLevel(40)).toBe(3);
+    expect(petLevel(1e6)).toBe(10);
   });
 });
 

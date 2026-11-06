@@ -12,6 +12,7 @@ import {
   type Look,
   type PlacedItem,
   type PlayerView,
+  type PetView,
   type RoomAccess,
   type RoomTheme,
   type RoomView,
@@ -37,6 +38,7 @@ export interface PlayerState {
   /** Icon of the badge shown by the name. */
   badge?: string;
   level?: number;
+  pet?: PetView;
   /** Time of the last arrow-key glide (for the speed check). */
   lastGlide?: number;
   /** Users whose chat this player does not want to see. */
@@ -104,6 +106,7 @@ export class RoomInstance {
       bot: p.bot,
       badge: p.badge,
       level: p.level,
+      pet: p.pet,
     };
   }
 

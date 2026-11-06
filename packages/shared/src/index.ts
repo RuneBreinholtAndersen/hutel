@@ -10,3 +10,4 @@ export * from './protocol';
 export * from './movement';
 export * from './events';
 export * from './decor';
+export * from './pets';

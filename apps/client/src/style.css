@@ -908,3 +908,41 @@ button.badge.on {
   margin-bottom: 6px;
   border: 1px solid rgba(255, 255, 255, 0.15);
 }
+.petcard {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+.petcard.out {
+  border-color: var(--acc);
+}
+.petcard .chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.lvtag {
+  background: var(--acc);
+  color: #3a2616;
+  border-radius: 8px;
+  padding: 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.hungry {
+  color: #ff8a7a;
+  font-size: 13px;
+}
+.swatchbtn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  padding: 0;
+}
+.swatchbtn.on {
+  border-color: var(--acc);
+  box-shadow: 0 0 0 2px var(--acc);
+}

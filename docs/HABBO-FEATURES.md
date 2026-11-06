@@ -19,7 +19,6 @@ Det her mener jeg giver mest spil for pengene, i den rækkefølge:
 - [ ] **4. Rum-spil som møbler** – frysekamp/snebold-arena, farvefelter man løber på (som "Battle Banzai"), stoleleg, kapløb. Serveren styrer reglerne. ★★★ · L
 - [ ] **5. Wired light: møbler der reagerer** – trykplader, "når nogen går her → tænd lampe / teleportér / sig noget". Giver brugerne mulighed for at bygge deres egne spil. ★★★ · L
 - [ ] **6. Teleportere mellem rum** – to møbler der hænger sammen, også mellem forskellige brugeres værelser. ★★ · M
-- [ ] **7. Kæledyr** – hund/kat/drage der følger dig, kan fodres, lærer tricks og får level. 🤖 kan svare med lyde og små replikker. ★★★ · L
 - [ ] **8. Grupper/klubber** – navn, logo-generator (vores egen), medlemsliste, gruppe-rum, gruppe-badge ved navnet. ★★ · M
 - [ ] **9. Sjældne møbler ("rares")** – begrænsede møbler, der kun sælges en uge eller i et bestemt antal, med serienummer. Driver byttehandel. ★★★ · S (vi har allerede bytte + inventar)
 - [ ] **10. Marked** – sæt ting til salg for mønter; andre kan købe, mens du er offline. Kræver transaktioner og log (findes allerede for bytte). ★★ · M
@@ -102,6 +101,7 @@ Det her mener jeg giver mest spil for pengene, i den rækkefølge:
 - ✅ Store offentlige rum (lobby og café 12×12) og loft på 25 gæster pr. rum
 - ✅ Eget værelse + lejlighed med soveværelse, badeværelse, køkken og altan
 - ✅ Byg-tilstand: flyt, rotér, gem væk og placér møbler; farvevarianter
+- ✅ Kæledyr (hund, kat, drage) med mad, tricks og level
 - ✅ Tapet og gulve man køber og skifter selv
 - ✅ Vægmøbler: malerier, plakater, vinduer, hylder, ur, spejl, neonskilt
 - ✅ Butik med møbler og tøj, låst op med level og badges
