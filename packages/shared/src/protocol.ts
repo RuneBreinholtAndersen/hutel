@@ -288,7 +288,15 @@ export interface ProfileView {
 }
 
 export type ServerMsg =
-  | { t: 'welcome'; me: Me; serverTime: number; onboardingLock: boolean; canReset: boolean }
+  | {
+      t: 'welcome';
+      me: Me;
+      serverTime: number;
+      onboardingLock: boolean;
+      canReset: boolean;
+      /** Build id of the client the server ships; an older open tab reloads itself. */
+      build?: string;
+    }
   | { t: 'resetDone' }
   | { t: 'apartment'; rooms: { kind: string; id: string; name: string }[] }
   | { t: 'tag'; id: string; badge?: string; shown?: string | null; level?: number }

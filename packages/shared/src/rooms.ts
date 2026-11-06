@@ -155,7 +155,7 @@ export const PUBLIC_ROOMS: PublicRoomDef[] = [
       { id: 3008, type: 'plant', x: 7, z: 7, rot: 0 },
       { id: 3009, type: 'cactus', x: 7, z: 3, rot: 0 },
       { id: 3010, type: 'fireplace', x: 4, z: 7, rot: 2 },
-      { id: 3011, type: 'lounger', x: 6, z: 5, rot: 0 },
+      { id: 3011, type: 'lounger', x: 6, z: 4, rot: 0 },
       { id: 3012, type: 'lamp', x: 0, z: 4, rot: 0 },
     ],
   },

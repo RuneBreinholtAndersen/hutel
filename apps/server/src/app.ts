@@ -144,7 +144,16 @@ export function createApp(
   cfg: AppConfig,
   store: Store = new JsonFileStore(cfg.dataFile, newHomeItems),
 ) {
-  const hotel = new Hotel(store, cfg);
+  let clientBuild: string | undefined;
+  try {
+    if (cfg.clientDist)
+      clientBuild = (
+        JSON.parse(readFileSync(join(cfg.clientDist, 'version.json'), 'utf8')) as { build?: string }
+      ).build;
+  } catch {
+    /* dev build without version.json */
+  }
+  const hotel = new Hotel(store, { ...cfg, clientBuild });
   const perHour = cfg.signupsPerHour ?? 5;
   const signupLimiter = new KeyedLimiter(perHour, perHour / 3600);
   const loginLimiter = new KeyedLimiter(10, 10 / 900);
@@ -318,7 +327,12 @@ export function createApp(
       if (!file.startsWith(cfg.clientDist) || !existsSync(file) || statSync(file).isDirectory())
         file = join(cfg.clientDist, 'index.html');
       if (existsSync(file)) {
-        res.writeHead(200, { 'Content-Type': MIME[extname(file)] ?? 'application/octet-stream' });
+        // Hashed assets can be cached forever; index.html must always be fresh after a deploy.
+        const hashed = rel.includes('assets') && /-[\w-]{8,}\./.test(rel);
+        res.writeHead(200, {
+          'Content-Type': MIME[extname(file)] ?? 'application/octet-stream',
+          'Cache-Control': hashed ? 'public, max-age=31536000, immutable' : 'no-cache',
+        });
         return res.end(readFileSync(file));
       }
     }

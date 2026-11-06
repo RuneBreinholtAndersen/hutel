@@ -70,6 +70,22 @@ const SERVER =
   (location.port === '5173' ? `${location.protocol}//${location.hostname}:2567` : location.origin);
 const WS_URL = SERVER.replace(/^http/, 'ws') + '/ws';
 const TOKEN_KEY = 'hutel-token';
+/**
+ * A tab opened before a deploy reconnects to the new server with old code. Reload once to
+ * fetch the new client (guarded so a stale cache can never cause a reload loop).
+ */
+function reloadForUpdate(): boolean {
+  try {
+    const last = Number(sessionStorage.getItem('hutel-reload') ?? 0);
+    if (Date.now() - last < 60_000) return false;
+    sessionStorage.setItem('hutel-reload', String(Date.now()));
+  } catch {
+    return false;
+  }
+  toast('🔄 Hutel er blevet opdateret – henter den nye version…');
+  setTimeout(() => location.reload(), 600);
+  return true;
+}
 const store = {
   get: (k: string) => {
     try {
@@ -356,6 +372,7 @@ function setOnline(sec: number) {
 function handle(msg: ServerMsg) {
   switch (msg.t) {
     case 'welcome':
+      if (msg.build && msg.build !== __BUILD_ID__ && reloadForUpdate()) return;
       me = msg.me;
       onboardingLock = msg.onboardingLock;
       canReset = msg.canReset;

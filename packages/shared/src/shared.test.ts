@@ -57,9 +57,22 @@ describe('placement', () => {
     }
   });
 
-  it('lets you reach every free tile of the big public rooms from the door', () => {
-    for (const r of PUBLIC_ROOMS.filter((x) => (x.size ?? ROOM_SIZE) > ROOM_SIZE)) {
-      const n = r.size!;
+  it('lets you reach every free tile of every room from the door', () => {
+    const all = [
+      ...PUBLIC_ROOMS.map((r) => ({ id: r.id, n: r.size ?? ROOM_SIZE, items: r.items })),
+      {
+        id: 'home',
+        n: ROOM_SIZE,
+        items: DEFAULT_HOME_ITEMS.map((it, i) => ({ ...it, id: i + 1 })),
+      },
+      ...Object.entries(APARTMENT_START_ITEMS).map(([id, list]) => ({
+        id,
+        n: ROOM_SIZE,
+        items: list.map((it, i) => ({ ...it, id: i + 1 })),
+      })),
+    ];
+    for (const r of all) {
+      const n = r.n;
       const g = buildGrid(n, r.items);
       for (let x = 0; x < n; x++)
         for (let z = 0; z < n; z++)

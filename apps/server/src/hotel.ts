@@ -65,6 +65,8 @@ import { checkOffer, executeTrade, Trade, tradeView, type Offer } from './trade'
 export interface HotelConfig {
   /** New guests must finish the starter quests before leaving their own room. */
   onboardingLock: boolean;
+  /** Build id of the shipped client (from dist/version.json). */
+  clientBuild?: string;
   anthropicApiKey?: string;
   botModel: string;
   botMaxCallsPerDay: number;
@@ -298,6 +300,7 @@ export class Hotel {
       serverTime: Date.now(),
       onboardingLock: this.cfg.onboardingLock,
       canReset: this.cfg.allowReset ?? false,
+      build: this.cfg.clientBuild,
     });
     this.sendFriends(user);
     this.notifyFriendsOf(user);

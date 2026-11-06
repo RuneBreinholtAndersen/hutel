@@ -1,6 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { AddressInfo } from 'node:net';
 import WebSocket from 'ws';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { DEFAULT_LOOK, QUESTS, ROOM_CAPACITY, type ServerMsg } from '@hutel/shared';
 import { createApp } from './app';
 import { QUIZ as QUIZ_FOR_TEST } from './games';
@@ -81,6 +84,47 @@ async function login(name: string) {
   const room = await c.waitFor('room');
   return { c, g, welcome, room };
 }
+
+describe('client updates', () => {
+  it('serves index.html uncached, hashed assets forever, and tells old tabs the build id', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'hutel-dist-'));
+    mkdirSync(join(dir, 'assets'));
+    writeFileSync(join(dir, 'index.html'), '<!doctype html>');
+    writeFileSync(join(dir, 'version.json'), JSON.stringify({ build: 'abc123' }));
+    writeFileSync(join(dir, 'assets', 'index-AbCd1234.js'), 'x');
+    const app2 = createApp({ ...cfg, clientDist: dir });
+    await new Promise<void>((r) => app2.server.listen(0, r));
+    const b2 = `127.0.0.1:${(app2.server.address() as AddressInfo).port}`;
+    expect((await fetch(`http://${b2}/`)).headers.get('cache-control')).toBe('no-cache');
+    expect(
+      (await fetch(`http://${b2}/assets/index-AbCd1234.js`)).headers.get('cache-control'),
+    ).toMatch(/immutable/);
+    const g = (await (
+      await fetch(`http://${b2}/api/guest`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          name: 'Opdatering',
+          look: DEFAULT_LOOK,
+          password: 'hemmelig123',
+          adult: true,
+          terms: true,
+        }),
+      })
+    ).json()) as { token: string };
+    const ws = new WebSocket(`ws://${b2}/ws`, { headers: { origin: 'http://localhost:5173' } });
+    const welcome = await new Promise<ServerMsg>((r) => {
+      ws.on('open', () => ws.send(JSON.stringify({ t: 'auth', token: g.token })));
+      ws.on('message', (d) => {
+        const m = JSON.parse(d.toString()) as ServerMsg;
+        if (m.t === 'welcome') r(m);
+      });
+    });
+    expect(welcome.t === 'welcome' && welcome.build).toBe('abc123');
+    ws.close();
+    app2.close();
+  });
+});
 
 describe('http', () => {
   it('answers health checks', async () => {
