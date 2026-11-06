@@ -16,6 +16,10 @@ const app = createApp({
   inviteCodes: (process.env.BETA_INVITE_CODES ?? '').split(',').filter((s) => s.trim()),
   supabaseUrl: process.env.SUPABASE_URL || undefined,
   supabaseAnonKey: process.env.SUPABASE_ANON_KEY || undefined,
+  authProviders: (process.env.AUTH_PROVIDERS ?? 'google')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean),
   botModel: process.env.BOT_MODEL ?? 'claude-haiku-5-5',
   botMaxCallsPerDay: Number(process.env.BOT_MAX_CALLS_PER_DAY ?? 300),
 });

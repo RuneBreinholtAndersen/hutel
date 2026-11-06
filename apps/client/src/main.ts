@@ -131,7 +131,8 @@ function predictWalk(goal: [number, number], run: boolean) {
   const now = net.now();
   const next = a.heading(now);
   const grid = buildGrid(ROOM_SIZE, [...items.values()]);
-  const rest = findPath(grid, next, goal);
+  const found = findPath(grid, next, goal);
+  const rest = found?.map(([x, z]): [number, number] => [x, z]);
   if (!rest) return;
   const here: [number, number] = [a.x, a.z];
   const atNext = Math.hypot(next[0] - a.x, next[1] - a.z) < 0.01;
@@ -974,6 +975,7 @@ let authCfg: AuthConfig = {
   supabaseUrl: null,
   supabaseAnonKey: null,
   inviteRequired: false,
+  providers: [],
 };
 let authMode: AuthMode = 'signup';
 let signupLook: Look = { ...DEFAULT_LOOK };
@@ -982,6 +984,8 @@ function showSignup(error = '', mode: AuthMode = social() ? 'social' : 'signup')
   authMode = mode;
   $('signup').classList.remove('hidden');
   $('authCard').classList.toggle('hidden', mode !== 'social');
+  $('authGoogle').classList.toggle('hidden', !authCfg.providers.includes('google'));
+  $('authFacebook').classList.toggle('hidden', !authCfg.providers.includes('facebook'));
   $('signupForm').classList.toggle('hidden', mode !== 'signup' && mode !== 'profile');
   $('loginForm').classList.toggle('hidden', mode !== 'login');
   // A social account has no Hutel password – the profile step only asks for name and figure.

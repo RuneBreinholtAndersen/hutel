@@ -28,6 +28,8 @@ export interface AppConfig extends HotelConfig {
   /** Supabase project URL + public anon key – enables e-mail/Google/Facebook login. */
   supabaseUrl?: string;
   supabaseAnonKey?: string;
+  /** Social providers shown on the login page (e.g. ['google']). E-mail link is always on. */
+  authProviders?: string[];
   /** Verifies a Supabase access token. Injectable for tests; defaults to Supabase's /auth/v1/user. */
   verifyAuthToken?: (accessToken: string) => Promise<AuthIdentity | null>;
 }
@@ -214,6 +216,7 @@ export function createApp(
         supabaseUrl: cfg.supabaseUrl ?? null,
         supabaseAnonKey: cfg.supabaseAnonKey ?? null,
         inviteRequired: invites.length > 0,
+        providers: verify ? (cfg.authProviders ?? ['google']) : [],
       });
     }
     if (req.method === 'POST' && url.pathname === '/api/session') {

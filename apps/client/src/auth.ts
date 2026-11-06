@@ -6,6 +6,7 @@ export interface AuthConfig {
   supabaseUrl: string | null;
   supabaseAnonKey: string | null;
   inviteRequired: boolean;
+  providers: string[];
 }
 
 const FALLBACK: AuthConfig = {
@@ -13,6 +14,7 @@ const FALLBACK: AuthConfig = {
   supabaseUrl: null,
   supabaseAnonKey: null,
   inviteRequired: false,
+  providers: [],
 };
 
 export async function loadConfig(server: string): Promise<AuthConfig> {
