@@ -401,6 +401,39 @@ describe('multiplayer', () => {
     c.ws.close();
   });
 
+  it('stores furniture in the inventory and trades it safely', async () => {
+    const a = await login('Sælger');
+    const b = await login('Køber');
+    // stash a default item from A's room and place it back
+    const first = a.room.room.items.find((i) => i.type === 'plant')!;
+    a.c.send({ t: 'stash', id: first.id });
+    expect((await a.c.waitFor('inventory')).items).toEqual([{ type: 'plant' }]);
+    for (const u of [a, b]) app.store.getUser(u.g.userId)!.quests.push(...QUESTS.map((q) => q.id));
+    for (const u of [a, b]) {
+      u.c.send({ t: 'join', roomId: 'lobby' });
+      await u.c.waitFor('room', (m) => m.room.id === 'lobby');
+    }
+    a.c.send({ t: 'tradeStart', userId: b.g.userId });
+    expect((await b.c.waitFor('tradeAsk')).from.name).toBe('Sælger');
+    b.c.send({ t: 'tradeReply', accept: true });
+    await a.c.waitFor('trade');
+    a.c.send({ t: 'tradeOffer', coins: 0, inv: [0], clothes: [] });
+    await b.c.waitFor('trade', (m) => m.trade.theirs.items.length === 1);
+    b.c.send({ t: 'tradeOffer', coins: 999, inv: [], clothes: [] });
+    expect((await b.c.waitFor('toast', (m) => /mønter/.test(m.text))).kind).toBe('error');
+    b.c.send({ t: 'tradeOffer', coins: 10, inv: [], clothes: [] });
+    await a.c.waitFor('trade', (m) => m.trade.theirs.coins === 10);
+    a.c.send({ t: 'tradeAccept' });
+    await b.c.waitFor('trade', (m) => m.trade.theirOk);
+    b.c.send({ t: 'tradeAccept' });
+    expect((await a.c.waitFor('tradeEnd')).done).toBe(true);
+    expect((await b.c.waitFor('inventory')).items).toEqual([{ type: 'plant' }]);
+    expect(app.store.getUser(a.g.userId)!.inventory).toEqual([]);
+    expect(app.store.getUser(b.g.userId)!.coins).toBe(25); // 30 + 5 (lobby quest) − 10
+    a.c.ws.close();
+    b.c.ws.close();
+  });
+
   it('handles friends, whispers, password rooms and blocking', async () => {
     const a = await login('Anna');
     const b = await login('Bo');

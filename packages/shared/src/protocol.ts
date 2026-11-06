@@ -29,6 +29,27 @@ export const ClientMsgSchema = z.discriminatedUnion('t', [
   z.object({ t: z.literal('sit'), itemId: z.number().int() }),
   /** Buy a piece of clothing, key like "hat:cowboy". */
   z.object({ t: z.literal('buyClothes'), key: z.string().max(30) }),
+  /** Put one of my placed items back into my inventory. */
+  z.object({ t: z.literal('stash'), id: z.number().int() }),
+  /** Place an item from my inventory in my own room. */
+  z.object({
+    t: z.literal('placeInv'),
+    index: z.number().int().min(0).max(500),
+    x: tileCoord,
+    z: tileCoord,
+    rot: z.number().int().min(0).max(3),
+  }),
+  /** Trading between two players in the same room. */
+  z.object({ t: z.literal('tradeStart'), userId: z.string().max(40) }),
+  z.object({ t: z.literal('tradeReply'), accept: z.boolean() }),
+  z.object({
+    t: z.literal('tradeOffer'),
+    coins: z.number().int().min(0).max(1_000_000),
+    inv: z.array(z.number().int().min(0).max(500)).max(20),
+    clothes: z.array(z.string().max(30)).max(20),
+  }),
+  z.object({ t: z.literal('tradeAccept') }),
+  z.object({ t: z.literal('tradeCancel') }),
   /** Test phase: wipe my progress (coins, quests, badges, room) and start over. */
   z.object({ t: z.literal('reset') }),
   z.object({
@@ -126,6 +147,27 @@ export interface Me {
   daily: DailyView;
   /** Clothes bought in the shop ("slot:value"). */
   wardrobe: string[];
+  /** Furniture not placed in a room. */
+  inventory: InvItem[];
+}
+
+export interface InvItem {
+  type: FurnitureType;
+  color?: number;
+}
+
+export interface TradeOfferView {
+  coins: number;
+  items: InvItem[];
+  clothes: string[];
+}
+
+export interface TradeView {
+  partner: { id: string; name: string };
+  mine: TradeOfferView & { inv: number[] };
+  theirs: TradeOfferView;
+  myOk: boolean;
+  theirOk: boolean;
 }
 
 export interface FriendView {
@@ -156,12 +198,18 @@ export interface ProfileView {
   bot: boolean;
   friend: boolean;
   blocked: boolean;
+  /** In the same room as you right now (so you can trade). */
+  here?: boolean;
 }
 
 export type ServerMsg =
   | { t: 'welcome'; me: Me; serverTime: number; onboardingLock: boolean; canReset: boolean }
   | { t: 'resetDone' }
   | { t: 'wardrobe'; wardrobe: string[] }
+  | { t: 'inventory'; items: InvItem[] }
+  | { t: 'tradeAsk'; from: { id: string; name: string } }
+  | { t: 'trade'; trade: TradeView }
+  | { t: 'tradeEnd'; text: string; done: boolean }
   | { t: 'daily'; daily: DailyView; doneId?: string; bonus?: number }
   | { t: 'room'; room: RoomView; serverTime: number }
   | { t: 'playerJoin'; player: PlayerView }

@@ -776,3 +776,18 @@ select {
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+.trade {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.trade .ok {
+  color: #8fe08f;
+  font-weight: 600;
+}
+@media (max-width: 700px) {
+  .trade {
+    grid-template-columns: 1fr;
+  }
+}

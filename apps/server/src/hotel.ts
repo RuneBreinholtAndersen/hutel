@@ -24,6 +24,7 @@ import {
   type DailyView,
   type ClientMsg,
   type FriendView,
+  type Look,
   type Me,
   type NavigatorRoom,
   type PlacedItem,
@@ -35,6 +36,7 @@ import { Bots } from './bots';
 import { createLimits, type Bucket, type LimitKind } from './ratelimit';
 import { RoomInstance, type PlayerState, type RoomHooks } from './room';
 import { hashSecret, type RoomRecord, type Store, type UserRecord } from './store';
+import { checkOffer, executeTrade, Trade, tradeView, type Offer } from './trade';
 
 export interface HotelConfig {
   /** New guests must finish the starter quests before leaving their own room. */
@@ -83,6 +85,13 @@ const LIMIT_FOR: Partial<Record<ClientMsg['t'], LimitKind>> = {
   move: 'move',
   glide: 'glide',
   reset: 'build',
+  stash: 'build',
+  placeInv: 'build',
+  tradeStart: 'social',
+  tradeReply: 'social',
+  tradeOffer: 'build',
+  tradeAccept: 'build',
+  tradeCancel: 'build',
   sit: 'move',
   chat: 'chat',
   whisper: 'chat',
@@ -107,6 +116,8 @@ export class Hotel {
   private sessions = new Set<Session>();
   private byUser = new Map<string, Session>();
   private rooms = new Map<string, RoomInstance>();
+  /** Open trades, by both players' ids. */
+  private trades = new Map<string, Trade>();
   private bots: Bots;
   private ticker: NodeJS.Timeout;
   private secondTicker: NodeJS.Timeout;
@@ -261,6 +272,7 @@ export class Hotel {
       motto: u.motto,
       daily: this.dailyView(u),
       wardrobe: u.wardrobe ?? [],
+      inventory: u.inventory ?? [],
     };
   }
 
@@ -379,6 +391,7 @@ export class Hotel {
   }
 
   private leaveRoom(s: Session) {
+    if (s.user) this.endTrade(s.user.id, 'Byttehandlen blev afbrudt.');
     const room = s.room;
     if (!room || !s.player) return;
     room.remove(s.player.id);
@@ -609,6 +622,20 @@ export class Hotel {
         room.broadcast({ t: 'action', id: player.id, kind: player.action });
         if (msg.kind === 'wave' && room.players.size > 1) this.daily(s, user, 'd_wave');
         return;
+      case 'stash':
+        return this.stash(s, user, msg.id);
+      case 'placeInv':
+        return this.placeInv(s, user, msg.index, msg.x, msg.z, msg.rot);
+      case 'tradeStart':
+        return this.tradeStart(s, user, msg.userId);
+      case 'tradeReply':
+        return this.tradeReply(s, user, msg.accept);
+      case 'tradeOffer':
+        return this.tradeOffer(s, user, { coins: msg.coins, inv: msg.inv, clothes: msg.clothes });
+      case 'tradeAccept':
+        return this.tradeAccept(s, user);
+      case 'tradeCancel':
+        return this.endTrade(user.id, `${user.name} afbrød byttehandlen.`);
       case 'buyClothes': {
         const item = CLOTHES[msg.key];
         const owned = (user.wardrobe ??= []);
@@ -728,6 +755,160 @@ export class Hotel {
     user.stats.moves++;
     if (user.homeRoomId === own.rec.id) this.quest(s, user, 'move');
     if (user.stats.moves >= 25) this.badge(s, user, 'decorator');
+  }
+
+  /* ---------------- inventory ---------------- */
+
+  private sendInventory(s: Session, u: UserRecord) {
+    this.send(s, { t: 'inventory', items: u.inventory ?? [] });
+  }
+
+  private stash(s: Session, user: UserRecord, id: number) {
+    const own = this.ownRoom(s, user);
+    if (!own || own.rec.ownerId !== user.id)
+      return this.toast(s, 'Kun ejeren kan gemme møbler væk.', 'error');
+    const idx = own.rec.items.findIndex((i) => i.id === id);
+    const it = own.rec.items[idx];
+    if (!it || furniture(it.type).noShop) return;
+    if ((user.inventory ??= []).length >= 200)
+      return this.toast(s, 'Dit inventar er fyldt.', 'error');
+    own.rec.items.splice(idx, 1);
+    own.room.standUpFrom(id);
+    user.inventory.push(it.color ? { type: it.type, color: it.color } : { type: it.type });
+    this.store.touch();
+    own.room.broadcast({ t: 'itemRemove', id });
+    this.sendInventory(s, user);
+  }
+
+  private placeInv(s: Session, user: UserRecord, index: number, x: number, z: number, rot: number) {
+    const own = this.ownRoom(s, user);
+    if (!own || own.rec.ownerId !== user.id)
+      return this.toast(s, 'Du kan kun stille ting på dit eget værelse.', 'error');
+    const inv = user.inventory ?? [];
+    const entry = inv[index];
+    if (!entry) return;
+    if (own.rec.items.length >= 120) return this.toast(s, 'Værelset er fyldt helt op.', 'error');
+    const item: PlacedItem = { id: own.rec.nextItemId, type: entry.type, x, z, rot };
+    if (entry.color) item.color = entry.color;
+    if (!own.room.placeable(item)) return this.toast(s, 'Det kan ikke stå der 🙃', 'error');
+    own.rec.nextItemId++;
+    own.rec.items.push(item);
+    inv.splice(index, 1);
+    this.store.touch();
+    own.room.broadcast({ t: 'itemPut', item });
+    this.sendInventory(s, user);
+  }
+
+  /* ---------------- trading ---------------- */
+
+  private sendTrade(t: Trade) {
+    for (const id of [t.a, t.b]) {
+      const s = this.byUser.get(id);
+      const me = this.store.getUser(id);
+      const them = this.store.getUser(t.other(id));
+      if (s && me && them) this.send(s, { t: 'trade', trade: tradeView(t, me, them) });
+    }
+  }
+
+  private tradeStart(s: Session, user: UserRecord, otherId: string) {
+    const o = this.byUser.get(otherId);
+    const other = o?.user;
+    if (!o || !other || otherId === user.id || o.room !== s.room || !s.room)
+      return this.toast(s, 'I skal være i samme rum for at bytte.', 'error');
+    if (!this.onboarded(user)) return this.toast(s, 'Klar startopgaverne først 🙂', 'error');
+    if (other.blocked.includes(user.id) || user.blocked.includes(other.id))
+      return this.toast(s, 'Du kan ikke bytte med den person.', 'error');
+    if (this.trades.has(user.id) || this.trades.has(otherId))
+      return this.toast(s, 'En af jer er allerede i gang med at bytte.', 'error');
+    const t = new Trade(user.id, otherId);
+    this.trades.set(user.id, t);
+    this.trades.set(otherId, t);
+    this.send(o, { t: 'tradeAsk', from: { id: user.id, name: user.name } });
+    this.toast(s, `🤝 Du har spurgt ${other.name}, om I skal bytte…`);
+  }
+
+  private tradeReply(s: Session, user: UserRecord, accept: boolean) {
+    const t = this.trades.get(user.id);
+    if (!t || !t.pending || t.b !== user.id) return;
+    if (!accept) return this.endTrade(user.id, `${user.name} vil ikke bytte lige nu.`);
+    t.pending = false;
+    this.sendTrade(t);
+  }
+
+  private tradeOffer(s: Session, user: UserRecord, offer: Offer) {
+    const t = this.trades.get(user.id);
+    if (!t || t.pending) return;
+    const err = checkOffer(user, offer);
+    if (err) return this.toast(s, err, 'error');
+    t.offers.set(user.id, offer);
+    t.ok.clear();
+    this.sendTrade(t);
+  }
+
+  private tradeAccept(s: Session, user: UserRecord) {
+    const t = this.trades.get(user.id);
+    if (!t || t.pending) return;
+    t.ok.add(user.id);
+    if (t.ok.size < 2) return this.sendTrade(t);
+    const a = this.store.getUser(t.a)!;
+    const b = this.store.getUser(t.b)!;
+    const sa = this.byUser.get(a.id);
+    const sb = this.byUser.get(b.id);
+    if (!sa || !sb || sa.room !== sb.room)
+      return this.endTrade(user.id, 'Byttehandlen blev afbrudt.');
+    const err = checkOffer(a, t.offers.get(a.id)!) ?? checkOffer(b, t.offers.get(b.id)!);
+    if (err) {
+      t.ok.clear();
+      this.sendTrade(t);
+      return this.toast(s, `Byttet gik ikke igennem: ${err}`, 'error');
+    }
+    const dupe = (giver: UserRecord, taker: UserRecord) =>
+      t.offers.get(giver.id)!.clothes.some((k) => (taker.wardrobe ?? []).includes(k));
+    if (dupe(a, b) || dupe(b, a)) {
+      t.ok.clear();
+      this.sendTrade(t);
+      return this.toast(s, 'Den anden har allerede noget af det tøj.', 'error');
+    }
+    const gave = executeTrade(a, b, t);
+    this.store.logTrade({ at: new Date().toISOString(), a: a.id, b: b.id, gave });
+    this.store.touch();
+    for (const [u, sess] of [
+      [a, sa],
+      [b, sb],
+    ] as const) {
+      this.send(sess, { t: 'coins', coins: u.coins });
+      this.send(sess, { t: 'wardrobe', wardrobe: u.wardrobe ?? [] });
+      this.sendInventory(sess, u);
+      if (!lookAllowed(u.look, u.wardrobe ?? [])) {
+        const free = (slot: 'top' | 'hat', v: string | undefined) =>
+          v &&
+          (CLOTHES[`${slot}:${v}`]?.price ?? 0) > 0 &&
+          !(u.wardrobe ?? []).includes(`${slot}:${v}`)
+            ? undefined
+            : v;
+        u.look = {
+          ...u.look,
+          top: free('top', u.look.top) as Look['top'],
+          hat: free('hat', u.look.hat) as Look['hat'],
+        };
+        sess.room?.broadcast({ t: 'look', id: u.id, look: u.look });
+      }
+    }
+    this.trades.delete(a.id);
+    this.trades.delete(b.id);
+    for (const sess of [sa, sb])
+      this.send(sess, { t: 'tradeEnd', text: '🤝 Byttet er gennemført!', done: true });
+  }
+
+  private endTrade(userId: string, text: string) {
+    const t = this.trades.get(userId);
+    if (!t) return;
+    this.trades.delete(t.a);
+    this.trades.delete(t.b);
+    for (const id of [t.a, t.b]) {
+      const sess = this.byUser.get(id);
+      if (sess) this.send(sess, { t: 'tradeEnd', text, done: false });
+    }
   }
 
   private sellItem(s: Session, user: UserRecord, id: number) {
@@ -945,6 +1126,7 @@ export class Hotel {
         bot: false,
         friend: user.friends.includes(target.id),
         blocked: user.blocked.includes(target.id),
+        here: !!s.room && this.byUser.get(target.id)?.room === s.room,
       },
     });
   }

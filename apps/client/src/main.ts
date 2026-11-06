@@ -1,5 +1,6 @@
 import {
   BADGES,
+  CLOTHES,
   buildGrid,
   canPlace,
   DOOR_TILE,
@@ -27,6 +28,8 @@ import {
   type ProfileView,
   type RoomView,
   type ServerMsg,
+  type TradeOfferView,
+  type TradeView,
 } from '@hutel/shared';
 import { Actor } from './actors';
 import {
@@ -109,7 +112,7 @@ const actors = new Map<string, Actor>();
 let friends: FriendView[] = [];
 let requests: { id: string; name: string }[] = [];
 let build = false;
-let held: { item: PlacedItem; isNew: boolean; orig?: PlacedItem } | null = null;
+let held: { item: PlacedItem; isNew: boolean; orig?: PlacedItem; inv?: number } | null = null;
 let running = false;
 const keys = new Set<string>();
 let panelKind: string | null = null;
@@ -348,6 +351,22 @@ function handle(msg: ServerMsg) {
       if (panelKind === 'fig') renderFigure();
       return;
     }
+    case 'inventory':
+      if (!me) return;
+      me.inventory = msg.items;
+      if (panelKind === 'shop') renderShop();
+      if (trade) renderTrade();
+      return;
+    case 'tradeAsk':
+      return renderTradeAsk(msg.from);
+    case 'trade':
+      trade = msg.trade;
+      return renderTrade();
+    case 'tradeEnd':
+      trade = null;
+      if (panelKind === 'trade' || panelKind === 'tradeAsk') closePanel();
+      if (msg.done) confetti();
+      return toast(msg.text, msg.done ? 'info' : 'error');
     case 'resetDone':
       location.reload();
       return;
@@ -546,18 +565,31 @@ function renderShop() {
   };
   const free = list.filter((k) => !(FURNITURE[k] as FurnitureDef).unlock);
   const special = list.filter((k) => (FURNITURE[k] as FurnitureDef).unlock);
+  const inv = me.inventory;
+  const invHtml = inv.length
+    ? `<h3>📦 Dit inventar</h3><div class="grid">${inv
+        .map((it, i) => {
+          const c = FURNITURE[it.type];
+          return `<div class="item"><div class="ic">${c.icon}</div><div class="n">${c.name}</div><button data-inv="${i}">Placér</button></div>`;
+        })
+        .join('')}</div>`
+    : '';
   openPanel(
     'shop',
     head(
       '🛒 Møbelbutikken',
       'Køb med mønter. Møblet ryger direkte ind på dit værelse. Tryk 🎨 (eller F) for at vælge farve.',
     ) +
-      `<div class="grid">${free.map(card).join('')}</div>
+      invHtml +
+      `<h3>🛒 Butikken</h3><div class="grid">${free.map(card).join('')}</div>
       <h3>✨ Låses op med badges</h3><div class="grid">${special.map(card).join('')}</div>`,
   );
   $('panel')
     .querySelectorAll<HTMLElement>('[data-buy]')
     .forEach((b) => b.addEventListener('click', () => startBuy(b.dataset.buy as FurnitureType)));
+  $('panel')
+    .querySelectorAll<HTMLElement>('[data-inv]')
+    .forEach((b) => b.addEventListener('click', () => startPlaceInv(Number(b.dataset.inv))));
 }
 
 let confirmReset = false;
@@ -613,6 +645,105 @@ function renderFigure() {
     store.set(TOKEN_KEY, null);
     void signOut(authCfg).finally(() => location.reload());
   });
+}
+
+/* ---------------- trading ---------------- */
+let trade: TradeView | null = null;
+let offerT: number | undefined;
+const clothesName = (k: string) => CLOTHES[k]?.name ?? k;
+function offerHtml(o: TradeOfferView) {
+  const parts = [
+    ...(o.coins ? [`${o.coins} ${COIN}`] : []),
+    ...o.items.map((it) => `${FURNITURE[it.type].icon} ${esc(FURNITURE[it.type].name)}`),
+    ...o.clothes.map((k) => `👕 ${esc(clothesName(k))}`),
+  ];
+  return parts.length
+    ? parts.map((p) => `<span class="badge">${p}</span>`).join('')
+    : '<p class="sub">Intet endnu</p>';
+}
+function renderTradeAsk(from: { id: string; name: string }) {
+  openPanel(
+    'tradeAsk',
+    head('🤝 Byttehandel', `${esc(from.name)} vil gerne bytte med dig.`) +
+      `<div class="chips"><button data-r="yes" class="primary">Ja, lad os bytte</button><button data-r="no">Nej tak</button></div>`,
+  );
+  $('panel')
+    .querySelectorAll<HTMLElement>('[data-r]')
+    .forEach((b) =>
+      b.addEventListener('click', () => {
+        net?.send({ t: 'tradeReply', accept: b.dataset.r === 'yes' });
+        if (b.dataset.r === 'no') closePanel();
+      }),
+    );
+}
+function renderTrade() {
+  if (!me || !trade) return;
+  const t = trade;
+  const mine = t.mine;
+  const tradeable = me.wardrobe.filter((k) => (CLOTHES[k]?.price ?? 0) > 0);
+  const invChips = me.inventory
+    .map(
+      (it, i) =>
+        `<button type="button" data-ti="${i}" class="${mine.inv.includes(i) ? 'on' : ''}">${FURNITURE[it.type].icon} ${esc(FURNITURE[it.type].name)}</button>`,
+    )
+    .join('');
+  const clothChips = tradeable
+    .map(
+      (k) =>
+        `<button type="button" data-tc="${esc(k)}" class="${mine.clothes.includes(k) ? 'on' : ''}">👕 ${esc(clothesName(k))}</button>`,
+    )
+    .join('');
+  openPanel(
+    'trade',
+    head(
+      '🤝 Byttehandel',
+      `Med ${esc(t.partner.name)}. Ændres et tilbud, skal I begge godkende igen.`,
+    ) +
+      `<div class="trade"><div><h3>Du giver ${mine.coins ? '' : ''}</h3>
+        <div class="row"><label>Mønter</label><input id="tCoins" type="number" min="0" max="${me.coins}" value="${mine.coins}" style="width:100px"></div>
+        <div class="row"><label>Møbler fra dit inventar</label><div class="chips">${invChips || '<span class="sub">Gem møbler i inventaret under Byg (📦)</span>'}</div></div>
+        ${tradeable.length ? `<div class="row"><label>Tøj</label><div class="chips">${clothChips}</div></div>` : ''}
+        <p>${mine.inv.length || mine.clothes.length || mine.coins ? '' : '<span class="sub">Vælg hvad du vil give</span>'}</p>
+        ${t.myOk ? '<p class="ok">✅ Du har godkendt</p>' : ''}
+      </div><div><h3>${esc(t.partner.name)} giver</h3><div class="badges">${offerHtml(t.theirs)}</div>
+        ${t.theirOk ? `<p class="ok">✅ ${esc(t.partner.name)} har godkendt</p>` : `<p class="sub">Venter på ${esc(t.partner.name)}…</p>`}
+      </div></div>
+      <div class="chips" style="margin-top:12px"><button id="tOk" class="primary" ${t.myOk ? 'disabled' : ''}>✅ Godkend bytte</button><button id="tCancel" class="danger">✕ Afbryd</button></div>`,
+  );
+  const send = (o: { coins: number; inv: number[]; clothes: string[] }) => {
+    clearTimeout(offerT);
+    offerT = window.setTimeout(() => net?.send({ t: 'tradeOffer', ...o }), 250);
+  };
+  const cur = () => ({ coins: mine.coins, inv: [...mine.inv], clothes: [...mine.clothes] });
+  $('tCoins').addEventListener('change', (e) => {
+    const v = Math.max(
+      0,
+      Math.min(me!.coins, Math.floor(Number((e.target as HTMLInputElement).value) || 0)),
+    );
+    send({ ...cur(), coins: v });
+  });
+  $('panel')
+    .querySelectorAll<HTMLElement>('[data-ti]')
+    .forEach((b) =>
+      b.addEventListener('click', () => {
+        const i = Number(b.dataset.ti);
+        const o = cur();
+        o.inv = o.inv.includes(i) ? o.inv.filter((x) => x !== i) : [...o.inv, i];
+        send(o);
+      }),
+    );
+  $('panel')
+    .querySelectorAll<HTMLElement>('[data-tc]')
+    .forEach((b) =>
+      b.addEventListener('click', () => {
+        const k = b.dataset.tc!;
+        const o = cur();
+        o.clothes = o.clothes.includes(k) ? o.clothes.filter((x) => x !== k) : [...o.clothes, k];
+        send(o);
+      }),
+    );
+  $('tOk').addEventListener('click', () => net?.send({ t: 'tradeAccept' }));
+  $('tCancel').addEventListener('click', () => net?.send({ t: 'tradeCancel' }));
 }
 
 function renderFriends() {
@@ -674,6 +805,7 @@ function renderProfile(p: ProfileView) {
         ? `<div class="chips" style="margin-top:12px">
           ${p.friend ? `<button data-a="pm">💬 Skriv privat</button><button data-a="unfriend">Fjern ven</button>` : `<button data-a="friend" class="primary">➕ Tilføj ven</button>`}
           ${inMyRoom ? `<button data-a="rights">🔨 Giv byggerettigheder</button><button data-a="norights">Fjern rettigheder</button>` : ''}
+          ${p.here && questsDone() ? `<button data-a="trade">🤝 Byt</button>` : ''}
           <button data-a="block">${p.blocked ? 'Fjern blokering' : '🚫 Blokér'}</button><button data-a="report" class="danger">⚠️ Rapportér</button></div>
          <div id="repBox" class="hidden" style="margin-top:10px"><textarea id="repText" rows="3" maxlength="300" placeholder="Hvad skete der?" style="width:100%"></textarea><button id="repSend" class="small danger">Send rapport</button></div>`
         : ''),
@@ -688,6 +820,10 @@ function renderProfile(p: ProfileView) {
         if (a === 'rights') net?.send({ t: 'rights', userId: p.id, grant: true });
         if (a === 'norights') net?.send({ t: 'rights', userId: p.id, grant: false });
         if (a === 'block') net?.send({ t: 'block', userId: p.id, block: !p.blocked });
+        if (a === 'trade') {
+          closePanel();
+          net?.send({ t: 'tradeStart', userId: p.id });
+        }
         if (a === 'pm') {
           closePanel();
           $<HTMLInputElement>('chatIn').value = `/w ${p.name} `;
@@ -735,9 +871,13 @@ function updateBuildbar() {
     ? 'Klik på gulvet for at placere · R roterer · F skifter farve'
     : 'Byggetilstand: klik på et møbel for at flytte det';
   $('bbRot').classList.toggle('hidden', !h);
-  $('bbColor').classList.toggle('hidden', !h || !furniture(held!.item.type).colors);
+  $('bbColor').classList.toggle(
+    'hidden',
+    !h || !furniture(held!.item.type).colors || held!.inv !== undefined,
+  );
   $('bbCancel').classList.toggle('hidden', !h);
   $('bbSell').classList.toggle('hidden', !h || !!held?.isNew || !isOwner());
+  $('bbStash').classList.toggle('hidden', !h || !!held?.isNew || !isOwner());
   if (held && !held.isNew) $('bbSell').textContent = `💰 Sælg (+${sellPrice(held.item.type)})`;
 }
 function heldOk() {
@@ -788,7 +928,10 @@ function tryPlace() {
   if (!held) return;
   if (!heldOk()) return toast('Det kan ikke stå der 🙃', 'error');
   const it = held.item;
-  if (held.isNew) {
+  if (held.isNew && held.inv !== undefined) {
+    net?.send({ t: 'placeInv', index: held.inv, x: it.x, z: it.z, rot: it.rot });
+    removeObj(it.id);
+  } else if (held.isNew) {
     net?.send({ t: 'buy', type: it.type, x: it.x, z: it.z, rot: it.rot, color: it.color });
     removeObj(it.id);
   } else {
@@ -819,8 +962,29 @@ function rotateHeld() {
   held.item.rot = (held.item.rot + 1) % 4;
   updHeld();
 }
+function startPlaceInv(index: number) {
+  const entry = me?.inventory[index];
+  if (!entry || !isOwner()) return;
+  cancelHeld();
+  closePanel();
+  setBuild(true);
+  held = {
+    item: { id: -Date.now(), type: entry.type, x: 3, z: 4, rot: 0, color: entry.color },
+    isNew: true,
+    inv: index,
+  };
+  updHeld();
+  updateBuildbar();
+}
+function stashHeld() {
+  if (!held || held.isNew) return;
+  net?.send({ t: 'stash', id: held.item.id });
+  held = null;
+  placeM.visible = false;
+  updateBuildbar();
+}
 function recolorHeld() {
-  if (!held) return;
+  if (!held || held.inv !== undefined) return;
   const n = furniture(held.item.type).colors?.length ?? 0;
   if (!n) return;
   held.item.color = ((held.item.color ?? 0) + 1) % n;
@@ -1122,6 +1286,7 @@ $('bDance').addEventListener('click', () => {
 $('bbRot').addEventListener('click', rotateHeld);
 $('bbColor').addEventListener('click', recolorHeld);
 $('bbSell').addEventListener('click', sellHeld);
+$('bbStash').addEventListener('click', stashHeld);
 $('bbCancel').addEventListener('click', cancelHeld);
 $('qHead').addEventListener('click', () => $('quests').classList.toggle('min'));
 $('chatForm').addEventListener('submit', (e) => {

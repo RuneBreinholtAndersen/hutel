@@ -25,6 +25,8 @@ export interface UserRecord {
   stats: { chats: number; buys: number; moves: number };
   /** Clothes bought in the shop. */
   wardrobe?: string[];
+  /** Furniture not placed in a room. */
+  inventory?: { type: PlacedItem['type']; color?: number }[];
   /** Today's daily quests (rolls over at Danish midnight). */
   daily?: {
     date: string;
@@ -71,12 +73,21 @@ export interface ChatLogRecord {
   text: string;
 }
 
+export interface TradeRecord {
+  at: string;
+  a: string;
+  b: string;
+  /** What each side gave. */
+  gave: Record<string, { coins: number; items: string[]; clothes: string[] }>;
+}
+
 interface Data {
   version: 1;
   users: Record<string, UserRecord>;
   rooms: Record<string, RoomRecord>;
   reports: ReportRecord[];
   chatlog: ChatLogRecord[];
+  trades?: TradeRecord[];
 }
 
 /**
@@ -101,6 +112,9 @@ export interface Store {
   listRooms(): RoomRecord[];
   addReport(r: Omit<ReportRecord, 'id' | 'createdAt' | 'status'>): void;
   logChat(entry: ChatLogRecord): void;
+  /** Every completed trade is logged (for support and fraud checks). */
+  logTrade(entry: TradeRecord): void;
+  listReports(): ReportRecord[];
   recentChat(roomId: string, limit: number): ChatLogRecord[];
   /** Call after mutating a record returned by the store. */
   touch(): void;
@@ -163,6 +177,7 @@ export class JsonFileStore implements Store {
     user.stats = { chats: 0, buys: 0, moves: 0 };
     user.daily = undefined;
     user.wardrobe = [];
+    user.inventory = [];
     user.look = { ...user.look, top: undefined, hat: undefined };
     const room = this.data.rooms[user.homeRoomId];
     if (room) {
@@ -245,6 +260,15 @@ export class JsonFileStore implements Store {
       status: 'open',
     });
     this.touch();
+  }
+
+  logTrade(entry: TradeRecord) {
+    (this.data.trades ??= []).push(entry);
+    if (this.data.trades.length > 5000) this.data.trades.splice(0, 500);
+    this.touch();
+  }
+  listReports() {
+    return this.data.reports;
   }
 
   logChat(entry: ChatLogRecord) {
