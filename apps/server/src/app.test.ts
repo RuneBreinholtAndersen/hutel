@@ -495,6 +495,21 @@ describe('multiplayer', () => {
     victim.c.ws.close();
   });
 
+  it('switches lamps, lets you lie in bed and shows a level', async () => {
+    const { c, room, g } = await login('Natteravn');
+    expect(room.room.players.find((p) => p.id === g.userId)!.level).toBe(1);
+    const lamp = room.room.items.find((i) => i.type === 'lamp')!;
+    c.send({ t: 'use', itemId: lamp.id });
+    expect((await c.waitFor('itemPut', (m) => m.item.id === lamp.id)).item.state).toBe(0);
+    c.send({ t: 'use', itemId: lamp.id });
+    expect((await c.waitFor('itemPut', (m) => m.item.id === lamp.id)).item.state).toBe(1);
+    c.send({ t: 'buy', type: 'bed', x: 5, z: 5, rot: 0 });
+    const bed = (await c.waitFor('itemPut', (m) => m.item.type === 'bed')).item;
+    c.send({ t: 'sit', itemId: bed.id });
+    expect((await c.waitFor('path', (m) => m.id === g.userId)).seatId).toBe(bed.id);
+    c.ws.close();
+  });
+
   it('handles friends, whispers, password rooms and blocking', async () => {
     const a = await login('Anna');
     const b = await login('Bo');

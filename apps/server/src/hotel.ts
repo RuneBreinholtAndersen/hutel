@@ -2,6 +2,7 @@ import {
   BADGES,
   EVENTS,
   scheduledEvents,
+  levelOf,
   type ActiveEvent,
   type AdminReport,
   CLOTHES,
@@ -21,6 +22,7 @@ import {
   HOTEL_QUESTS,
   QUESTS,
   tilesOf,
+  itemState,
   sanitizeChat,
   sellPrice,
   type BadgeId,
@@ -99,6 +101,7 @@ const HOTEL_TIPS: Record<(typeof HOTEL_QUESTS)[number]['id'], [string, string]> 
 
 const LIMIT_FOR: Partial<Record<ClientMsg['t'], LimitKind>> = {
   move: 'move',
+  use: 'build',
   glide: 'glide',
   reset: 'build',
   admin: 'build',
@@ -402,6 +405,7 @@ export class Hotel {
       send: (m) => this.send(s, m),
       blocked: () => user.blocked,
       badge: this.badgeIcon(user),
+      level: levelOf(user).level,
     };
     room.add(player);
     s.room = room;
@@ -484,6 +488,7 @@ export class Hotel {
     const hotelAll = !!hotel && HOTEL_QUESTS.every((q) => user.quests.includes(q.id));
     this.send(s, { t: 'quest', id, reward, all, hotelAll });
     this.coins(s, user, reward);
+    this.checkLevel(s, user);
     if (all) {
       this.badge(s, user, 'onboarded');
       this.daily(s, user, 'd_login');
@@ -832,7 +837,7 @@ export class Hotel {
     user.badges.push(id);
     this.store.touch();
     if (s) this.send(s, { t: 'badge', id });
-    if (s && user.showBadge === undefined) this.updateTag(s, user);
+    if (s) this.checkLevel(s, user);
   }
 
   /** Icon shown by the name: chosen badge, or the newest one. */
@@ -846,9 +851,23 @@ export class Hotel {
 
   private updateTag(s: Session, u: UserRecord) {
     const icon = this.badgeIcon(u);
-    if (s.player) s.player.badge = icon;
-    s.room?.broadcast({ t: 'tag', id: u.id, badge: icon });
-    this.send(s, { t: 'tag', id: u.id, badge: icon, shown: u.showBadge });
+    const level = levelOf(u).level;
+    if (s.player) {
+      s.player.badge = icon;
+      s.player.level = level;
+    }
+    s.room?.broadcast({ t: 'tag', id: u.id, badge: icon, level });
+    this.send(s, { t: 'tag', id: u.id, badge: icon, shown: u.showBadge, level });
+  }
+
+  /** Re-sends the name tag when the level went up. */
+  private checkLevel(s: Session, u: UserRecord) {
+    const level = levelOf(u).level;
+    if (s.player && s.player.level !== level) {
+      const up = (s.player.level ?? 1) < level;
+      this.updateTag(s, u);
+      if (up) this.toast(s, `⭐ Du er nu level ${level}!`);
+    }
   }
 
   /* ---------------- chat ---------------- */
@@ -895,6 +914,21 @@ export class Hotel {
       case 'sit':
         if (room && player) room.sit(player, msg.itemId);
         return;
+      case 'use': {
+        if (!room) return;
+        const it = room.items.find((i) => i.id === msg.itemId);
+        const def = it && furniture(it.type);
+        if (!it || !def?.states) return;
+        const own = this.ownRoom(s, user);
+        if (!own && user.role === 'user')
+          return this.toast(s, 'Du kan kun tænde og slukke på dit eget værelse 💡', 'error');
+        it.state = (itemState(it) + 1) % def.states;
+        const rec = own?.rec.items.find((i) => i.id === it.id);
+        if (rec && rec !== it) rec.state = it.state;
+        this.store.touch();
+        room.broadcast({ t: 'itemPut', item: it });
+        return;
+      }
       case 'chat': {
         if (!room || !player) return;
         const text = filterChat(sanitizeChat(msg.text));
@@ -1466,6 +1500,7 @@ export class Hotel {
         this.send(s, { t: 'online', onlineSec: u.onlineSec });
         this.daily(s, u, 'd_online');
         this.eventMinute(s, u);
+        this.checkLevel(s, u);
       }
       if (u.onlineSec === 3600) this.badge(s, u, 'online1h');
       if (u.onlineSec === 36_000) this.badge(s, u, 'online10h');

@@ -82,3 +82,25 @@ export const BADGES = {
   chatty: { name: 'Snakkesalig', icon: '💬', text: 'Skrev 100 beskeder' },
 } as const;
 export type BadgeId = keyof typeof BADGES;
+
+/** Experience: minutes online + 10 per quest + 20 per badge. */
+export function xpOf(u: {
+  onlineSec: number;
+  quests: readonly string[];
+  badges: readonly string[];
+}) {
+  const badges = u.badges.filter((b) => b !== 'welcome').length;
+  return Math.floor(u.onlineSec / 60) + u.quests.length * 10 + badges * 20;
+}
+/** XP needed to reach a level (level 1 = 0 XP, then 15, 60, 135, 240 …). */
+export const xpForLevel = (level: number) => 15 * (level - 1) ** 2;
+export function levelOf(u: {
+  onlineSec: number;
+  quests: readonly string[];
+  badges: readonly string[];
+}) {
+  const xp = xpOf(u);
+  let level = 1;
+  while (xpForLevel(level + 1) <= xp) level++;
+  return { level, xp, next: xpForLevel(level + 1), prev: xpForLevel(level) };
+}

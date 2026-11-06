@@ -28,6 +28,8 @@ export const ClientMsgSchema = z.discriminatedUnion('t', [
     run: z.boolean().optional(),
   }),
   z.object({ t: z.literal('sit'), itemId: z.number().int() }),
+  /** Switch a lamp, TV, fireplace or jukebox. */
+  z.object({ t: z.literal('use'), itemId: z.number().int() }),
   /** Buy a piece of clothing, key like "hat:cowboy". */
   z.object({ t: z.literal('buyClothes'), key: z.string().max(30) }),
   /** Put one of my placed items back into my inventory. */
@@ -150,6 +152,8 @@ export interface PlayerView {
   bot: boolean;
   /** Icon of the badge shown next to the name. */
   badge?: string;
+  /** Hotel level, shown after the name. */
+  level?: number;
 }
 
 export interface RoomView {
@@ -250,7 +254,7 @@ export interface ProfileView {
 export type ServerMsg =
   | { t: 'welcome'; me: Me; serverTime: number; onboardingLock: boolean; canReset: boolean }
   | { t: 'resetDone' }
-  | { t: 'tag'; id: string; badge?: string; shown?: string | null }
+  | { t: 'tag'; id: string; badge?: string; shown?: string | null; level?: number }
   | { t: 'adminReports'; reports: AdminReport[] }
   | { t: 'events'; events: ActiveEvent[] }
   /** A system line in the room (game results etc.); shown over `id` if given. */

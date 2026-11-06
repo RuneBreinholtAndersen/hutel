@@ -1,4 +1,5 @@
 import {
+  furniture,
   positionAt,
   RUN_MULTIPLIER,
   WALK_SPEED,
@@ -39,7 +40,7 @@ export class Actor {
     scene.add(this.obj);
     this.tag = document.createElement('div');
     this.tag.className = 'tag' + (isMe ? ' me' : '') + (view.bot ? ' bot' : '');
-    this.setBadge(view.badge);
+    this.setTag(view.level);
     overlay.appendChild(this.tag);
     this.from = [view.x, view.z];
     this.path = view.path;
@@ -97,10 +98,16 @@ export class Actor {
     return [px, pz];
   }
 
-  /** Badge icon shown before the name tag. */
-  setBadge(icon?: string) {
-    this.view.badge = icon;
-    this.tag.textContent = (this.view.bot ? '🤖 ' : icon ? `${icon} ` : '') + this.view.name;
+  /** Name tag: name followed by the level (AI residents get 🤖 instead). */
+  setTag(level?: number) {
+    this.view.level = level;
+    this.tag.textContent = (this.view.bot ? '🤖 ' : '') + this.view.name;
+    if (!this.view.bot && level) {
+      const lv = document.createElement('span');
+      lv.className = 'lv';
+      lv.textContent = `Lv ${level}`;
+      this.tag.append(lv);
+    }
   }
 
   /** Arrow-key walking: place the figure directly (no path) and keep the walk animation going. */
@@ -137,6 +144,10 @@ export class Actor {
     // Only paths steer the face; arrow-key glides set it themselves.
     if (this.path.length && !pos.done && (pos.dir[0] || pos.dir[1]))
       this.face = Math.atan2(pos.dir[0], pos.dir[1]);
+    const lying = !!seat && !!furniture(seat.type).lie;
+    // Lie down on beds and loungers: tip the rig over, head towards the back.
+    const tilt = lying ? -Math.PI / 2 + 0.12 : 0;
+    u.rig.rotation.x += (tilt - u.rig.rotation.x) * Math.min(1, dt * 8);
     if (seat) this.obj.rotation.y = (seat.rot * Math.PI) / 2;
     else this.obj.rotation.y = lerpAngle(this.obj.rotation.y, this.face, Math.min(1, dt * 14));
 
@@ -152,6 +163,9 @@ export class Actor {
       u.armR.rotation.x = s * amp;
       u.armR.rotation.z = 0;
       bob = Math.abs(Math.cos(this.phase)) * (this.run ? 0.09 : 0.05);
+    } else if (lying) {
+      u.legL.rotation.x = u.legR.rotation.x = 0;
+      u.armL.rotation.x = u.armR.rotation.x = 0.1;
     } else if (seat) {
       u.legL.rotation.x = u.legR.rotation.x = -Math.PI / 2;
       u.armL.rotation.x = u.armR.rotation.x = -0.35;
@@ -180,7 +194,13 @@ export class Actor {
     if (this.blink < -0.13) this.blink = rnd(2, 5);
     const k = this.walking ? (0.05 - bob) * 0.5 : 0;
     u.rig.scale.set(1 + k, 1 - k, 1 + k);
-    this.obj.position.set(tw(this.x), seat ? 0.27 : bob, tw(this.z));
+    this.obj.position.set(tw(this.x), lying ? 0.62 : seat ? 0.27 : bob, tw(this.z));
+    if (lying) {
+      // shift so the body lies along the bed (head on the pillow side)
+      const r = (seat!.rot * Math.PI) / 2;
+      this.obj.position.x -= Math.sin(r) * 0.35;
+      this.obj.position.z -= Math.cos(r) * 0.35;
+    }
   }
 
   dispose(scene: T.Scene) {

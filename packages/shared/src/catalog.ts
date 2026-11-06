@@ -17,6 +17,11 @@ export interface FurnitureDef {
   unlock?: BadgeId;
   /** Colour choices for the main fabric/paint (first is the default). */
   colors?: readonly number[];
+  /** Avatars lie down instead of sitting (beds, loungers). */
+  lie?: boolean;
+  /** Clicking switches between this many states (0 = off). `defaultState` when bought. */
+  states?: number;
+  defaultState?: number;
 }
 
 const FABRIC = [
@@ -26,7 +31,7 @@ const FABRIC = [
 export const FURNITURE = {
   plant: { name: 'Plante', icon: '🪴', price: 6, w: 1, d: 1 },
   cactus: { name: 'Kaktus', icon: '🌵', price: 5, w: 1, d: 1 },
-  lamp: { name: 'Gulvlampe', icon: '💡', price: 8, w: 1, d: 1 },
+  lamp: { name: 'Gulvlampe', icon: '💡', price: 8, w: 1, d: 1, states: 2, defaultState: 1 },
   rug: {
     name: 'Tæppe',
     icon: '🟥',
@@ -65,6 +70,8 @@ export const FURNITURE = {
     price: 25,
     w: 2,
     d: 2,
+    seat: true,
+    lie: true,
     colors: [0x5a77b0, 0xc94f3d, 0x5b8f4a, 0x6f4a8f, 0xe0a93b],
   },
   // Unlocked by badges
@@ -78,8 +85,26 @@ export const FURNITURE = {
     unlock: 'onboarded',
     colors: [0xe0a93b, 0xc94f3d, 0x3f7f86, 0x6f4a8f, 0x5b8f4a],
   },
-  tv: { name: 'Fjernsyn', icon: '📺', price: 22, w: 2, d: 1, unlock: 'onboarded' },
-  fireplace: { name: 'Pejs', icon: '🔥', price: 40, w: 2, d: 1, unlock: 'hotelkender' },
+  tv: {
+    name: 'Fjernsyn',
+    icon: '📺',
+    price: 22,
+    w: 2,
+    d: 1,
+    unlock: 'onboarded',
+    states: 4,
+    defaultState: 0,
+  },
+  fireplace: {
+    name: 'Pejs',
+    icon: '🔥',
+    price: 40,
+    w: 2,
+    d: 1,
+    unlock: 'hotelkender',
+    states: 2,
+    defaultState: 1,
+  },
   piano: {
     name: 'Klaver',
     icon: '🎹',
@@ -89,7 +114,16 @@ export const FURNITURE = {
     unlock: 'hotelkender',
     colors: [0x2a2a35, 0xf4efe6, 0x8a5634],
   },
-  jukebox: { name: 'Jukebox', icon: '🎵', price: 35, w: 1, d: 1, unlock: 'streak7' },
+  jukebox: {
+    name: 'Jukebox',
+    icon: '🎵',
+    price: 35,
+    w: 1,
+    d: 1,
+    unlock: 'streak7',
+    states: 2,
+    defaultState: 1,
+  },
   lounger: {
     name: 'Liggestol',
     icon: '🏖️',
@@ -97,6 +131,7 @@ export const FURNITURE = {
     w: 1,
     d: 2,
     seat: true,
+    lie: true,
     unlock: 'hotelkender',
     colors: [0x3f7f86, 0xc94f3d, 0xe0a93b, 0x2f4a7a, 0x5b8f4a],
   },

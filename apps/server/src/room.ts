@@ -36,6 +36,7 @@ export interface PlayerState {
   send: ((msg: ServerMsg) => void) | null;
   /** Icon of the badge shown by the name. */
   badge?: string;
+  level?: number;
   /** Time of the last arrow-key glide (for the speed check). */
   lastGlide?: number;
   /** Users whose chat this player does not want to see. */
@@ -98,6 +99,7 @@ export class RoomInstance {
       action: p.action,
       bot: p.bot,
       badge: p.badge,
+      level: p.level,
     };
   }
 

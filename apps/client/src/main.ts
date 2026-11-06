@@ -1,5 +1,6 @@
 import {
   BADGES,
+  levelOf,
   EVENTS,
   WEEKDAYS,
   type ActiveEvent,
@@ -8,6 +9,7 @@ import {
   canPlace,
   DOOR_TILE,
   findPath,
+  itemState,
   DEFAULT_LOOK,
   footprint,
   furniture,
@@ -46,7 +48,7 @@ import {
   signOut,
   type AuthConfig,
 } from './auth';
-import { buildFurniture } from './gfx/furniture';
+import { buildFurniture, drawTv } from './gfx/furniture';
 import { T, tw } from './gfx/helpers';
 import { createRoom } from './gfx/room';
 import { createStage } from './gfx/scene';
@@ -180,11 +182,18 @@ function bubble(id: string, name: string, text: string, whisper = false) {
 /* ---------------- furniture objects ---------------- */
 function placeObj(it: PlacedItem, lift = 0) {
   let g = objs.get(it.id);
-  if (!g || g.userData.type !== it.type || g.userData.color !== (it.color ?? 0)) {
+  const st = itemState(it);
+  if (
+    !g ||
+    g.userData.type !== it.type ||
+    g.userData.color !== (it.color ?? 0) ||
+    g.userData.state !== st
+  ) {
     if (g) furnRoot.remove(g);
-    g = buildFurniture(it.type, it.id, it.color ?? 0);
+    g = buildFurniture(it.type, it.id, it.color ?? 0, st);
     g.userData.type = it.type;
     g.userData.color = it.color ?? 0;
+    g.userData.state = st;
     furnRoot.add(g);
     objs.set(it.id, g);
   }
@@ -363,7 +372,7 @@ function handle(msg: ServerMsg) {
       if (panelKind === 'nav' && lastRooms) renderNavigator(lastRooms);
       return;
     case 'tag':
-      actors.get(msg.id)?.setBadge(msg.badge);
+      actors.get(msg.id)?.setTag(msg.level);
       if (me && msg.id === me.id && msg.shown !== undefined) {
         me.showBadge = msg.shown;
         if (panelKind === 'fig') renderFigure();
@@ -631,6 +640,12 @@ function renderShop() {
     .forEach((b) => b.addEventListener('click', () => startPlaceInv(Number(b.dataset.inv))));
 }
 
+function levelBox() {
+  if (!me) return '';
+  const l = levelOf(me);
+  const pct = Math.round(((l.xp - l.prev) / (l.next - l.prev)) * 100);
+  return `<h3>⭐ Level ${l.level}</h3><div class="xpbar"><i style="width:${pct}%"></i></div><p class="sub">${l.xp} XP · ${l.next - l.xp} XP til level ${l.level + 1}. Du får XP for tid på hotellet (1 pr. minut), opgaver (10) og badges (20).</p>`;
+}
 let confirmReset = false;
 let wearAfterBuy: string | null = null;
 function renderFigure() {
@@ -639,14 +654,8 @@ function renderFigure() {
     'fig',
     head('🧍 Min figur', 'Køb sejt tøj med dine mønter – nogle ting låses op med badges.') +
       `<div class="row"><label>Motto</label><input id="motto" maxlength="60" value="${esc(me.motto)}" style="width:100%"></div><div id="lookEd"></div>
-    <h3>Mine badges</h3><p class="sub">Klik på et badge for at vise det ved dit navn.</p><div class="badges">${me.badges
-      .map((b) => {
-        const on = me!.showBadge === b || (me!.showBadge === undefined && b === me!.badges.at(-1));
-        return `<button type="button" class="badge${on ? ' on' : ''}" data-sb="${b}" title="${esc(BADGES[b].text)}">${BADGES[b].icon} ${BADGES[b].name}</button>`;
-      })
-      .join(
-        '',
-      )}<button type="button" class="badge${me.showBadge === null ? ' on' : ''}" data-sb="">Vis intet</button></div>
+    ${levelBox()}
+    <h3>Mine badges</h3><div class="badges">${me.badges.map((b) => `<span class="badge" title="${esc(BADGES[b].text)}">${BADGES[b].icon} ${BADGES[b].name}</span>`).join('')}</div>
     <h3>Konto</h3><button id="logout" class="small danger">Log ud på denne enhed</button>
     ${me.role !== 'user' ? `<button id="openAdmin" class="small">🛡️ Moderation</button>` : ''}
     ${canReset ? `<h3>Test</h3><p class="sub">Nulstil mønter, opgaver, badges og dit værelse, og prøv starten igen. Navn, figur og venner beholdes.</p><button id="resetMe" class="small danger">🔄 Start forfra</button>` : ''}`,
@@ -1148,7 +1157,9 @@ function onHover() {
   const onDoor = !build && ray.intersectObject(roomGfx.doorGroup, true).length > 0;
   const onActor = !build && !!hitActor();
   cv.style.cursor =
-    onDoor || onActor || (it && (build || furniture(it.type).seat)) ? 'pointer' : 'default';
+    onDoor || onActor || (it && (build || furniture(it.type).seat || furniture(it.type).states))
+      ? 'pointer'
+      : 'default';
   if (t && !build && !it && !onActor) {
     hoverM.visible = true;
     hoverM.position.set(tw(t.x), 0.012, tw(t.z));
@@ -1173,6 +1184,8 @@ function onClick() {
     return openNavigator();
   }
   const it = hitItem(false);
+  if (it && furniture(it.type).states && (room?.canBuild || me?.role !== 'user'))
+    return net.send({ t: 'use', itemId: it.id });
   if (it && furniture(it.type).seat) return net.send({ t: 'sit', itemId: it.id });
   const t = hitTile();
   if (t) {
@@ -1627,12 +1640,14 @@ function loop() {
   keyboardWalk(dt);
   for (const a of actors.values()) a.update(dt, now, items);
   roomGfx.update(dt, time);
-  for (const g of objs.values())
+  for (const g of objs.values()) {
+    if (g.userData.tv) drawTv(g.userData.tv as Parameters<typeof drawTv>[0], time);
     if (g.userData.type === 'aquarium')
       g.traverse((m) => {
         if (m instanceof T.Mesh && m.scale.x > 1.5)
           m.position.x = Math.sin(time * 0.8 + m.position.y * 10) * 0.25;
       });
+  }
   for (const a of actors.values()) {
     const [x, y] = screen(a, 1.5);
     a.tag.style.transform = `translate(${x}px,${y}px) translate(-50%,-100%)`;

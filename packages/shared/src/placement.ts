@@ -10,6 +10,13 @@ export interface PlacedItem {
   rot: number;
   /** Index into the item's colour choices (0 = default). */
   color?: number;
+  /** For switchable items (lamps, TV…): 0 = off, 1.. = on / channel. */
+  state?: number;
+}
+
+/** Current state of a switchable item (falls back to its default). */
+export function itemState(it: Pick<PlacedItem, 'type' | 'state'>): number {
+  return it.state ?? furniture(it.type).defaultState ?? 0;
 }
 
 export function footprint(it: Pick<PlacedItem, 'type' | 'rot'>): { w: number; d: number } {

@@ -23,7 +23,7 @@ const lighter = (c: number, k = 0.18) => {
   return (f(r) << 16) | (f(g) << 8) | f(b);
 };
 
-const BUILD: Record<FurnitureType, (c: number) => T.Group> = {
+const BUILD: Record<FurnitureType, (c: number, state: number) => T.Group> = {
   plant() {
     const g = new T.Group();
     g.add(cyl(0.2, 0.15, 0.32, M(0xc0643b), 0, 0.16, 0));
@@ -41,25 +41,31 @@ const BUILD: Record<FurnitureType, (c: number) => T.Group> = {
       g.add(sph(r, m, x, y, z));
     return g;
   },
-  lamp() {
+  lamp(_c, on) {
     const g = new T.Group();
     g.add(cyl(0.18, 0.2, 0.05, woodDark, 0, 0.025, 0));
     g.add(cyl(0.025, 0.025, 1.35, gold, 0, 0.72, 0));
     const sh = new T.Mesh(
       new T.CylinderGeometry(0.16, 0.3, 0.34, 26, 1, true),
-      M(0xf6d9a8, { emissive: 0xffaa55, emissiveIntensity: 1.3, side: T.DoubleSide }),
+      M(0xf6d9a8, {
+        emissive: 0xffaa55,
+        emissiveIntensity: on ? 1.3 : 0,
+        side: T.DoubleSide,
+      }),
     );
     sh.position.y = 1.47;
     g.add(shade(sh));
     const bulb = new T.Mesh(
       new T.SphereGeometry(0.07, 14, 10),
-      new T.MeshBasicMaterial({ color: 0xfff1c9 }),
+      new T.MeshBasicMaterial({ color: on ? 0xfff1c9 : 0x8a8478 }),
     );
     bulb.position.y = 1.4;
     g.add(bulb);
-    const pl = new T.PointLight(0xffaa55, 1.0, 5.5, 2);
-    pl.position.y = 1.3;
-    g.add(pl);
+    if (on) {
+      const pl = new T.PointLight(0xffaa55, 1.0, 5.5, 2);
+      pl.position.y = 1.3;
+      g.add(pl);
+    }
     return g;
   },
   rug(main) {
@@ -216,20 +222,42 @@ const BUILD: Record<FurnitureType, (c: number) => T.Group> = {
     g.add(base, back);
     return g;
   },
-  tv() {
+  tv(_c, channel) {
     const g = new T.Group();
     g.add(rbox(1.7, 0.42, 0.5, woodDark, 0, 0.21, -0.12));
     g.add(rbox(1.5, 0.86, 0.06, M(0x1c1c22, { roughness: 0.3 }), 0, 0.95, -0.2));
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 140;
+    const tex = new T.CanvasTexture(canvas);
+    tex.encoding = T.sRGBEncoding;
     const screen = new T.Mesh(
       new T.PlaneGeometry(1.4, 0.76),
-      M(0x5fb0d8, { emissive: 0x3a8fd0, emissiveIntensity: 0.9, roughness: 0.2 }),
+      channel
+        ? new T.MeshBasicMaterial({ map: tex, toneMapped: false })
+        : M(0x15171c, { roughness: 0.15, metalness: 0.3 }),
     );
     screen.position.set(0, 0.95, -0.165);
     g.add(screen);
     g.add(cyl(0.06, 0.08, 0.1, M(0x1c1c22), 0, 0.47, -0.2));
+    g.add(
+      sph(
+        0.018,
+        M(channel ? 0x4fd16b : 0xd8433a, { emissive: channel ? 0x4fd16b : 0x5a1010 }),
+        0.68,
+        0.56,
+        -0.165,
+      ),
+    );
+    if (channel) {
+      const pl = new T.PointLight(0x9ad0ff, 0.5, 3.5, 2);
+      pl.position.set(0, 0.95, 0.4);
+      g.add(pl);
+      g.userData.tv = { canvas, tex, channel };
+    }
     return g;
   },
-  fireplace() {
+  fireplace(_c, on) {
     const g = new T.Group();
     const brick = M(0xa9573a, { roughness: 0.95 });
     g.add(rbox(1.9, 1.15, 0.5, brick, 0, 0.575, -0.22));
@@ -245,10 +273,13 @@ const BUILD: Record<FurnitureType, (c: number) => T.Group> = {
       new T.MeshBasicMaterial({ color: 0xffe08a }),
     );
     fire2.position.set(0.08, 0.26, 0.04);
-    g.add(fire, fire2, rbox(0.6, 0.08, 0.14, woodDark, 0, 0.1, 0));
-    const pl = new T.PointLight(0xff8a3a, 1.2, 4.5, 2);
-    pl.position.set(0, 0.5, 0.3);
-    g.add(pl);
+    g.add(rbox(0.6, 0.08, 0.14, woodDark, 0, 0.1, 0));
+    if (on) {
+      g.add(fire, fire2);
+      const pl = new T.PointLight(0xff8a3a, 1.2, 4.5, 2);
+      pl.position.set(0, 0.5, 0.3);
+      g.add(pl);
+    }
     g.add(
       cyl(0.06, 0.06, 0.2, gold, -0.7, 1.35, -0.2),
       cyl(0.06, 0.06, 0.2, gold, 0.7, 1.35, -0.2),
@@ -271,13 +302,13 @@ const BUILD: Record<FurnitureType, (c: number) => T.Group> = {
     g.add(rbox(0.36, 0.26, 0.04, M(0xf6f3ea), 0, 1.0, 0.07));
     return g;
   },
-  jukebox() {
+  jukebox(_c, on) {
     const g = new T.Group();
     g.add(rbox(0.8, 1.2, 0.55, M(0x8a3b2a, { roughness: 0.4 }), 0, 0.6, -0.05));
     const top = cyl(0.4, 0.4, 0.55, M(0x8a3b2a, { roughness: 0.4 }), 0, 1.2, -0.05, 24);
     top.rotation.x = Math.PI / 2;
     g.add(top);
-    const glow = M(0xffc35a, { emissive: 0xff9a2a, emissiveIntensity: 1.2 });
+    const glow = M(0xffc35a, { emissive: 0xff9a2a, emissiveIntensity: on ? 1.2 : 0.05 });
     g.add(rbox(0.62, 0.4, 0.04, glow, 0, 1.05, 0.23));
     g.add(
       rbox(
@@ -294,9 +325,12 @@ const BUILD: Record<FurnitureType, (c: number) => T.Group> = {
       rbox(0.05, 1.1, 0.05, gold, -0.36, 0.6, 0.23),
       rbox(0.05, 1.1, 0.05, gold, 0.36, 0.6, 0.23),
     );
-    const pl = new T.PointLight(0xffb060, 0.7, 3.5, 2);
-    pl.position.set(0, 1.0, 0.5);
-    g.add(pl);
+    if (on) {
+      const pl = new T.PointLight(0xffb060, 0.7, 3.5, 2);
+      pl.position.set(0, 1.0, 0.5);
+      g.add(pl);
+      g.userData.music = true;
+    }
     return g;
   },
   lounger(c) {
@@ -420,13 +454,93 @@ const BUILD: Record<FurnitureType, (c: number) => T.Group> = {
   },
 };
 
-export function buildFurniture(type: FurnitureType, itemId: number, color = 0): T.Group {
+export function buildFurniture(type: FurnitureType, itemId: number, color = 0, state = 0): T.Group {
   const colors = furniture(type).colors;
-  const g = BUILD[type](colors?.[color] ?? colors?.[0] ?? 0xffffff);
+  const g = BUILD[type](colors?.[color] ?? colors?.[0] ?? 0xffffff, state);
   const walk = type === 'rug';
   g.traverse((m) => {
     m.userData.itemId = itemId;
     if (walk) m.castShadow = false;
   });
   return g;
+}
+
+/** Draws the current frame of a TV channel. */
+export function drawTv(
+  tv: { canvas: HTMLCanvasElement; tex: T.CanvasTexture; channel: number },
+  t: number,
+) {
+  const g = tv.canvas.getContext('2d')!;
+  const w = tv.canvas.width;
+  const h = tv.canvas.height;
+  if (tv.channel === 1) {
+    // Hutel Nyt: studio + ticker
+    const gr = g.createLinearGradient(0, 0, 0, h);
+    gr.addColorStop(0, '#1b3a6b');
+    gr.addColorStop(1, '#0d1d38');
+    g.fillStyle = gr;
+    g.fillRect(0, 0, w, h);
+    g.fillStyle = '#f2c25a';
+    g.font = 'bold 22px sans-serif';
+    g.fillText('HUTEL NYT', 14, 30);
+    g.fillStyle = '#f6efe0';
+    g.font = '14px sans-serif';
+    g.fillText('Direkte fra lobbyen', 14, 50);
+    g.fillStyle = '#ffd5b0';
+    g.beginPath();
+    g.arc(190, 70, 22, 0, 7);
+    g.fill();
+    g.fillStyle = '#2f4a7a';
+    g.fillRect(166, 92, 48, 30);
+    g.fillStyle = '#c0392b';
+    g.fillRect(0, h - 26, w, 26);
+    g.fillStyle = '#fff';
+    g.font = 'bold 14px sans-serif';
+    const news =
+      'Fredagsfest i caféen kl. 19 ✦ Luna har bagt æblekage ✦ Nye møbler i butikken ✦ Bob og Bent har det godt i akvariet ✦ ';
+    const x = w - ((t * 60) % (g.measureText(news).width + w));
+    g.fillText(news, x, h - 8);
+  } else if (tv.channel === 2) {
+    // Fiskekanalen
+    g.fillStyle = '#1f7fae';
+    g.fillRect(0, 0, w, h);
+    g.fillStyle = '#e9d6a0';
+    g.fillRect(0, h - 18, w, 18);
+    for (let i = 0; i < 6; i++) {
+      const fx = ((t * (20 + i * 9) + i * 70) % (w + 40)) - 20;
+      const fy = 25 + i * 17 + Math.sin(t * 2 + i) * 6;
+      g.fillStyle = ['#ff8c3a', '#ffd24a', '#ff6aa8', '#7affc8', '#ffffff', '#ffb35c'][i]!;
+      g.beginPath();
+      g.ellipse(fx, fy, 11, 6, 0, 0, 7);
+      g.fill();
+      g.beginPath();
+      g.moveTo(fx - 10, fy);
+      g.lineTo(fx - 18, fy - 6);
+      g.lineTo(fx - 18, fy + 6);
+      g.fill();
+    }
+    g.fillStyle = 'rgba(255,255,255,.6)';
+    for (let i = 0; i < 8; i++) {
+      const by = h - ((t * 30 + i * 37) % h);
+      g.beginPath();
+      g.arc(30 + i * 28, by, 2.5, 0, 7);
+      g.fill();
+    }
+  } else {
+    // Musikkanalen: equalizer
+    g.fillStyle = '#1a1030';
+    g.fillRect(0, 0, w, h);
+    const n = 16;
+    for (let i = 0; i < n; i++) {
+      const v = 0.3 + 0.7 * Math.abs(Math.sin(t * (2 + (i % 5)) + i));
+      const bh = v * (h - 30);
+      const hue = (i / n) * 300 + t * 40;
+      g.fillStyle = `hsl(${hue % 360},80%,60%)`;
+      g.fillRect(8 + i * 15, h - 10 - bh, 11, bh);
+    }
+    g.fillStyle = '#fff';
+    g.font = 'bold 14px sans-serif';
+    g.fillText('♪ HUTEL FM', 10, 20);
+  }
+  tv.tex.needsUpdate = true;
 }

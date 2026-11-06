@@ -848,3 +848,24 @@ button.badge.on {
   border-color: #ffb347;
   box-shadow: 0 0 0 1px #ffb347 inset;
 }
+
+.tag .lv {
+  margin-left: 5px;
+  padding: 0 5px;
+  border-radius: 6px;
+  background: #ffb347;
+  color: #3a2414;
+  font-size: 0.85em;
+  font-weight: 700;
+}
+.xpbar {
+  height: 8px;
+  border-radius: 6px;
+  background: rgba(255, 240, 220, 0.15);
+  overflow: hidden;
+}
+.xpbar i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #ffb347, #ffd27a);
+}
