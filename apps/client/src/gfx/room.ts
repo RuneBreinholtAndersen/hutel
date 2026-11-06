@@ -7,6 +7,7 @@ import {
   type RoomShape,
   type RoomTheme,
   type TileHeights,
+  type AptDoor,
   STEP_HEIGHT,
   tileHeight,
   type WallpaperDef,
@@ -651,10 +652,56 @@ export function createRoom(scene: T.Scene) {
     winSpot.target.position.set(1.6, 0, wz + 0.9);
   }
 
+  /** Doors to the owner's other apartment rooms. */
+  const aptDoors = new T.Group();
+  scene.add(aptDoors);
+  function setAptDoors(doors: AptDoor[]) {
+    for (const c of [...aptDoors.children]) aptDoors.remove(c);
+    doors.forEach((d, i) => {
+      const g = new T.Group();
+      const leafMat = M(0x8a5634, { roughness: 0.6 });
+      g.add(box(1.0, 2.2, 0.06, trim, 0, 1.1, 0.03));
+      const leaf = box(0.84, 2.05, 0.08, leafMat, 0, 1.03, 0.07);
+      g.add(leaf);
+      for (const [px, py, h] of [
+        [-0.18, 1.5, 0.7],
+        [0.18, 1.5, 0.7],
+        [-0.18, 0.55, 0.6],
+        [0.18, 0.55, 0.6],
+      ] as const)
+        g.add(box(0.3, h, 0.03, M(0x9c6440), px, py, 0.12));
+      g.add(sph(0.045, gold, 0.3, 1.0, 0.13));
+      const sign = new T.Mesh(
+        new T.PlaneGeometry(1.3, 0.34),
+        new T.MeshBasicMaterial({
+          map: textTex(
+            `${d.icon} ${d.name}`,
+            'bold 66px sans-serif',
+            '#ffe6b8',
+            512,
+            128,
+            '#3a2616',
+          ),
+        }),
+      );
+      sign.position.set(0, 2.45, 0.07);
+      g.add(sign);
+      if (d.wall === 0) g.position.set(tw(d.idx), 0, -N / 2);
+      else {
+        g.rotation.y = Math.PI / 2;
+        g.position.set(-N / 2, 0, tw(d.idx));
+      }
+      g.traverse((m) => (m.userData.aptDoor = i));
+      aptDoors.add(g);
+    });
+  }
+
   return {
     tiles,
     walls,
     doorGroup,
+    aptDoors,
+    setAptDoors,
     setTheme,
     /** Owner's own wallpaper/floor on top of the theme (null = the theme's). */
     setDecor(wall: WallpaperDef | null, floor: FloorDef | null) {

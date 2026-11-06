@@ -1,5 +1,5 @@
 import type { PlacedItem } from './placement';
-import { leftWallLength, type Floor } from './layout';
+import { isFloorTile, leftWallLength, type Floor } from './layout';
 
 export type RoomTheme =
   | 'home'
@@ -93,6 +93,35 @@ export function themeWallBlocks(
 ): { back?: readonly number[]; left?: readonly number[] } {
   const c = themeWindowTile(theme, floor);
   return c === null ? {} : { left: [c - 1, c, c + 1] };
+}
+
+/** A door inside your apartment that leads to another of your rooms. */
+export interface AptDoor {
+  roomId: string;
+  name: string;
+  icon: string;
+  /** 0 = back wall (idx = x), 1 = left wall (idx = z). */
+  wall: 0 | 1;
+  idx: number;
+}
+
+/** The floor tile in front of an apartment door (walk onto it to go through). */
+export const doorSpot = (d: Pick<AptDoor, 'wall' | 'idx'>): [number, number] =>
+  d.wall === 0 ? [d.idx, 0] : [0, d.idx];
+
+/**
+ * Free places for apartment doors in a room: three on the back wall (away from the main door), then
+ * along the left wall from the front, skipping the theme's window.
+ */
+export function doorSlots(theme: RoomTheme, floor: Floor): { wall: 0 | 1; idx: number }[] {
+  const out: { wall: 0 | 1; idx: number }[] = [];
+  for (const x of [2, 0, 4]) if (isFloorTile(floor, x, 0)) out.push({ wall: 0, idx: x });
+  const len = leftWallLength(floor);
+  const win = themeWallBlocks(theme, floor).left ?? [];
+  for (let z = len - 2; z >= 1 && out.length < 6; z -= 2)
+    if (!win.includes(z) && !win.includes(z - 1) && !win.includes(z + 1))
+      out.push({ wall: 1, idx: z });
+  return out;
 }
 
 /** The door tile in every room (in front of the door on the back wall). */

@@ -25,6 +25,7 @@ Sidst opdateret: 6. november 2026. Rækkefølge: voksen-Hutel i lukket beta før
 
 ## Færdigt 6. november (eftermiddag)
 
+- ✅ Døre i lejligheden: stuen har en dør til hvert af dine andre rum, de andre rum en dør tilbage; gå ind ad døren (klik eller piletaster) for at komme ind
 - ✅ Profil som hjemmeside: level, online, kæledyr, venner, værelser, motto og gæstebog (ejer, skribent og moderatorer kan slette)
 - ✅ Teleportere: købes i par (lv 2); den ene placeres, tvillingen ryger i inventaret og kan stilles i et andet rum eller byttes til en ven
 - ✅ Marked: sæt ting fra inventaret til salg, køb fra andre også når sælger er offline, 5 % gebyr, alle salg logges

@@ -16,6 +16,7 @@ import {
   type RoomShape,
   type RoomCategory,
   type TileHeights,
+  type AptDoor,
   canStep,
   type RoomAccess,
   type RoomTheme,
@@ -59,6 +60,7 @@ export interface RoomMeta {
   shape: RoomShape;
   category: RoomCategory;
   heights: TileHeights;
+  doors: AptDoor[];
   paidSize: number;
   wall: string | null;
   floor: string | null;
@@ -133,6 +135,7 @@ export class RoomInstance {
       shape: this.meta.shape,
       category: this.meta.category,
       heights: this.meta.heights,
+      doors: this.meta.doors,
       paidSize: this.meta.paidSize,
       wall: this.meta.wall,
       floor: this.meta.floor,
@@ -337,12 +340,12 @@ export class RoomInstance {
     const occupied = [...this.players.values()]
       .filter((p) => p.seatId !== it.id)
       .map((p) => this.tileOf(p));
-    return canPlace(
-      this.floor(),
-      others,
-      it,
-      occupied,
-      themeWallBlocks(this.meta.theme, this.floor()),
-    );
+    const b = themeWallBlocks(this.meta.theme, this.floor());
+    // Pictures can't hang over the apartment doors either.
+    const blocks = {
+      back: [...(b.back ?? []), ...this.meta.doors.filter((d) => d.wall === 0).map((d) => d.idx)],
+      left: [...(b.left ?? []), ...this.meta.doors.filter((d) => d.wall === 1).map((d) => d.idx)],
+    };
+    return canPlace(this.floor(), others, it, occupied, blocks);
   }
 }

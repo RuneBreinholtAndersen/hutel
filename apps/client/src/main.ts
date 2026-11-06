@@ -328,6 +328,7 @@ function setRoom(view: RoomView) {
   roomGfx.setSize(view.size, view.shape, view.heights);
   stage.setRoomSize(view.size);
   roomGfx.setTheme(view.theme);
+  roomGfx.setAptDoors(view.doors);
   applyDecor();
   for (const it of view.items) {
     items.set(it.id, it);
@@ -1677,7 +1678,13 @@ function heldOk() {
   const occupied = [...actors.values()]
     .filter((a) => a.seatId !== held!.item.id)
     .map((a) => a.tile());
-  return canPlace(fl(), others, held.item, occupied, room ? themeWallBlocks(room.theme, fl()) : {});
+  const b = room ? themeWallBlocks(room.theme, fl()) : {};
+  const doors = room?.doors ?? [];
+  const blocks = {
+    back: [...(b.back ?? []), ...doors.filter((d) => d.wall === 0).map((d) => d.idx)],
+    left: [...(b.left ?? []), ...doors.filter((d) => d.wall === 1).map((d) => d.idx)],
+  };
+  return canPlace(fl(), others, held.item, occupied, blocks);
 }
 function updHeld() {
   if (!held) {
@@ -1863,7 +1870,10 @@ function onHover() {
     return;
   }
   const it = hitItem(build);
-  const onDoor = !build && ray.intersectObject(roomGfx.doorGroup, true).length > 0;
+  const onDoor =
+    !build &&
+    (ray.intersectObject(roomGfx.doorGroup, true).length > 0 ||
+      ray.intersectObject(roomGfx.aptDoors, true).length > 0);
   const onActor = !build && !!hitActor();
   cv.style.cursor =
     onDoor ||
@@ -1912,6 +1922,12 @@ function onClick() {
   }
   const a = hitActor();
   if (a) return net.send({ t: 'profile', userId: a.id });
+  const aptHit = ray.intersectObject(roomGfx.aptDoors, true)[0];
+  if (aptHit && room) {
+    // Walk into the door: arriving in front of it takes you through.
+    const i = aptHit.object.userData.aptDoor as number;
+    if (room.doors[i]) return net.send({ t: 'aptDoor', index: i });
+  }
   if (ray.intersectObject(roomGfx.doorGroup, true).length) {
     if (!onboarded()) return toast('Døren er låst 🔒 Klar startopgaverne først');
     return openNavigator();

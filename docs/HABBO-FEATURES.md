@@ -2,7 +2,7 @@
 
 Listen sammenligner Hutel med de klassiske funktioner fra Habbo Hotel. Navne, grafik og møbler kopieres ikke: vi laver vores egen version af idéen.
 
-_Senest opdateret: 6. november 2026 (profil med gæstebog, teleportere og marked)._
+_Senest opdateret: 6. november 2026 (døre mellem rummene i lejligheden)._
 
 **Sådan læses den**
 - **Værdi**: hvor meget det betyder for spillerne (★–★★★)
@@ -97,6 +97,7 @@ Det her mener jeg giver mest spil for pengene, i den rækkefølge:
 - ✅ Isometrisk hotel med lobby, café, tagterrasse, spillehal og pool
 - ✅ Store offentlige rum (lobby og café 12×12) og loft på 25 gæster pr. rum
 - ✅ Eget værelse + lejlighed med soveværelse, badeværelse, køkken og altan
+- ✅ Døre mellem rummene i lejligheden – man går bare ind ad døren
 - ✅ Byg-tilstand: flyt, rotér, gem væk og placér møbler; farvevarianter
 - ✅ Profil som hjemmeside med venner, værelser, kæledyr og gæstebog
 - ✅ Teleportere i par – også mellem forskellige brugeres værelser

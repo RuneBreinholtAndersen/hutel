@@ -52,6 +52,9 @@ import {
   buildGrid,
   isFree,
   canStep,
+  doorSlots,
+  doorSpot,
+  type AptDoor,
   MAX_USER_ROOM_SIZE,
   SIZE_PRICES,
   renovationPrice,
@@ -128,6 +131,8 @@ interface Session {
   player: PlayerState | null;
   limits: Record<LimitKind, Bucket>;
   strikes: number;
+  /** Last time this player went through an apartment door (prevents bouncing back). */
+  doorAt?: number;
 }
 
 const GUIDE_TIPS: Record<(typeof QUESTS)[number]['id'], string> = {
@@ -162,6 +167,7 @@ const LIMIT_FOR: Partial<Record<ClientMsg['t'], LimitKind>> = {
   renovate: 'build',
   setHeight: 'build',
   teleport: 'move',
+  aptDoor: 'move',
   market: 'nav',
   marketSell: 'build',
   marketBuy: 'build',
@@ -232,6 +238,7 @@ export class Hotel {
         shape: 'square' as const,
         category: def.category,
         heights: {},
+        doors: [],
         paidSize: def.size ?? ROOM_SIZE,
         wall: null,
         floor: null,
@@ -410,6 +417,8 @@ export class Hotel {
       const user = this.store.getUser(p.id);
       const s = this.byUser.get(p.id);
       if (!user || !s) return;
+      const door = !seated && room.meta.doors.find((d) => doorSpot(d).join() === tile.join());
+      if (door) return this.throughDoor(s, room, door);
       if (seated) this.quest(s, user, 'sit');
       if (seated && room.meta.id === 'cafe') this.quest(s, user, 'cafeSit');
       if (seated && room.meta.id !== user.homeRoomId) this.daily(s, user, 'd_sit');
@@ -458,6 +467,7 @@ export class Hotel {
         shape: rec.shape ?? 'square',
         category: rec.category ?? 'andet',
         heights: (rec.heights ??= {}),
+        doors: [],
         paidSize: rec.paidSize ?? ROOM_SIZE,
         wall: rec.wall ?? null,
         floor: rec.floor ?? null,
@@ -469,6 +479,7 @@ export class Hotel {
       rec.items,
       this.hooks,
     );
+    room.meta.doors = this.aptDoors(rec);
     this.rooms.set(id, room);
     return room;
   }
@@ -1067,9 +1078,17 @@ export class Hotel {
         this.store.resetProgress(user);
         return this.send(s, { t: 'resetDone' });
       }
-      case 'glide':
-        if (room && player) room.glide(player, msg.x, msg.z, msg.run);
+      case 'glide': {
+        if (!room || !player) return;
+        room.glide(player, msg.x, msg.z, msg.run);
+        // Walking into an apartment door with the arrow keys takes you through it.
+        const t = room.tileOf(player);
+        const door = room.meta.doors.find(
+          (d) => doorSpot(d).join() === t.join() && (d.wall === 0 ? msg.z < -0.15 : msg.x < -0.15),
+        );
+        if (door) this.throughDoor(s, room, door);
         return;
+      }
       case 'sit':
         if (room && player) room.sit(player, msg.itemId);
         return;
@@ -1157,6 +1176,25 @@ export class Hotel {
         return this.guestbookDelete(s, user, msg.userId, msg.id);
       case 'teleport':
         return this.teleport(s, user, msg.itemId);
+      case 'aptDoor': {
+        const d = room?.meta.doors[msg.index];
+        if (!room || !player || !d) return;
+        const [dx, dz] = doorSpot(d);
+        const here = room.tileOf(player);
+        if (Math.max(Math.abs(here[0] - dx), Math.abs(here[1] - dz)) <= 1)
+          return this.throughDoor(s, room, d);
+        // Walk to the door (or as close as furniture allows), then go through.
+        const goal = room.walk(player, [dx, dz]) ? null : this.freeNeighbour(room, dx, dz);
+        if (goal && !room.walk(player, goal)) return;
+        if (!player.path.length) return;
+        const ms = (player.path.length / WALK_SPEED) * 1000 + 250;
+        setTimeout(() => {
+          if (s.room !== room || s.player !== player) return;
+          const t = room.tileOf(player);
+          if (Math.max(Math.abs(t[0] - dx), Math.abs(t[1] - dz)) <= 1) this.throughDoor(s, room, d);
+        }, ms);
+        return;
+      }
       case 'renovate':
         return this.renovate(s, user, msg.size, msg.shape as RoomShape);
       case 'petFeed':
@@ -1307,6 +1345,7 @@ export class Hotel {
     rec.paidSize = room.meta.paidSize = Math.max(paid, size);
     if (price) this.coins(s, user, -price);
     this.store.touch();
+    room.meta.doors = this.aptDoors(rec);
     // Everyone starts again at the door of the new floor plan.
     const here = [...room.players.values()];
     for (const p of here) room.remove(p.id);
@@ -1583,6 +1622,56 @@ export class Hotel {
     return out;
   }
 
+  /** Doors in an apartment room: the living room leads to every other room, the others back to it. */
+  private aptDoors(rec: RoomRecord): AptDoor[] {
+    const owner = this.store.getUser(rec.ownerId);
+    if (!owner) return [];
+    const apt = this.apartment(owner);
+    if (apt.length < 2 || !apt.some((r) => r.id === rec.id)) return [];
+    const living = apt[0]!;
+    const targets = rec.id === living.id ? apt.slice(1) : [living];
+    const floor = { size: rec.size ?? ROOM_SIZE, shape: rec.shape ?? 'square' };
+    const slots = doorSlots(rec.theme ?? 'home', floor);
+    return targets.slice(0, slots.length).map((t, i) => ({
+      roomId: t.id,
+      // Short label for the sign above the door ("Badeværelse", "Stue").
+      name:
+        t.kind === 'living'
+          ? 'Stue'
+          : (APARTMENT_ROOMS.find((a) => a.kind === t.kind)?.name ?? t.name),
+      icon:
+        t.kind === 'living' ? '🛋️' : (APARTMENT_ROOMS.find((a) => a.kind === t.kind)?.icon ?? '🚪'),
+      ...slots[i]!,
+    }));
+  }
+
+  /** New doors after buying or rebuilding a room; everyone inside sees them at once. */
+  private refreshAptDoors(owner: UserRecord) {
+    for (const a of this.apartment(owner)) {
+      const room = this.rooms.get(a.id);
+      const rec = this.store.getRoom(a.id);
+      if (!room || !rec) continue;
+      const doors = this.aptDoors(rec);
+      if (JSON.stringify(doors) === JSON.stringify(room.meta.doors)) continue;
+      room.meta.doors = doors;
+      for (const p of room.humans()) {
+        const ps = this.byUser.get(p.id);
+        if (ps) this.send(ps, { t: 'room', room: room.roomView(p.id), serverTime: Date.now() });
+      }
+    }
+  }
+
+  private throughDoor(s: Session, room: RoomInstance, door: AptDoor) {
+    if (s.room !== room) return;
+    if (s.doorAt && Date.now() - s.doorAt < 1500) return;
+    s.doorAt = Date.now();
+    const target = this.loadRoom(door.roomId);
+    if (!target) return;
+    // Arrive in front of the door that leads back.
+    const back = target.meta.doors.find((d) => d.roomId === room.meta.id);
+    this.join(s, target.meta.id, undefined, back ? doorSpot(back) : undefined);
+  }
+
   private buyRoom(s: Session, user: UserRecord, kind: ApartmentKind) {
     const def = APARTMENT_ROOMS.find((r) => r.kind === kind)!;
     if (user.apartment?.[kind] && this.store.getRoom(user.apartment[kind]!))
@@ -1602,6 +1691,7 @@ export class Hotel {
     this.send(s, { t: 'apartment', rooms: this.apartment(user) });
     this.toast(s, `${def.icon} Dit nye ${def.name.toLowerCase()} er klar!`);
     this.join(s, rec.id);
+    this.refreshAptDoors(user);
   }
 
   /* ---------------- inventory ---------------- */

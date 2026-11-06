@@ -3,7 +3,13 @@ import { FURNITURE_TYPES, type FurnitureType } from './catalog';
 import { CHAT_MAX_LENGTH, MAX_ROOM_SIZE } from './constants';
 import { LookSchema, type Look } from './look';
 import type { PlacedItem } from './placement';
-import { ROOM_CATEGORY_IDS, type RoomAccess, type RoomCategory, type RoomTheme } from './rooms';
+import {
+  ROOM_CATEGORY_IDS,
+  type AptDoor,
+  type RoomAccess,
+  type RoomCategory,
+  type RoomTheme,
+} from './rooms';
 import type { BadgeId, DailyView, QuestId } from './progress';
 import type { ActiveEvent } from './events';
 import {
@@ -50,6 +56,8 @@ export const ClientMsgSchema = z.discriminatedUnion('t', [
   /** Take a pet out (it follows you) or send it home (null). */
   z.object({ t: z.literal('petOut'), id: z.string().max(40).nullable() }),
   z.object({ t: z.literal('petFeed') }),
+  /** Go through one of the apartment doors (walks there first if needed). */
+  z.object({ t: z.literal('aptDoor'), index: z.number().int().min(0).max(10) }),
   /** Step into a teleporter (walks there first if needed). */
   z.object({ t: z.literal('teleport'), itemId: z.number().int() }),
   z.object({ t: z.literal('guestbookWrite'), userId, text: z.string().min(1).max(200) }),
@@ -234,6 +242,8 @@ export interface RoomView {
   category: RoomCategory;
   /** Raised tiles (stairs and platforms). */
   heights: TileHeights;
+  /** Doors to the owner's other apartment rooms. */
+  doors: AptDoor[];
   /** Biggest size the owner has paid for (renovating up to it again is free). */
   paidSize: number;
   /** Wallpaper / floor chosen by the owner (null = the theme's own). */

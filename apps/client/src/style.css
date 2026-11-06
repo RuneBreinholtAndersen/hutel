@@ -1005,3 +1005,12 @@ button.badge.on {
 .mk {
   text-align: center;
 }
+/* Many buttons: keep the chat box usable on smaller screens. */
+#chatForm {
+  min-width: 220px;
+}
+@media (max-width: 1500px) {
+  #bar > button span {
+    display: none;
+  }
+}

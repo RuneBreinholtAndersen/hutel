@@ -852,10 +852,33 @@ describe('multiplayer', () => {
     await c.waitFor('itemPut', (m) => m.item.type === 'teleport' && m.item.pair === twin.pair);
     c.send({ t: 'join', roomId: u.homeRoomId });
     await c.waitFor('room', (m) => m.room.id === u.homeRoomId);
+    c.msgs.length = 0;
     c.send({ t: 'teleport', itemId: put.item.id });
     const arrived = await c.waitFor('room', (m) => m.room.id === bedroom.id, 8000);
     const me = arrived.room.players.find((p) => p.id === g.userId)!;
     expect(Math.max(Math.abs(me.x - 2), Math.abs(me.z - 5))).toBeLessThanOrEqual(1);
+    c.ws.close();
+  }, 15_000);
+
+  it('walks between apartment rooms through their doors', async () => {
+    const { c, g } = await login('Lejligheden');
+    const u = app.store.getUser(g.userId)!;
+    u.onlineSec = 3 * 3600;
+    u.coins = 200;
+    c.send({ t: 'buyRoom', kind: 'bedroom' });
+    const bed = await c.waitFor('room', (m) => m.room.theme === 'bedroom');
+    const back = bed.room.doors[0]!;
+    expect(back.roomId).toBe(u.homeRoomId);
+    // Walk into the door back to the living room…
+    c.msgs.length = 0;
+    c.send({ t: 'aptDoor', index: 0 });
+    const living = await c.waitFor('room', (m) => m.room.id === u.homeRoomId, 8000);
+    const toBed = living.room.doors.find((d) => d.roomId === bed.room.id)!;
+    expect(toBed).toBeTruthy();
+    // …and you arrive in front of the door that leads back to the bedroom.
+    const me = living.room.players.find((p) => p.id === g.userId)!;
+    const [sx, sz] = toBed.wall === 0 ? [toBed.idx, 0] : [0, toBed.idx];
+    expect(Math.max(Math.abs(me.x - sx), Math.abs(me.z - sz))).toBeLessThanOrEqual(1);
     c.ws.close();
   }, 15_000);
 

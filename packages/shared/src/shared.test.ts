@@ -21,6 +21,8 @@ import {
   ROOM_SIZE,
   DOOR_TILE,
   findPath,
+  doorSlots,
+  doorSpot,
   canStep,
   MIN_USER_ROOM_SIZE,
   MAX_USER_ROOM_SIZE,
@@ -145,6 +147,30 @@ describe('stairs and platforms', () => {
     // A sofa (2 wide) can't stand half on a step.
     expect(canPlace(f, [], { id: 1, type: 'sofa', x: 0, z: 3, rot: 0 })).toBe(false);
     expect(canPlace(f, [], { id: 1, type: 'plant', x: 3, z: 3, rot: 0 })).toBe(true);
+  });
+});
+
+describe('apartment doors', () => {
+  it('finds door places that are reachable and never on the main door or the window', () => {
+    for (const theme of ['home', 'bedroom', 'bathroom', 'kitchen', 'balcony'] as const) {
+      const items =
+        theme === 'home'
+          ? DEFAULT_HOME_ITEMS.map((it, i) => ({ ...it, id: i + 1 }))
+          : APARTMENT_START_ITEMS[theme].map((it, i) => ({ ...it, id: i + 1 }));
+      const slots = doorSlots(theme, 8);
+      expect(slots.length).toBeGreaterThanOrEqual(4);
+      const g = buildGrid(8, items);
+      for (const d of slots) {
+        const [x, z] = doorSpot(d);
+        expect(d.wall === 0 && Math.abs(d.idx - DOOR_TILE[0]) <= 1, theme).toBe(false);
+        // You can get to the door or right next to it, even with the starter furniture.
+        const near = [-1, 0, 1].flatMap((a) => [-1, 0, 1].map((b) => [x + a, z + b] as const));
+        expect(
+          near.some(([nx, nz]) => findPath(g, [DOOR_TILE[0], DOOR_TILE[1]], [nx, nz])),
+          `${theme} ${x},${z}`,
+        ).toBe(true);
+      }
+    }
   });
 });
 
