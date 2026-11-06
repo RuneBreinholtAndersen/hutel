@@ -6,7 +6,7 @@ primary_region = "arn"
   dockerfile = "Dockerfile"
 
 [env]
-  CLIENT_ORIGIN = "https://hutel.dk,https://www.hutel.dk"
+  CLIENT_ORIGIN = "https://hutel.dk,https://www.hutel.dk,https://hutel.fly.dev"
   ONBOARDING_LOCK = "true"
 
 [[mounts]]

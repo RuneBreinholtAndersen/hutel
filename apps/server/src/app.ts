@@ -193,7 +193,14 @@ export function createApp(
   const wss = new WebSocketServer({ noServer: true, maxPayload: 4096 });
   server.on('upgrade', (req, socket, head) => {
     const url = new URL(req.url ?? '/', 'http://x');
-    if (url.pathname !== '/ws' || !allowed(req.headers.origin)) {
+    const origin = req.headers.origin;
+    let sameOrigin = false;
+    try {
+      sameOrigin = !!origin && new URL(origin).host === req.headers.host;
+    } catch {
+      sameOrigin = false;
+    }
+    if (url.pathname !== '/ws' || !(sameOrigin || allowed(origin))) {
       socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
       return socket.destroy();
     }

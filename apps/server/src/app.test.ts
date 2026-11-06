@@ -95,6 +95,25 @@ describe('http', () => {
   });
 });
 
+describe('websocket origins', () => {
+  const tryOrigin = (origin: string, host?: string) =>
+    new Promise<boolean>((resolve) => {
+      const ws = new WebSocket(`ws://${base}/ws`, {
+        headers: { origin, ...(host ? { host } : {}) },
+      });
+      ws.on('open', () => {
+        ws.close();
+        resolve(true);
+      });
+      ws.on('error', () => resolve(false));
+    });
+  it('accepts its own host and configured origins, rejects others', async () => {
+    expect(await tryOrigin('http://localhost:5173')).toBe(true);
+    expect(await tryOrigin(`http://${base}`)).toBe(true);
+    expect(await tryOrigin('https://evil.example')).toBe(false);
+  });
+});
+
 describe('login', () => {
   it('logs in with name and password and rejects wrong passwords', async () => {
     const g = await guest('Loginbruger');
