@@ -250,6 +250,10 @@ describe('multiplayer', () => {
     expect(room.room.id).toBe(welcome.me.homeRoomId);
     expect(room.room.items.length).toBeGreaterThan(3);
     expect(room.room.canBuild).toBe(true);
+    // guide-Magnus waits in the room and greets the new guest
+    const guide = await c.waitFor('playerJoin', (m) => m.player.name === 'Magnus');
+    expect(guide.player.bot).toBe(true);
+    expect((await c.waitFor('chat', (m) => m.name === 'Magnus', 4000)).text).toMatch(/Rune/);
     c.ws.close();
   });
 

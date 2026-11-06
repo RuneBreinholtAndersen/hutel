@@ -141,6 +141,22 @@ export const PERSONAS: Persona[] = [
   },
 ];
 
+/** Magnus as a personal guide on a new guest's own room, until the start quests are done. */
+export const GUIDE: Persona = {
+  ...PERSONAS.find((p) => p.id === 'bot_magnus')!,
+  id: 'bot_guide',
+  roomId: '',
+  host: true,
+  personality:
+    'Magnus er en venlig stamgæst, der hjælper nye gæster i gang på deres eget værelse. Han forklarer kort og opmuntrende, hvad de kan prøve nu: gå rundt, sige hej, sætte sig, skifte udseende, flytte et møbel og købe noget i butikken.',
+  greetings: [
+    'Hej {name}! Jeg er Magnus 🤖 – jeg hjælper dig lige i gang.',
+    'Velkommen til dit nye værelse, {name}! Jeg viser dig rundt 🤖',
+  ],
+  idle: [],
+  replies: ['Godt gået!', 'Du er godt på vej 😄', 'Spørg bare, hvis du er i tvivl.'],
+};
+
 const pick = <T>(a: readonly T[]) => a[Math.floor(Math.random() * a.length)]!;
 const rnd = (a: number, b: number) => a + Math.random() * (b - a);
 
@@ -231,13 +247,17 @@ class Bot {
   private spokenTimes: number[] = [];
   private greeted = new Map<string, number>();
 
+  /** For the guide: what to suggest next (null when nothing is left). */
+  tip: (() => string | null) | null = null;
+
   constructor(
     readonly persona: Persona,
     private readonly world: BotWorld,
     private readonly llm: Llm,
+    id = persona.id,
   ) {
     this.state = {
-      id: persona.id,
+      id,
       name: persona.name,
       look: persona.look,
       bot: true,
@@ -259,7 +279,7 @@ class Bot {
     return this.spokenTimes.length < 6 && now - this.lastSpoke > 2500;
   }
 
-  private speak(room: RoomInstance, text: string) {
+  speak(room: RoomInstance, text: string) {
     const now = Date.now();
     if (!this.canSpeak(now)) return;
     this.lastSpoke = now;
@@ -274,8 +294,10 @@ class Bot {
     this.greeted.set(human.id, Date.now());
     setTimeout(
       () => {
-        if (room.players.has(human.id))
-          this.speak(room, pick(this.persona.greetings).replace('{name}', human.name));
+        if (!room.players.has(human.id)) return;
+        this.speak(room, pick(this.persona.greetings).replace('{name}', human.name));
+        const tip = this.tip?.();
+        if (tip) setTimeout(() => room.players.has(human.id) && this.speak(room, tip), 3000);
       },
       rnd(1200, 2200),
     );
@@ -308,12 +330,18 @@ class Bot {
   tick(room: RoomInstance, now: number) {
     if (!room.humans().length) return;
     if (now > this.nextIdle) {
-      this.nextIdle = now + rnd(45_000, 90_000);
-      if (now - this.lastSpoke > 30_000) this.speak(room, pick(this.persona.idle));
+      this.nextIdle = now + (this.tip ? rnd(25_000, 35_000) : rnd(45_000, 90_000));
+      const line = this.tip
+        ? this.tip()
+        : this.persona.idle.length
+          ? pick(this.persona.idle)
+          : null;
+      if (line && now - this.lastSpoke > 20_000) this.speak(room, line);
     }
     if (this.persona.post || now < this.nextMove || this.state.path.length) return;
     this.nextMove = now + rnd(6000, 14_000);
-    if (Math.random() < 0.3) {
+    // The guide never sits, so the guest's sofa stays free for the "sit" quest.
+    if (!this.tip && Math.random() < 0.3) {
       const seats = room.items.filter((i) => furniture(i.type).seat);
       if (seats.length && room.sit(this.state, pick(seats).id)) return;
     }
@@ -330,7 +358,10 @@ export class Bots {
   private bots: Bot[] = [];
   private readonly llm: Llm;
 
-  constructor(world: BotWorld, cfg: LlmConfig) {
+  constructor(
+    private readonly world: BotWorld,
+    cfg: LlmConfig,
+  ) {
     this.llm = new Llm(cfg);
     for (const p of PERSONAS) {
       const room = world.room(p.roomId);
@@ -346,8 +377,47 @@ export class Bots {
     return this.llm.enabled;
   }
 
+  private guides = new Map<string, Bot>();
+
   private inRoom(room: RoomInstance) {
-    return this.bots.filter((b) => b.persona.roomId === room.meta.id);
+    const list = this.bots.filter((b) => b.persona.roomId === room.meta.id);
+    const g = this.guides.get(room.meta.id);
+    return g ? [...list, g] : list;
+  }
+
+  /** Puts guide-Magnus in a new guest's room. `tip` gives the next hint, or null when done. */
+  startGuide(room: RoomInstance, tip: () => string | null) {
+    if (this.guides.has(room.meta.id) || !tip()) return;
+    const bot = new Bot(GUIDE, this.world, this.llm, `bot_guide_${room.meta.id}`);
+    bot.tip = tip;
+    room.add(bot.state, [4, 2]);
+    this.guides.set(room.meta.id, bot);
+  }
+
+  /** Says the next hint right away (after a quest is done). */
+  guideTip(room: RoomInstance) {
+    const g = this.guides.get(room.meta.id);
+    const tip = g?.tip?.();
+    if (g && tip) setTimeout(() => g.speak(room, `Flot! ${tip}`), 1500);
+  }
+
+  /** All start quests done: Magnus says goodbye, walks to the door and leaves. */
+  endGuide(room: RoomInstance, name: string) {
+    const g = this.guides.get(room.meta.id);
+    if (!g) return;
+    g.tip = null;
+    setTimeout(() => {
+      g.speak(room, `Sejt, ${name}! Nu er døren åben – vi ses i lobbyen 👋`);
+      room.walk(g.state, [6, 0]);
+    }, 1800);
+    setTimeout(() => this.removeGuide(room), 6000);
+  }
+
+  private removeGuide(room: RoomInstance) {
+    const g = this.guides.get(room.meta.id);
+    if (!g) return;
+    this.guides.delete(room.meta.id);
+    room.remove(g.state.id);
   }
   onHumanJoin(room: RoomInstance, human: PlayerState) {
     for (const b of this.inRoom(room)) b.onHumanJoin(room, human);
@@ -358,6 +428,7 @@ export class Bots {
     for (const b of addressed.length ? addressed : bots) b.onChat(room, from, text);
   }
   tick(room: RoomInstance, now: number) {
+    if (this.guides.has(room.meta.id) && !room.humans().length) return this.removeGuide(room);
     for (const b of this.inRoom(room)) b.tick(room, now);
   }
 }

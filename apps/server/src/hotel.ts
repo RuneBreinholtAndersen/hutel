@@ -47,6 +47,15 @@ interface Session {
   strikes: number;
 }
 
+const GUIDE_TIPS: Record<QuestId, string> = {
+  walk: 'Prøv at gå hen til vinduet – brug piletasterne eller klik på gulvet 🪟',
+  hello: 'Skriv "hej" i chatten nederst, så siger jeg hej tilbage 👋',
+  sit: 'Klik på sofaen eller lænestolen for at sætte dig 🛋️',
+  look: 'Tryk på Figur nederst og giv dig selv et nyt look 👕',
+  move: 'Tryk på Byg 🔨, tag fat i et møbel og flyt det et andet sted hen',
+  buy: 'Åbn Butik 🛒, køb noget for dine mønter og placér det på værelset',
+};
+
 const LIMIT_FOR: Partial<Record<ClientMsg['t'], LimitKind>> = {
   move: 'move',
   glide: 'glide',
@@ -314,6 +323,8 @@ export class Hotel {
     s.room = room;
     s.player = player;
     this.send(s, { t: 'room', room: room.roomView(user.id), serverTime: Date.now() });
+    if (room.meta.id === user.homeRoomId && !this.onboarded(user))
+      this.bots.startGuide(room, () => this.nextTip(user));
     this.bots.onHumanJoin(room, player);
     this.notifyFriendsOf(user);
   }
@@ -374,6 +385,17 @@ export class Hotel {
     this.send(s, { t: 'quest', id, reward: q.reward, all });
     this.coins(s, user, q.reward);
     if (all) this.badge(s, user, 'onboarded');
+    if (s.room?.meta.id === user.homeRoomId) {
+      if (all) this.bots.endGuide(s.room, user.name);
+      else this.bots.guideTip(s.room);
+    }
+  }
+
+  /** Guide-Magnus' hint for the next start quest the guest hasn't done. */
+  private nextTip(user: UserRecord): string | null {
+    const next = QUESTS.find((q) => !user.quests.includes(q.id));
+    if (!next) return null;
+    return GUIDE_TIPS[next.id];
   }
 
   private badge(s: Session | undefined, user: UserRecord, id: BadgeId) {
