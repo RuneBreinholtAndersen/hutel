@@ -4,7 +4,12 @@ Hutel er et socialt chat-spil i browseren: man laver sin egen figur, går rundt 
 
 Ejer: Rune Breinholt Andersen (Breinholt Digital). Al kommunikation med Rune foregår på **dansk**. Kode, variabelnavne og commit-beskeder skrives på engelsk. Al tekst i brugerfladen er på dansk.
 
-Målgruppe: voksne (18+), der kan lide hyggelige, sociale onlineverdener.
+Målgruppe: to separate udgaver bygget på samme kode:
+
+- **Hutel** – voksne (18+) med fri chat.
+- **Hutel Junior** – børn på 8–12 år med sikker chat (menu- og ordliste-chat), forældrekonto og vennekoder. Se afsnittet om Hutel Junior i `docs/PLAN.md`.
+
+Børn og voksne må aldrig kunne mødes: Junior kører på egen server og egen database. Ingen funktion, der tillader fri tekst mellem fremmede, må nogensinde slås til i Junior.
 
 ## Læs først
 

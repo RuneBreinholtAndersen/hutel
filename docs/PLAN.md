@@ -17,6 +17,46 @@ Sidst opdateret: 6. november 2026.
 
 ---
 
+## Hutel Junior (børneudgave, 8–12 år)
+
+Samme kodebase og grafik som Hutel, men en helt separat verden for børn. Børn og voksne mødes aldrig.
+
+**Adskillelse**
+
+- [ ] `EDITION=adult|junior` styrer regler, tekster og funktioner i både klient og server
+- [ ] Junior kører på egen server og egen database (fx `junior.hutel.dk`), så ingen data eller rum deles med voksen-Hutel
+
+**Sikker chat**
+
+- [ ] Menu-chat: kategorier med færdige sætninger (hilsner, spørgsmål, ros, leg, følelser) og emojis – standard for alle børn
+- [ ] Ordliste-chat: kun godkendte ord, tal og specialtegn spærret – kan slås til af en forælder (fx fra 10 år)
+- [ ] Ingen fri chat og ingen private beskeder med fremmede
+- [ ] Serveren afviser al tekst, der ikke er en godkendt sætning eller består af godkendte ord
+
+**Forældre**
+
+- [ ] Forældrekonto med e-mail-bekræftelse og samtykke (krav for børn under 13 år i Danmark)
+- [ ] Forælderen opretter barnets figur og vælger chatniveau
+- [ ] Forældreoverblik: venner, tid online, rapporter, og mulighed for at slette barnets data
+- [ ] Barnet logger ind med en kode/QR fra forælderens konto – intet barns e-mail eller fulde navn
+
+**Venner og leg**
+
+- [ ] Venner kun via vennekode, som børn giver hinanden i virkeligheden, eller godkendt af forælderen
+- [ ] Navne vælges fra en liste med sjove kombinationer (fx "Glad Odder 12"), så ingen skriver deres rigtige navn
+- [ ] Opgaver, mønter, værelser og butik som i Hutel – men ingen rigtige penge uden forælderens godkendelse
+- [ ] AI-beboere svarer kun med faste, godkendte replikker (ingen fri AI-chat med børn)
+
+**Tryghed og regler**
+
+- [ ] Rapportér-knap overalt og moderatorer med hurtig reaktion
+- [ ] Spilletid: forælderen kan sætte en daglig grænse og et sengetidspunkt
+- [ ] Privatlivspolitik skrevet til både forældre og børn
+- [ ] Gennemgå regler for børneapps i App Store (Kids-kategorien) og Google Play (Families) før iOS/Android
+- [ ] Ingen reklamer og ingen sporing af børn
+
+---
+
 ## Næste: Login, database og deploy
 
 - [ ] `SupabaseStore` der implementerer `Store` (tabeller: users, rooms, room_items, friends, reports, chatlog) med RLS
