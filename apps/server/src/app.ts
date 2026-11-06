@@ -5,7 +5,9 @@ import { WebSocketServer } from 'ws';
 import {
   DEFAULT_HOME_ITEMS,
   isValidName,
+  lookAllowed,
   LookSchema,
+  type Look,
   ROOM_SIZE,
   type PlacedItem,
 } from '@hutel/shared';
@@ -130,6 +132,10 @@ function json(res: ServerResponse, status: number, body: unknown) {
   res.end(JSON.stringify(body));
 }
 
+/** New accounts start without paid clothes. */
+const freeLook = (look: Look): Look =>
+  lookAllowed(look, []) ? look : { ...look, top: undefined, hat: undefined };
+
 export function newHomeItems(): PlacedItem[] {
   return DEFAULT_HOME_ITEMS.map((it, i) => ({ ...it, id: i + 1 }));
 }
@@ -209,7 +215,7 @@ export function createApp(
       const bad = checkProfile(parsed.data);
       if (bad) return json(res, bad[0], { ok: false, error: bad[1] });
       const name = parsed.data.name.trim();
-      const { user, token } = store.createUser(name, parsed.data.look, {
+      const { user, token } = store.createUser(name, freeLook(parsed.data.look), {
         password: parsed.data.password,
       });
       return json(res, 200, { ok: true, token, userId: user.id });
@@ -277,7 +283,7 @@ export function createApp(
       if (!signupLimiter.take(ip)) return json(res, 429, { ok: false, error: 'Prøv igen senere.' });
       const bad = checkProfile(profile);
       if (bad) return json(res, bad[0], { ok: false, error: bad[1] });
-      const { user, token } = store.createUser(profile.name.trim(), profile.look, {
+      const { user, token } = store.createUser(profile.name.trim(), freeLook(profile.look), {
         authId: who.id,
       });
       return json(res, 200, { ok: true, token, userId: user.id });

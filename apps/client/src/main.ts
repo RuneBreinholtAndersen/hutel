@@ -335,6 +335,19 @@ function handle(msg: ServerMsg) {
         }, 1400);
       return;
     }
+    case 'wardrobe': {
+      if (!me) return;
+      me.wardrobe = msg.wardrobe;
+      if (wearAfterBuy && msg.wardrobe.includes(wearAfterBuy)) {
+        const [slot, v] = wearAfterBuy.split(':') as ['top' | 'hat', string];
+        me.look = { ...me.look, [slot]: v } as Look;
+        myActor()?.setLook(me.look);
+        net?.send({ t: 'look', look: me.look });
+        wearAfterBuy = null;
+      }
+      if (panelKind === 'fig') renderFigure();
+      return;
+    }
     case 'resetDone':
       location.reload();
       return;
@@ -420,6 +433,8 @@ function handle(msg: ServerMsg) {
       if (panelKind === 'friends') renderFriends();
       return;
     case 'navigator':
+      lastRooms = msg.rooms;
+      clearTimeout(navRetry);
       if (panelKind === 'nav') renderNavigator(msg.rooms);
       return;
     case 'profile':
@@ -458,12 +473,22 @@ const head = (title: string, sub = '') =>
 const toggle = (kind: string, open: () => void) => () =>
   panelKind === kind ? closePanel() : open();
 
+let lastRooms: NavigatorRoom[] | null = null;
+let navRetry: number | undefined;
 function openNavigator() {
-  openPanel(
-    'nav',
-    head('🧭 Navigator', 'Gå på opdagelse i hotellet.') + '<p class="sub">Henter rum…</p>',
-  );
+  if (panelKind === 'nav') return;
+  // Show the last list at once (it refreshes when the answer arrives).
+  if (lastRooms) renderNavigator(lastRooms);
+  else
+    openPanel(
+      'nav',
+      head('🧭 Navigator', 'Gå på opdagelse i hotellet.') + '<p class="sub">Henter rum…</p>',
+    );
   net?.send({ t: 'navigator' });
+  clearTimeout(navRetry);
+  navRetry = window.setTimeout(() => {
+    if (panelKind === 'nav') net?.send({ t: 'navigator' });
+  }, 1500);
 }
 function renderNavigator(rooms: NavigatorRoom[]) {
   const row = (r: NavigatorRoom) =>
@@ -536,23 +561,37 @@ function renderShop() {
 }
 
 let confirmReset = false;
+let wearAfterBuy: string | null = null;
 function renderFigure() {
   if (!me) return;
   openPanel(
     'fig',
-    head('🧍 Min figur') +
+    head('🧍 Min figur', 'Køb sejt tøj med dine mønter – nogle ting låses op med badges.') +
       `<div class="row"><label>Motto</label><input id="motto" maxlength="60" value="${esc(me.motto)}" style="width:100%"></div><div id="lookEd"></div>
     <h3>Mine badges</h3><div class="badges">${me.badges.map((b) => `<span class="badge">${BADGES[b].icon} ${BADGES[b].name}</span>`).join('')}</div>
     <h3>Konto</h3><button id="logout" class="small danger">Log ud på denne enhed</button>
     ${canReset ? `<h3>Test</h3><p class="sub">Nulstil mønter, opgaver, badges og dit værelse, og prøv starten igen. Navn, figur og venner beholdes.</p><button id="resetMe" class="small danger">🔄 Start forfra</button>` : ''}`,
   );
   let lookT: number | undefined;
-  lookEditor($('lookEd'), me.look, (look) => {
-    me!.look = look;
-    myActor()?.setLook(look);
-    clearTimeout(lookT);
-    lookT = window.setTimeout(() => net?.send({ t: 'look', look }), 250);
-  });
+  lookEditor(
+    $('lookEd'),
+    me.look,
+    (look) => {
+      me!.look = look;
+      myActor()?.setLook(look);
+      clearTimeout(lookT);
+      lookT = window.setTimeout(() => net?.send({ t: 'look', look }), 250);
+    },
+    {
+      owned: me.wardrobe,
+      badges: me.badges,
+      coins: me.coins,
+      onBuy: (key) => {
+        wearAfterBuy = key;
+        net?.send({ t: 'buyClothes', key });
+      },
+    },
+  );
   $('motto').addEventListener('change', (e) => {
     me!.motto = (e.target as HTMLInputElement).value;
     net?.send({ t: 'motto', motto: me!.motto });

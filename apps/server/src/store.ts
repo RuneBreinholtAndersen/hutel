@@ -23,6 +23,8 @@ export interface UserRecord {
   requests: string[];
   blocked: string[];
   stats: { chats: number; buys: number; moves: number };
+  /** Clothes bought in the shop. */
+  wardrobe?: string[];
   /** Today's daily quests (rolls over at Danish midnight). */
   daily?: {
     date: string;
@@ -160,6 +162,8 @@ export class JsonFileStore implements Store {
     user.motto = '';
     user.stats = { chats: 0, buys: 0, moves: 0 };
     user.daily = undefined;
+    user.wardrobe = [];
+    user.look = { ...user.look, top: undefined, hat: undefined };
     const room = this.data.rooms[user.homeRoomId];
     if (room) {
       room.items = this.newRoomItems();

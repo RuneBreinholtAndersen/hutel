@@ -1,5 +1,7 @@
 import {
   BADGES,
+  CLOTHES,
+  lookAllowed,
   ClientMsgSchema,
   COINS_PER_ONLINE_MINUTE,
   DOOR_TILE,
@@ -98,7 +100,7 @@ const LIMIT_FOR: Partial<Record<ClientMsg['t'], LimitKind>> = {
   report: 'social',
   profile: 'social',
   motto: 'social',
-  navigator: 'social',
+  navigator: 'nav',
 };
 
 export class Hotel {
@@ -258,6 +260,7 @@ export class Hotel {
       homeRoomId: u.homeRoomId,
       motto: u.motto,
       daily: this.dailyView(u),
+      wardrobe: u.wardrobe ?? [],
     };
   }
 
@@ -606,7 +609,26 @@ export class Hotel {
         room.broadcast({ t: 'action', id: player.id, kind: player.action });
         if (msg.kind === 'wave' && room.players.size > 1) this.daily(s, user, 'd_wave');
         return;
+      case 'buyClothes': {
+        const item = CLOTHES[msg.key];
+        const owned = (user.wardrobe ??= []);
+        if (!item || item.price === 0 || owned.includes(msg.key)) return;
+        if (item.unlock && !user.badges.includes(item.unlock as BadgeId))
+          return this.toast(
+            s,
+            `🔒 Kræver badget "${BADGES[item.unlock as BadgeId].name}"`,
+            'error',
+          );
+        if (user.coins < item.price) return this.toast(s, 'Du har ikke mønter nok.', 'error');
+        owned.push(msg.key);
+        this.coins(s, user, -item.price);
+        this.store.touch();
+        this.send(s, { t: 'wardrobe', wardrobe: owned });
+        return this.toast(s, `👕 Du har købt: ${item.name}`);
+      }
       case 'look':
+        if (!lookAllowed(msg.look, user.wardrobe ?? []))
+          return this.toast(s, 'Det tøj skal købes først 🛍️', 'error');
         user.look = msg.look;
         this.store.touch();
         if (player) player.look = msg.look;

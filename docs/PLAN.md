@@ -24,6 +24,9 @@ Sidst opdateret: 6. november 2026. Rækkefølge: voksen-Hutel i lukket beta før
 
 ## Færdigt 6. november (eftermiddag)
 
+- ✅ Tøjbutik under Figur: overdele (stribet, hættetrøje, skjorte+slips, læderjakke, smoking) og hatte (hue, cowboy, høj hat, krone) – nogle låst op af badges
+- ✅ Møbler låst op af badges (sækkestol, fjernsyn, pejs, klaver, jukebox) + spisestol og kaktus; farvevalg på møbler (🎨 / F)
+- ✅ Navigatoren hænger ikke længere på "Henter rum…" (egen grænse, husker sidste liste, prøver igen)
 - ✅ Dagens opgaver: "kig forbi" + 2 skiftende hver dag (dansk midnat), +10 bonus, 🔥 stime og badge "Trofast gæst" ved 7 dage
 - ✅ Hotel-opgaver efter startopgaverne: lobby, Ida, akvariet, kaffe hos Luna, sæt dig i caféen, hils på en rigtig gæst – badge "Hotelkender" + 25 mønter; Ida/Luna giver tips
 - ✅ Testknap "Start forfra" under Figur: nulstiller mønter, opgaver, badges og værelse

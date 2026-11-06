@@ -1,4 +1,15 @@
-import { BEARDS, GLASSES, HAIR_STYLES, PALETTE, type Look } from '@hutel/shared';
+import {
+  BADGES,
+  BEARDS,
+  CLOTHES,
+  GLASSES,
+  HAIR_STYLES,
+  HATS,
+  PALETTE,
+  TOPS,
+  type BadgeId,
+  type Look,
+} from '@hutel/shared';
 
 export const $ = <E extends HTMLElement = HTMLElement>(id: string) =>
   document.getElementById(id) as E;
@@ -125,10 +136,49 @@ const OPTS = {
   },
 } as const;
 
+export interface Wardrobe {
+  owned: readonly string[];
+  badges: readonly string[];
+  coins: number;
+  /** Buy and then wear this piece ("slot:value"). */
+  onBuy: (key: string) => void;
+}
+
+/** Chips for the clothing slots. Without a wardrobe (sign-up) only free clothes are shown. */
+function clothesRows(look: Look, w?: Wardrobe) {
+  const slots = [
+    ['top', 'Overdel', TOPS, look.top ?? 'tshirt'],
+    ['hat', 'Hat', HATS, look.hat ?? 'ingen'],
+  ] as const;
+  return slots
+    .map(([slot, label, vals, cur]) => {
+      const chips = (vals as readonly string[])
+        .map((v) => {
+          const key = `${slot}:${v}`;
+          const c = CLOTHES[key]!;
+          const owned = c.price === 0 || !!w?.owned.includes(key);
+          if (!owned && !w) return '';
+          const locked = !owned && c.unlock && !w!.badges.includes(c.unlock);
+          const tag = owned ? '' : locked ? ' 🔒' : ` · ${c.price}🪙`;
+          const title = locked ? `Kræver badget ${BADGES[c.unlock as BadgeId].name}` : c.name;
+          return `<button type="button" data-cl="${key}" title="${esc(title)}" class="${cur === v ? 'on' : ''}${owned ? '' : ' buy'}" ${locked ? 'disabled' : ''}>${esc(c.name)}${tag}</button>`;
+        })
+        .join('');
+      return `<div class="row"><label>${label}</label><div class="chips">${chips}</div></div>`;
+    })
+    .join('');
+}
+
 /** Renders swatches and chips for editing a look. */
-export function lookEditor(el: HTMLElement, look: Look, onChange: (look: Look) => void) {
+export function lookEditor(
+  el: HTMLElement,
+  look: Look,
+  onChange: (look: Look) => void,
+  wardrobe?: Wardrobe,
+) {
   const render = () => {
     el.innerHTML =
+      clothesRows(look, wardrobe) +
       Object.entries(OPTS)
         .map(
           ([k, o]) =>
@@ -144,6 +194,22 @@ export function lookEditor(el: HTMLElement, look: Look, onChange: (look: Look) =
     el.querySelectorAll<HTMLElement>('[data-k]').forEach((b) =>
       b.addEventListener('click', () => {
         look = { ...look, [b.dataset.k!]: b.dataset.v } as Look;
+        render();
+        onChange(look);
+      }),
+    );
+    el.querySelectorAll<HTMLElement>('[data-cl]').forEach((b) =>
+      b.addEventListener('click', () => {
+        const key = b.dataset.cl!;
+        const [slot, v] = key.split(':') as ['top' | 'hat', string];
+        const c = CLOTHES[key]!;
+        if (c.price > 0 && !wardrobe?.owned.includes(key)) {
+          if (!wardrobe) return;
+          if (wardrobe.coins < c.price)
+            return toast('Du har ikke mønter nok – klar en opgave 🙂', 'error');
+          return wardrobe.onBuy(key);
+        }
+        look = { ...look, [slot]: v } as Look;
         render();
         onChange(look);
       }),

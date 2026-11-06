@@ -21,13 +21,14 @@ export class Bucket {
   }
 }
 
-export type LimitKind = 'any' | 'move' | 'glide' | 'chat' | 'build' | 'social';
+export type LimitKind = 'any' | 'move' | 'glide' | 'nav' | 'chat' | 'build' | 'social';
 
 export function createLimits(): Record<LimitKind, Bucket> {
   return {
     any: new Bucket(40, 20),
     move: new Bucket(16, 10),
     glide: new Bucket(30, 15),
+    nav: new Bucket(10, 2),
     chat: new Bucket(5, 0.5),
     build: new Bucket(8, 3),
     social: new Bucket(6, 0.5),

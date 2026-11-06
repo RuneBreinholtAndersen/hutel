@@ -11,6 +11,32 @@ export const PALETTE = {
 export const HAIR_STYLES = ['kort', 'krøller', 'hestehale', 'langt', 'kasket', 'skaldet'] as const;
 export const GLASSES = ['ingen', 'runde', 'sol'] as const;
 export const BEARDS = ['ingen', 'stubbe', 'fuld'] as const;
+export const TOPS = ['tshirt', 'stribet', 'hoodie', 'skjorte', 'jakke', 'smoking'] as const;
+export const HATS = ['ingen', 'hue', 'cowboy', 'hoejhat', 'krone'] as const;
+export type Top = (typeof TOPS)[number];
+export type Hat = (typeof HATS)[number];
+
+/** Clothes in the shop. Keys are "slot:value"; items without a price are free for everyone. */
+export const CLOTHES: Record<string, { name: string; price: number; unlock?: string }> = {
+  'top:tshirt': { name: 'T-shirt', price: 0 },
+  'top:stribet': { name: 'Stribet trøje', price: 12 },
+  'top:hoodie': { name: 'Hættetrøje', price: 15 },
+  'top:skjorte': { name: 'Skjorte og slips', price: 20 },
+  'top:jakke': { name: 'Læderjakke', price: 30, unlock: 'onboarded' },
+  'top:smoking': { name: 'Smoking', price: 50, unlock: 'hotelkender' },
+  'hat:ingen': { name: 'Ingen hat', price: 0 },
+  'hat:hue': { name: 'Hue', price: 10 },
+  'hat:cowboy': { name: 'Cowboyhat', price: 20 },
+  'hat:hoejhat': { name: 'Høj hat', price: 35, unlock: 'hotelkender' },
+  'hat:krone': { name: 'Krone', price: 60, unlock: 'streak7' },
+};
+
+/** True if this look only uses clothes that are free or owned. */
+export function lookAllowed(look: Look, owned: readonly string[]): boolean {
+  return [`top:${look.top ?? 'tshirt'}`, `hat:${look.hat ?? 'ingen'}`].every(
+    (k) => CLOTHES[k] && (CLOTHES[k]!.price === 0 || owned.includes(k)),
+  );
+}
 
 const color = (list: readonly number[]) =>
   z
@@ -27,6 +53,8 @@ export const LookSchema = z.object({
   hairStyle: z.enum(HAIR_STYLES),
   glasses: z.enum(GLASSES),
   beard: z.enum(BEARDS),
+  top: z.enum(TOPS).optional(),
+  hat: z.enum(HATS).optional(),
 });
 export type Look = z.infer<typeof LookSchema>;
 

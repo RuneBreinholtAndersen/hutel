@@ -27,6 +27,8 @@ export const ClientMsgSchema = z.discriminatedUnion('t', [
     run: z.boolean().optional(),
   }),
   z.object({ t: z.literal('sit'), itemId: z.number().int() }),
+  /** Buy a piece of clothing, key like "hat:cowboy". */
+  z.object({ t: z.literal('buyClothes'), key: z.string().max(30) }),
   /** Test phase: wipe my progress (coins, quests, badges, room) and start over. */
   z.object({ t: z.literal('reset') }),
   z.object({
@@ -122,6 +124,8 @@ export interface Me {
   homeRoomId: string;
   motto: string;
   daily: DailyView;
+  /** Clothes bought in the shop ("slot:value"). */
+  wardrobe: string[];
 }
 
 export interface FriendView {
@@ -157,6 +161,7 @@ export interface ProfileView {
 export type ServerMsg =
   | { t: 'welcome'; me: Me; serverTime: number; onboardingLock: boolean; canReset: boolean }
   | { t: 'resetDone' }
+  | { t: 'wardrobe'; wardrobe: string[] }
   | { t: 'daily'; daily: DailyView; doneId?: string; bonus?: number }
   | { t: 'room'; room: RoomView; serverTime: number }
   | { t: 'playerJoin'; player: PlayerView }

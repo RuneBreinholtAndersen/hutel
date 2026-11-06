@@ -767,3 +767,12 @@ select {
 #panel .item.locked button {
   font-size: 11px;
 }
+
+.chips button.buy {
+  border-style: dashed;
+  opacity: 0.85;
+}
+.chips button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

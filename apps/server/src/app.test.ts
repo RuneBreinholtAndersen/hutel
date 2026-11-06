@@ -386,6 +386,21 @@ describe('multiplayer', () => {
     c2.ws.close();
   });
 
+  it('sells clothes and only lets you wear what you own', async () => {
+    const { c, welcome } = await login('Modeløve');
+    expect(welcome.me.wardrobe).toEqual([]);
+    c.send({ t: 'look', look: { ...DEFAULT_LOOK, hat: 'cowboy' } });
+    expect((await c.waitFor('toast', (m) => /købes/.test(m.text))).kind).toBe('error');
+    c.send({ t: 'buyClothes', key: 'hat:cowboy' });
+    expect((await c.waitFor('wardrobe')).wardrobe).toContain('hat:cowboy');
+    expect((await c.waitFor('coins')).coins).toBe(10);
+    c.send({ t: 'look', look: { ...DEFAULT_LOOK, hat: 'cowboy' } });
+    expect((await c.waitFor('look')).look.hat).toBe('cowboy');
+    c.send({ t: 'buyClothes', key: 'hat:krone' });
+    expect((await c.waitFor('toast', (m) => /Kræver/.test(m.text))).kind).toBe('error');
+    c.ws.close();
+  });
+
   it('handles friends, whispers, password rooms and blocking', async () => {
     const a = await login('Anna');
     const b = await login('Bo');
