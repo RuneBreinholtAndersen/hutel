@@ -58,6 +58,17 @@ export const APARTMENT_START_ITEMS: Record<ApartmentKind, Omit<PlacedItem, 'id'>
 };
 export type RoomAccess = 'open' | 'locked' | 'password';
 
+/** Navigator categories for rooms. */
+export const ROOM_CATEGORIES = {
+  fest: { name: 'Fest', icon: '🎉' },
+  chill: { name: 'Chill', icon: '😌' },
+  spil: { name: 'Spil', icon: '🎮' },
+  handel: { name: 'Handel', icon: '🤝' },
+  andet: { name: 'Andet', icon: '🏠' },
+} as const;
+export type RoomCategory = keyof typeof ROOM_CATEGORIES;
+export const ROOM_CATEGORY_IDS = Object.keys(ROOM_CATEGORIES) as RoomCategory[];
+
 /** Built-in window on the left wall per theme: tile index (z) of its centre. */
 const THEME_WINDOW: Partial<Record<RoomTheme, number>> = {
   home: 2,
@@ -94,12 +105,14 @@ export interface PublicRoomDef {
   theme: RoomTheme;
   /** Floor size in tiles (square). Defaults to ROOM_SIZE. */
   size?: number;
+  category: RoomCategory;
   items: PlacedItem[];
 }
 
 export const PUBLIC_ROOMS: PublicRoomDef[] = [
   {
     id: 'lobby',
+    category: 'chill',
     name: 'Lobbyen',
     description: 'Hotellets hjerte. Mød Ida i receptionen.',
     theme: 'lobby',
@@ -126,6 +139,7 @@ export const PUBLIC_ROOMS: PublicRoomDef[] = [
   },
   {
     id: 'cafe',
+    category: 'chill',
     name: 'Caféen',
     description: 'Kaffe, kage og god snak. Luna står bag disken.',
     theme: 'cafe',
@@ -155,6 +169,7 @@ export const PUBLIC_ROOMS: PublicRoomDef[] = [
   },
   {
     id: 'roof',
+    category: 'fest',
     name: 'Tagterrassen',
     description: 'Stjerner, lyskæder og udsigt over byen. Viggo kender alle stjernebilleder.',
     theme: 'roof',
@@ -175,6 +190,7 @@ export const PUBLIC_ROOMS: PublicRoomDef[] = [
   },
   {
     id: 'arcade',
+    category: 'spil',
     name: 'Spillehallen',
     description: 'Terninger, sten-saks-papir og quiz. Sofus står for spillene.',
     theme: 'arcade',
@@ -194,6 +210,7 @@ export const PUBLIC_ROOMS: PublicRoomDef[] = [
   },
   {
     id: 'pool',
+    category: 'fest',
     name: 'Poolen',
     description: 'Varmt vand, liggestole og palmer. Freja holder øje fra tårnet.',
     theme: 'pool',

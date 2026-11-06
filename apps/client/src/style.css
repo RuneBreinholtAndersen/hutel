@@ -972,3 +972,17 @@ button.badge.on {
 .shapebtn span {
   font-size: 12px;
 }
+.star {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.4);
+  padding: 0 6px 0 0;
+  cursor: pointer;
+}
+.star.on {
+  color: var(--acc);
+}
+.navtabs {
+  margin: 8px 0 4px;
+}

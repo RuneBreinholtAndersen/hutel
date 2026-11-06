@@ -8,6 +8,7 @@ import type {
   PlacedItem,
   PetKind,
   RoomShape,
+  RoomCategory,
   QuestId,
   RoomAccess,
   RoomTheme,
@@ -30,6 +31,8 @@ export interface UserRecord {
   homeRoomId: string;
   motto: string;
   friends: string[];
+  /** Room ids on my favourites list. */
+  favorites?: string[];
   pets?: PetRecord[];
   activePet?: string | null;
   /** Owned wallpapers and floors ("wall:mint"). */
@@ -99,6 +102,7 @@ export interface RoomRecord {
   floor?: string | null;
   size?: number;
   shape?: RoomShape;
+  category?: RoomCategory;
   paidSize?: number;
 }
 

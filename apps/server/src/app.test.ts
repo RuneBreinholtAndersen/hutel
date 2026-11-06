@@ -723,6 +723,33 @@ describe('multiplayer', () => {
     c.ws.close();
   });
 
+  it('finds rooms by search, category and favourites in the navigator', async () => {
+    const owner = await login('Festabe');
+    owner.c.send({ t: 'roomSettings', name: 'Diskoteket', category: 'fest' });
+    await owner.c.waitFor('roomMeta', (m) => m.category === 'fest');
+    const other = await login('Gæsten');
+    other.c.send({ t: 'navigator', q: 'disko' });
+    const res = await other.c.waitFor('navigator', (m) => m.q === 'disko');
+    const hit = res.rooms.find((r) => r.name === 'Diskoteket')!;
+    expect(hit.category).toBe('fest');
+    expect(hit.fav).toBe(false);
+    other.c.send({ t: 'navigator', q: 'festabe' }); // the owner's name works too
+    expect(
+      (await other.c.waitFor('navigator', (m) => m.q === 'festabe')).rooms.some(
+        (r) => r.id === hit.id,
+      ),
+    ).toBe(true);
+    other.c.send({ t: 'favorite', roomId: hit.id, on: true });
+    const fav = await other.c.waitFor(
+      'navigator',
+      (m) => m.q === undefined && m.rooms.some((r) => r.id === hit.id),
+    );
+    expect(fav.rooms.find((r) => r.id === hit.id)!.fav).toBe(true);
+    expect(fav.rooms.find((r) => r.id === 'arcade')!.category).toBe('spil');
+    owner.c.ws.close();
+    other.c.ws.close();
+  });
+
   it('whispers only to someone in the same room, hidden from others', async () => {
     const a = await login('Hviskeren');
     const b = await login('Lytteren');

@@ -14,6 +14,7 @@ import {
   type PlayerView,
   type PetView,
   type RoomShape,
+  type RoomCategory,
   type RoomAccess,
   type RoomTheme,
   type RoomView,
@@ -54,6 +55,7 @@ export interface RoomMeta {
   /** Floor size in tiles (square). */
   size: number;
   shape: RoomShape;
+  category: RoomCategory;
   paidSize: number;
   wall: string | null;
   floor: string | null;
@@ -126,6 +128,7 @@ export class RoomInstance {
       theme: this.meta.theme,
       size: this.meta.size,
       shape: this.meta.shape,
+      category: this.meta.category,
       paidSize: this.meta.paidSize,
       wall: this.meta.wall,
       floor: this.meta.floor,

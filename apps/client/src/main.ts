@@ -36,6 +36,9 @@ import {
   ROOM_SHAPE_IDS,
   SIZE_PRICES,
   type RoomShape,
+  ROOM_CATEGORIES,
+  ROOM_CATEGORY_IDS,
+  type RoomCategory,
   type Floor,
   WALLPAPERS,
   FLOORS,
@@ -599,7 +602,12 @@ function handle(msg: ServerMsg) {
       return;
     case 'roomMeta':
       if (room)
-        Object.assign(room, { name: msg.name, description: msg.description, access: msg.access });
+        Object.assign(room, {
+          name: msg.name,
+          description: msg.description,
+          access: msg.access,
+          category: msg.category,
+        });
       return updateRoomUi();
     case 'coins': {
       const diff = me ? msg.coins - me.coins : 0;
@@ -643,6 +651,7 @@ function handle(msg: ServerMsg) {
       if (panelKind === 'friends') renderFriends();
       return;
     case 'navigator':
+      if ((msg.q ?? '') !== navQuery) return; // an older search
       lastRooms = msg.rooms;
       clearTimeout(navRetry);
       if (panelKind === 'nav') renderNavigator(msg.rooms);
@@ -708,23 +717,49 @@ function openNavigator() {
       'nav',
       head('🧭 Navigator', 'Gå på opdagelse i hotellet.') + '<p class="sub">Henter rum…</p>',
     );
-  net?.send({ t: 'navigator' });
+  net?.send({ t: 'navigator', q: navQuery || undefined });
   clearTimeout(navRetry);
   navRetry = window.setTimeout(() => {
-    if (panelKind === 'nav') net?.send({ t: 'navigator' });
+    if (panelKind === 'nav') net?.send({ t: 'navigator', q: navQuery || undefined });
   }, 1500);
 }
+type NavTab = 'popular' | 'fav' | RoomCategory;
+let navTab: NavTab = 'popular';
+let navQuery = '';
+let navSearchTimer = 0;
 function renderNavigator(rooms: NavigatorRoom[]) {
   const row = (r: NavigatorRoom) =>
-    `<div class="li"><div class="grow"><b>${esc(r.name)}</b>${events.some((e) => e.roomId === r.id) ? ' <span class="evtag">🎉 Event</span>' : ''}${r.access !== 'open' ? (r.access === 'locked' ? ' 🔒' : ' 🔑') : ''}<small>${esc(r.description || (r.ownerName ? `Af ${r.ownerName}` : ''))}</small></div><span class="users${r.users >= r.max ? ' full' : ''}">👤 ${r.users}/${r.max}</span>${r.users >= r.max && room?.id !== r.id ? '<button class="small" disabled>Fyldt</button>' : `<button class="small" data-go="${esc(r.id)}">${room?.id === r.id ? 'Her' : 'Gå'}</button>`}</div>`;
-  const pub = rooms.filter((r) => r.public);
-  const guest = rooms.filter((r) => !r.public && !me?.apartment.some((a) => a.id === r.id));
+    `<div class="li"><button class="star${r.fav ? ' on' : ''}" data-fav="${esc(r.id)}" title="${r.fav ? 'Fjern fra favoritter' : 'Tilføj til favoritter'}">${r.fav ? '★' : '☆'}</button><div class="grow"><b>${ROOM_CATEGORIES[r.category].icon} ${esc(r.name)}</b>${events.some((e) => e.roomId === r.id) ? ' <span class="evtag">🎉 Event</span>' : ''}${r.access !== 'open' ? (r.access === 'locked' ? ' 🔒' : ' 🔑') : ''}<small>${esc(r.description || (r.ownerName ? `Af ${r.ownerName}` : ''))}</small></div><span class="users${r.users >= r.max ? ' full' : ''}">👤 ${r.users}/${r.max}</span>${r.users >= r.max && room?.id !== r.id ? '<button class="small" disabled>Fyldt</button>' : `<button class="small" data-go="${esc(r.id)}">${room?.id === r.id ? 'Her' : 'Gå'}</button>`}</div>`;
+  const inTab = (r: NavigatorRoom) =>
+    navTab === 'popular' ? true : navTab === 'fav' ? r.fav : r.category === navTab;
+  const shown = rooms.filter(inTab);
+  const pub = shown.filter((r) => r.public);
+  const guest = shown
+    .filter(
+      (r) =>
+        !r.public &&
+        (navQuery || navTab !== 'popular' || !me?.apartment.some((a) => a.id === r.id)),
+    )
+    .sort((a, b) => b.users - a.users);
+  const tabs = (['popular', 'fav', ...ROOM_CATEGORY_IDS] as NavTab[])
+    .map((t) => {
+      const label =
+        t === 'popular'
+          ? '🔥 Populære'
+          : t === 'fav'
+            ? '⭐ Favoritter'
+            : `${ROOM_CATEGORIES[t].icon} ${ROOM_CATEGORIES[t].name}`;
+      return `<button class="${navTab === t ? 'on' : ''}" data-tab="${t}">${label}</button>`;
+    })
+    .join('');
+  const search = `<div class="row" style="display:flex;gap:6px"><input id="navQ" maxlength="30" placeholder="🔍 Søg efter rum eller ejer…" value="${esc(navQuery)}" style="flex:1"></div><div class="chips navtabs">${tabs}</div>`;
   const own =
     isOwner() && room
       ? `<h3>Dit værelse</h3><div class="row"><input id="rsName" maxlength="30" value="${esc(room.name)}" style="width:100%"></div>
        <div class="row"><input id="rsDesc" maxlength="80" placeholder="Beskrivelse" value="${esc(room.description)}" style="width:100%"></div>
        <div class="row" style="display:flex;gap:6px;flex-wrap:wrap"><select id="rsAccess"><option value="open">Åbent for alle</option><option value="locked">Låst</option><option value="password">Adgangskode</option></select>
        <input id="rsPw" type="password" maxlength="40" placeholder="Ny adgangskode"><button id="rsSave" class="small primary">Gem</button></div>
+        <div class="row" style="display:flex;gap:6px;align-items:center"><span class="sub">Kategori:</span><select id="rsCat">${ROOM_CATEGORY_IDS.map((c) => `<option value="${c}">${ROOM_CATEGORIES[c].icon} ${ROOM_CATEGORIES[c].name}</option>`).join('')}</select></div>
        <div class="row"><button id="rsRenovate" class="small">📐 Byg om: størrelse og form (${room.size}×${room.size}, ${ROOM_SHAPES[room.shape].name})</button></div>`
       : '';
   const myLevel = me ? levelOf(me).level : 1;
@@ -744,15 +779,49 @@ function renderNavigator(rooms: NavigatorRoom[]) {
   openPanel(
     'nav',
     head('🧭 Navigator', 'Gå på opdagelse i hotellet.') +
-      apt +
-      `<h3>Offentlige rum</h3><div class="list">${pub.map(row).join('')}</div>` +
-      `<h3>Værelser</h3><div class="list">${guest.map(row).join('') || '<p class="sub">Ingen værelser med gæster lige nu.</p>'}</div>` +
+      search +
+      (navQuery || navTab !== 'popular' ? '' : apt) +
+      (pub.length
+        ? `<h3>Offentlige rum</h3><div class="list">${pub.map(row).join('')}</div>`
+        : '') +
+      `<h3>${navQuery ? `Søgning: “${esc(navQuery)}”` : navTab === 'popular' ? '🔥 Værelser lige nu' : 'Værelser'}</h3><div class="list">${
+        guest.map(row).join('') ||
+        `<p class="sub">${navQuery ? 'Ingen rum passer til din søgning.' : navTab === 'fav' ? 'Tryk ☆ ved et rum for at gemme det her.' : 'Ingen værelser her lige nu.'}</p>`
+      }</div>` +
       `<h3>📅 Ugens events</h3><p class="sub">${EVENTS.map((e) => `${e.name}: ${WEEKDAYS[e.weekday]} kl. ${e.start}–${e.end}`).join('<br>')}<br>Dobbelt mønter og et særligt badge, hvis du er med i 5 minutter.</p>` +
       own,
   );
   $('panel')
     .querySelectorAll<HTMLElement>('[data-go]')
     .forEach((b) => b.addEventListener('click', () => goTo(b.dataset.go!)));
+  $('panel')
+    .querySelectorAll<HTMLElement>('[data-fav]')
+    .forEach((b) =>
+      b.addEventListener('click', () => {
+        net?.send({ t: 'favorite', roomId: b.dataset.fav!, on: !b.classList.contains('on') });
+        if (navQuery) net?.send({ t: 'navigator', q: navQuery });
+      }),
+    );
+  $('panel')
+    .querySelectorAll<HTMLElement>('[data-tab]')
+    .forEach((b) =>
+      b.addEventListener('click', () => {
+        navTab = b.dataset.tab as NavTab;
+        renderNavigator(rooms);
+      }),
+    );
+  const q = $<HTMLInputElement>('navQ');
+  q.addEventListener('input', () => {
+    clearTimeout(navSearchTimer);
+    navSearchTimer = window.setTimeout(() => {
+      navQuery = q.value.trim();
+      net?.send({ t: 'navigator', q: navQuery || undefined });
+    }, 300);
+  });
+  if (navQuery) {
+    q.focus();
+    q.setSelectionRange(q.value.length, q.value.length);
+  }
   $('panel')
     .querySelectorAll<HTMLElement>('[data-buyroom]')
     .forEach((b) =>
@@ -762,6 +831,7 @@ function renderNavigator(rooms: NavigatorRoom[]) {
     );
   if (own && room) {
     $<HTMLSelectElement>('rsAccess').value = room.access;
+    $<HTMLSelectElement>('rsCat').value = room.category;
     $('rsRenovate').addEventListener('click', () => {
       reno = { size: room!.size, shape: room!.shape };
       renderRenovate();
@@ -773,6 +843,7 @@ function renderNavigator(rooms: NavigatorRoom[]) {
         name: $<HTMLInputElement>('rsName').value.trim() || undefined,
         description: $<HTMLInputElement>('rsDesc').value,
         access: $<HTMLSelectElement>('rsAccess').value as RoomView['access'],
+        category: $<HTMLSelectElement>('rsCat').value as RoomCategory,
         password: pw.length >= 3 ? pw : undefined,
       });
     });

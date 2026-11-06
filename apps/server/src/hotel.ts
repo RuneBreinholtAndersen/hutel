@@ -48,6 +48,7 @@ import {
   SIZE_PRICES,
   renovationPrice,
   type RoomShape,
+  type RoomCategory,
   decorDef,
   decorKey,
   type DecorKind,
@@ -182,6 +183,7 @@ const LIMIT_FOR: Partial<Record<ClientMsg['t'], LimitKind>> = {
   profile: 'social',
   motto: 'social',
   navigator: 'nav',
+  favorite: 'nav',
 };
 
 export class Hotel {
@@ -212,6 +214,7 @@ export class Hotel {
         theme: def.theme,
         size: def.size ?? ROOM_SIZE,
         shape: 'square' as const,
+        category: def.category,
         paidSize: def.size ?? ROOM_SIZE,
         wall: null,
         floor: null,
@@ -436,6 +439,7 @@ export class Hotel {
         theme: rec.theme ?? 'home',
         size: rec.size ?? ROOM_SIZE,
         shape: rec.shape ?? 'square',
+        category: rec.category ?? 'andet',
         paidSize: rec.paidSize ?? ROOM_SIZE,
         wall: rec.wall ?? null,
         floor: rec.floor ?? null,
@@ -527,8 +531,17 @@ export class Hotel {
     if (!room.meta.isPublic && room.humans().length === 0) this.rooms.delete(room.meta.id);
   }
 
-  private navigator(user: UserRecord): NavigatorRoom[] {
-    const out: NavigatorRoom[] = PUBLIC_ROOMS.map((r) => ({
+  /**
+   * Rooms for the navigator. Without a search: public rooms, plus guest rooms with people in them,
+   * your own, your friends' and your favourites (busiest first). With a search: every guest room
+   * whose name, description or owner matches.
+   */
+  private navigator(user: UserRecord, q?: string): NavigatorRoom[] {
+    const favs = new Set(user.favorites ?? []);
+    const query = (q ?? '').trim().toLowerCase();
+    const out: NavigatorRoom[] = PUBLIC_ROOMS.filter(
+      (r) => !query || r.name.toLowerCase().includes(query),
+    ).map((r) => ({
       id: r.id,
       name: r.name,
       description: r.description,
@@ -537,25 +550,37 @@ export class Hotel {
       public: true,
       users: this.rooms.get(r.id)?.humans().length ?? 0,
       max: ROOM_CAPACITY,
+      category: r.category,
+      fav: favs.has(r.id),
     }));
     const guest = this.store
       .listRooms()
-      .map((rec) => ({ rec, users: this.rooms.get(rec.id)?.humans().length ?? 0 }))
-      .filter(
-        ({ rec, users }) =>
-          users > 0 || rec.ownerId === user.id || user.friends.includes(rec.ownerId),
+      .map((rec) => ({
+        rec,
+        owner: this.store.getUser(rec.ownerId)?.name ?? null,
+        users: this.rooms.get(rec.id)?.humans().length ?? 0,
+      }))
+      .filter(({ rec, users, owner }) =>
+        query
+          ? `${rec.name} ${rec.description} ${owner ?? ''}`.toLowerCase().includes(query)
+          : users > 0 ||
+            rec.ownerId === user.id ||
+            user.friends.includes(rec.ownerId) ||
+            favs.has(rec.id),
       )
-      .sort((a, b) => b.users - a.users)
-      .slice(0, 40)
-      .map(({ rec, users }) => ({
+      .sort((a, b) => b.users - a.users || a.rec.name.localeCompare(b.rec.name, 'da'))
+      .slice(0, 60)
+      .map(({ rec, users, owner }) => ({
         id: rec.id,
         name: rec.name,
         description: rec.description,
-        ownerName: this.store.getUser(rec.ownerId)?.name ?? null,
+        ownerName: owner,
         access: rec.access,
         users,
         max: ROOM_CAPACITY,
         public: false,
+        category: rec.category ?? 'andet',
+        fav: favs.has(rec.id),
       }));
     return [...out, ...guest];
   }
@@ -995,7 +1020,18 @@ export class Hotel {
       case 'join':
         return this.join(s, msg.roomId, msg.password);
       case 'navigator':
+        return this.send(s, { t: 'navigator', rooms: this.navigator(user, msg.q), q: msg.q });
+      case 'favorite': {
+        const favs = (user.favorites ??= []).filter((id) => id !== msg.roomId);
+        if (
+          msg.on &&
+          (this.store.getRoom(msg.roomId) || PUBLIC_ROOMS.some((r) => r.id === msg.roomId))
+        )
+          favs.unshift(msg.roomId);
+        user.favorites = favs.slice(0, 50);
+        this.store.touch();
         return this.send(s, { t: 'navigator', rooms: this.navigator(user) });
+      }
       case 'move':
         if (room && player) room.walk(player, [msg.x, msg.z], msg.run);
         return;
@@ -1681,13 +1717,20 @@ export class Hotel {
       rec.access = msg.access;
     }
     if (msg.password) rec.passwordHash = hashSecret(msg.password);
-    Object.assign(room.meta, { name: rec.name, description: rec.description, access: rec.access });
+    if (msg.category) rec.category = msg.category as RoomCategory;
+    Object.assign(room.meta, {
+      name: rec.name,
+      description: rec.description,
+      access: rec.access,
+      category: rec.category ?? 'andet',
+    });
     this.store.touch();
     room.broadcast({
       t: 'roomMeta',
       name: rec.name,
       description: rec.description,
       access: rec.access,
+      category: rec.category ?? 'andet',
     });
     this.toast(s, 'Værelset er opdateret');
   }

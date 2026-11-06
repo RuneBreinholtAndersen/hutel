@@ -3,7 +3,7 @@ import { FURNITURE_TYPES, type FurnitureType } from './catalog';
 import { CHAT_MAX_LENGTH, MAX_ROOM_SIZE } from './constants';
 import { LookSchema, type Look } from './look';
 import type { PlacedItem } from './placement';
-import type { RoomAccess, RoomTheme } from './rooms';
+import { ROOM_CATEGORY_IDS, type RoomAccess, type RoomCategory, type RoomTheme } from './rooms';
 import type { BadgeId, DailyView, QuestId } from './progress';
 import type { ActiveEvent } from './events';
 import { MAX_USER_ROOM_SIZE, MIN_USER_ROOM_SIZE, ROOM_SHAPE_IDS, type RoomShape } from './layout';
@@ -145,6 +145,7 @@ export const ClientMsgSchema = z.discriminatedUnion('t', [
     description: z.string().max(80).optional(),
     access: z.enum(['open', 'locked', 'password']).optional(),
     password: z.string().min(3).max(40).optional(),
+    category: z.enum(ROOM_CATEGORY_IDS as [string, ...string[]]).optional(),
   }),
   z.object({ t: z.literal('rights'), userId, grant: z.boolean() }),
   z.object({ t: z.literal('friendRequest'), name: z.string().min(2).max(16) }),
@@ -168,7 +169,8 @@ export const ClientMsgSchema = z.discriminatedUnion('t', [
   z.object({ t: z.literal('report'), userId, reason: z.string().min(3).max(300) }),
   z.object({ t: z.literal('profile'), userId }),
   z.object({ t: z.literal('motto'), motto: z.string().max(60) }),
-  z.object({ t: z.literal('navigator') }),
+  z.object({ t: z.literal('navigator'), q: z.string().max(30).optional() }),
+  z.object({ t: z.literal('favorite'), roomId: z.string().max(40), on: z.boolean() }),
   z.object({ t: z.literal('ping') }),
 ]);
 export type ClientMsg = z.infer<typeof ClientMsgSchema>;
@@ -203,6 +205,7 @@ export interface RoomView {
   size: number;
   /** Floor plan (holes in the square). */
   shape: RoomShape;
+  category: RoomCategory;
   /** Biggest size the owner has paid for (renovating up to it again is free). */
   paidSize: number;
   /** Wallpaper / floor chosen by the owner (null = the theme's own). */
@@ -298,6 +301,9 @@ export interface NavigatorRoom {
   /** Max guests; the room is full when users >= max. */
   max: number;
   public: boolean;
+  category: RoomCategory;
+  /** On my favourites list. */
+  fav: boolean;
 }
 
 export interface ProfileView {
@@ -360,7 +366,13 @@ export type ServerMsg =
   | { t: 'look'; id: string; look: Look }
   | { t: 'itemPut'; item: PlacedItem }
   | { t: 'itemRemove'; id: number }
-  | { t: 'roomMeta'; name: string; description: string; access: RoomAccess }
+  | {
+      t: 'roomMeta';
+      name: string;
+      description: string;
+      access: RoomAccess;
+      category: RoomCategory;
+    }
   | { t: 'coins'; coins: number; reason?: string }
   | { t: 'online'; onlineSec: number }
   | { t: 'quest'; id: QuestId; reward: number; all: boolean; hotelAll?: boolean }
@@ -370,7 +382,7 @@ export type ServerMsg =
   | { t: 'hush'; from: string; fromName: string; to: string; toName: string; text: string }
   | { t: 'pmHistory'; with: string; msgs: PmLine[] }
   | { t: 'profile'; profile: ProfileView }
-  | { t: 'navigator'; rooms: NavigatorRoom[] }
+  | { t: 'navigator'; rooms: NavigatorRoom[]; q?: string }
   | { t: 'toast'; text: string; kind?: 'info' | 'error' }
   | { t: 'needPassword'; roomId: string }
   | { t: 'pong'; serverTime: number };
