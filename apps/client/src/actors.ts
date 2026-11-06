@@ -128,7 +128,9 @@ export class Actor {
       this.seatId = this.pendingSeat;
     }
     const seat = this.seatId !== null ? items.get(this.seatId) : undefined;
-    if (this.walking && (pos.dir[0] || pos.dir[1])) this.face = Math.atan2(pos.dir[0], pos.dir[1]);
+    // Only paths steer the face; arrow-key glides set it themselves.
+    if (this.path.length && !pos.done && (pos.dir[0] || pos.dir[1]))
+      this.face = Math.atan2(pos.dir[0], pos.dir[1]);
     if (seat) this.obj.rotation.y = (seat.rot * Math.PI) / 2;
     else this.obj.rotation.y = lerpAngle(this.obj.rotation.y, this.face, Math.min(1, dt * 14));
 
