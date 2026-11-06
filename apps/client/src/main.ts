@@ -362,6 +362,13 @@ function handle(msg: ServerMsg) {
       renderEventBar();
       if (panelKind === 'nav' && lastRooms) renderNavigator(lastRooms);
       return;
+    case 'tag':
+      actors.get(msg.id)?.setBadge(msg.badge);
+      if (me && msg.id === me.id && msg.shown !== undefined) {
+        me.showBadge = msg.shown;
+        if (panelKind === 'fig') renderFigure();
+      }
+      return;
     case 'adminReports':
       return renderAdmin(msg.reports);
     case 'sys':
@@ -632,7 +639,14 @@ function renderFigure() {
     'fig',
     head('🧍 Min figur', 'Køb sejt tøj med dine mønter – nogle ting låses op med badges.') +
       `<div class="row"><label>Motto</label><input id="motto" maxlength="60" value="${esc(me.motto)}" style="width:100%"></div><div id="lookEd"></div>
-    <h3>Mine badges</h3><div class="badges">${me.badges.map((b) => `<span class="badge">${BADGES[b].icon} ${BADGES[b].name}</span>`).join('')}</div>
+    <h3>Mine badges</h3><p class="sub">Klik på et badge for at vise det ved dit navn.</p><div class="badges">${me.badges
+      .map((b) => {
+        const on = me!.showBadge === b || (me!.showBadge === undefined && b === me!.badges.at(-1));
+        return `<button type="button" class="badge${on ? ' on' : ''}" data-sb="${b}" title="${esc(BADGES[b].text)}">${BADGES[b].icon} ${BADGES[b].name}</button>`;
+      })
+      .join(
+        '',
+      )}<button type="button" class="badge${me.showBadge === null ? ' on' : ''}" data-sb="">Vis intet</button></div>
     <h3>Konto</h3><button id="logout" class="small danger">Log ud på denne enhed</button>
     ${me.role !== 'user' ? `<button id="openAdmin" class="small">🛡️ Moderation</button>` : ''}
     ${canReset ? `<h3>Test</h3><p class="sub">Nulstil mønter, opgaver, badges og dit værelse, og prøv starten igen. Navn, figur og venner beholdes.</p><button id="resetMe" class="small danger">🔄 Start forfra</button>` : ''}`,

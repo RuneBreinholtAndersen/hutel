@@ -837,3 +837,14 @@ select {
   margin: 4px 0;
   font-size: 12px;
 }
+
+button.badge {
+  cursor: pointer;
+  border: 1px solid transparent;
+  font: inherit;
+  color: inherit;
+}
+button.badge.on {
+  border-color: #ffb347;
+  box-shadow: 0 0 0 1px #ffb347 inset;
+}

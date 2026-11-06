@@ -77,6 +77,8 @@ export const ClientMsgSchema = z.discriminatedUnion('t', [
     text: z.string().max(200).optional(),
     roomId: z.string().max(40).optional(),
   }),
+  /** Choose which badge is shown by my name (null hides it). */
+  z.object({ t: z.literal('showBadge'), id: z.string().max(30).nullable() }),
   /** Test phase: wipe my progress (coins, quests, badges, room) and start over. */
   z.object({ t: z.literal('reset') }),
   z.object({
@@ -146,6 +148,8 @@ export interface PlayerView {
   seatId: number | null;
   action: 'wave' | 'dance' | null;
   bot: boolean;
+  /** Icon of the badge shown next to the name. */
+  badge?: string;
 }
 
 export interface RoomView {
@@ -177,6 +181,8 @@ export interface Me {
   /** Furniture not placed in a room. */
   inventory: InvItem[];
   role: 'user' | 'moderator' | 'admin';
+  /** Badge shown by my name; null = hidden, undefined = newest. */
+  showBadge?: string | null;
 }
 
 export interface AdminReport {
@@ -244,6 +250,7 @@ export interface ProfileView {
 export type ServerMsg =
   | { t: 'welcome'; me: Me; serverTime: number; onboardingLock: boolean; canReset: boolean }
   | { t: 'resetDone' }
+  | { t: 'tag'; id: string; badge?: string; shown?: string | null }
   | { t: 'adminReports'; reports: AdminReport[] }
   | { t: 'events'; events: ActiveEvent[] }
   /** A system line in the room (game results etc.); shown over `id` if given. */

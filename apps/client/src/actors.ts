@@ -39,7 +39,7 @@ export class Actor {
     scene.add(this.obj);
     this.tag = document.createElement('div');
     this.tag.className = 'tag' + (isMe ? ' me' : '') + (view.bot ? ' bot' : '');
-    this.tag.textContent = (view.bot ? '🤖 ' : '') + view.name;
+    this.setBadge(view.badge);
     overlay.appendChild(this.tag);
     this.from = [view.x, view.z];
     this.path = view.path;
@@ -95,6 +95,12 @@ export class Actor {
       pz = nz;
     }
     return [px, pz];
+  }
+
+  /** Badge icon shown before the name tag. */
+  setBadge(icon?: string) {
+    this.view.badge = icon;
+    this.tag.textContent = (this.view.bot ? '🤖 ' : icon ? `${icon} ` : '') + this.view.name;
   }
 
   /** Arrow-key walking: place the figure directly (no path) and keep the walk animation going. */

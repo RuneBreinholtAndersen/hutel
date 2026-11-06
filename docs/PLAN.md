@@ -13,6 +13,9 @@ Sidst opdateret: 6. november 2026. Rækkefølge: voksen-Hutel i lukket beta før
 - [ ] Opret et Supabase-projekt i EU-region og slå login med e-mail, Google og Facebook til (se `docs/DEPLOY.md` → "Login med e-mail, Google og Facebook")
 - [ ] Sæt `SUPABASE_URL` og `SUPABASE_ANON_KEY` som Fly-secrets og deploy igen
 - [ ] Facebook-login (sat på pause): opret Meta-app, indsæt App ID/Secret i Supabase, og sæt `AUTH_PROVIDERS=google,facebook`
+- [ ] Sæt dig selv som admin: `fly secrets set ADMIN_NAMES=rune` (log ind med Google med totrinsbekræftelse)
+- [ ] Interaktive møbler: tænd/sluk lamper, læg dig i sengen, tænd fjernsynet
+- [ ] Køb ekstra plads på værelset (større gulv) eller et ekstra værelse
 - [ ] Før lancering: slå "Start forfra" fra med `fly secrets set ALLOW_RESET=false`
 - [ ] Udgiv Google-login for alle (kræver hutel.dk og en side med privatlivspolitik) – indtil da: tilføj beta-testere som testbrugere i Google Cloud → Audience
 - ✅ Supabase-projekt `hutel` oprettet (gratis org "Hutel", EU/Irland), redirect-URL'er sat
@@ -24,6 +27,12 @@ Sidst opdateret: 6. november 2026. Rækkefølge: voksen-Hutel i lukket beta før
 
 ## Færdigt 6. november (eftermiddag)
 
+- ✅ Byttehandel: inventar (📦 Gem i inventar under Byg), byt mønter, møbler og tøj med en anden i samme rum – begge skal godkende, alt logges
+- ✅ Tre nye offentlige rum: Tagterrassen (Viggo), Spillehallen (Sofus) og Poolen (Freja)
+- ✅ Små spil: /terning, /ssp sten|saks|papir, /quiz (højst 20 mønter om dagen fra spil), /hjælp
+- ✅ Ugentlige events (fredagsfest, stjerneaften, poolparty, søndagsquiz): dobbelt mønter, banner og eget badge efter 5 min
+- ✅ Moderation: admin-rolle (ADMIN_NAMES), sager med chatlog, advar/pause/send hjem/udeluk, start eget event, alt logges
+- ✅ Badge ved navnet: nyeste badge vises automatisk, kan vælges under Figur
 - ✅ Tøjbutik under Figur: overdele (stribet, hættetrøje, skjorte+slips, læderjakke, smoking) og hatte (hue, cowboy, høj hat, krone) – nogle låst op af badges
 - ✅ Møbler låst op af badges (sækkestol, fjernsyn, pejs, klaver, jukebox) + spisestol og kaktus; farvevalg på møbler (🎨 / F)
 - ✅ Navigatoren hænger ikke længere på "Henter rum…" (egen grænse, husker sidste liste, prøver igen)

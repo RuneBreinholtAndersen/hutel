@@ -41,6 +41,8 @@ export interface UserRecord {
   };
   role: 'user' | 'moderator' | 'admin';
   bannedUntil: number | null;
+  /** Badge shown by the name: null = hidden, undefined = newest. */
+  showBadge?: string | null;
   /** Can't chat until this time. */
   mutedUntil?: number | null;
   createdAt: string;

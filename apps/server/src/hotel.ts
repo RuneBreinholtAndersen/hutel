@@ -102,6 +102,7 @@ const LIMIT_FOR: Partial<Record<ClientMsg['t'], LimitKind>> = {
   glide: 'glide',
   reset: 'build',
   admin: 'build',
+  showBadge: 'social',
   stash: 'build',
   placeInv: 'build',
   tradeStart: 'social',
@@ -301,6 +302,7 @@ export class Hotel {
       wardrobe: u.wardrobe ?? [],
       inventory: u.inventory ?? [],
       role: u.role,
+      showBadge: u.showBadge,
     };
   }
 
@@ -399,6 +401,7 @@ export class Hotel {
       actionUntil: 0,
       send: (m) => this.send(s, m),
       blocked: () => user.blocked,
+      badge: this.badgeIcon(user),
     };
     room.add(player);
     s.room = room;
@@ -829,6 +832,23 @@ export class Hotel {
     user.badges.push(id);
     this.store.touch();
     if (s) this.send(s, { t: 'badge', id });
+    if (s && user.showBadge === undefined) this.updateTag(s, user);
+  }
+
+  /** Icon shown by the name: chosen badge, or the newest one. */
+  private badgeIcon(u: UserRecord): string | undefined {
+    if (u.showBadge === null) return undefined;
+    const id = (
+      u.showBadge && u.badges.includes(u.showBadge as BadgeId) ? u.showBadge : u.badges.at(-1)
+    ) as BadgeId | undefined;
+    return id ? BADGES[id]?.icon : undefined;
+  }
+
+  private updateTag(s: Session, u: UserRecord) {
+    const icon = this.badgeIcon(u);
+    if (s.player) s.player.badge = icon;
+    s.room?.broadcast({ t: 'tag', id: u.id, badge: icon });
+    this.send(s, { t: 'tag', id: u.id, badge: icon, shown: u.showBadge });
   }
 
   /* ---------------- chat ---------------- */
@@ -973,6 +993,11 @@ export class Hotel {
         return this.whisper(s, user, msg.to, msg.text);
       case 'admin':
         return this.admin(s, user, msg);
+      case 'showBadge':
+        if (msg.id !== null && !user.badges.includes(msg.id as BadgeId)) return;
+        user.showBadge = msg.id;
+        this.store.touch();
+        return this.updateTag(s, user);
       case 'block':
         return this.block(s, user, msg.userId, msg.block);
       case 'report':

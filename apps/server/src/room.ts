@@ -34,6 +34,8 @@ export interface PlayerState {
   action: 'wave' | 'dance' | null;
   actionUntil: number;
   send: ((msg: ServerMsg) => void) | null;
+  /** Icon of the badge shown by the name. */
+  badge?: string;
   /** Time of the last arrow-key glide (for the speed check). */
   lastGlide?: number;
   /** Users whose chat this player does not want to see. */
@@ -95,6 +97,7 @@ export class RoomInstance {
       seatId: p.seatId,
       action: p.action,
       bot: p.bot,
+      badge: p.badge,
     };
   }
 
