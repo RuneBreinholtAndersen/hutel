@@ -1,0 +1,35 @@
+:root {
+  --panel: rgba(44, 29, 20, 0.88);
+  --acc: #ffb347;
+  --txt: #fff6ea;
+}
+html,
+body {
+  margin: 0;
+  height: 100%;
+  font-family: 'Fredoka', system-ui, sans-serif;
+  color: var(--txt);
+  background: radial-gradient(ellipse at 50% 38%, #7a4a3c 0%, #4a2c38 42%, #1c1320 100%);
+}
+body {
+  display: grid;
+  place-items: center;
+}
+.card {
+  background: var(--panel);
+  border: 1px solid rgba(255, 214, 160, 0.2);
+  border-radius: 18px;
+  padding: 32px 40px;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+.logo {
+  font-size: 44px;
+}
+h1 {
+  margin: 6px 0;
+}
+.status {
+  color: var(--acc);
+  font-weight: 600;
+}
