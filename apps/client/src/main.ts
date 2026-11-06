@@ -2,6 +2,7 @@ import {
   BADGES,
   buildGrid,
   canPlace,
+  DOOR_TILE,
   findPath,
   DEFAULT_LOOK,
   footprint,
@@ -10,7 +11,9 @@ import {
   FURNITURE_TYPES,
   QUESTS,
   ROOM_SIZE,
+  RUN_MULTIPLIER,
   sellPrice,
+  WALK_SPEED,
   type FriendView,
   type FurnitureType,
   type Look,
@@ -105,7 +108,6 @@ let build = false;
 let held: { item: PlacedItem; isNew: boolean; orig?: PlacedItem } | null = null;
 let running = false;
 const keys = new Set<string>();
-let nextStep = 0;
 let panelKind: string | null = null;
 let onboardingLock = true;
 
@@ -282,6 +284,7 @@ function handle(msg: ServerMsg) {
       return;
     }
     case 'path': {
+      if (msg.id === me?.id && msg.glide) return; // our own arrow-key walk
       if (msg.id === me?.id && msg.seatId === null) {
         const last = msg.path[msg.path.length - 1] ?? msg.from;
         if (isOwnEcho([last[0], last[1]])) return;
@@ -874,12 +877,15 @@ addEventListener('blur', () => {
   running = false;
 });
 
-/** Arrow keys step one tile at a time in screen directions (isometric). */
-function keyboardWalk() {
+/**
+ * Arrow keys walk freely in screen directions, like the prototype: the figure moves at once
+ * and slides along furniture and walls. The position goes to the server ~10×/s ('glide').
+ */
+let lastGlideSent = 0;
+let gliding = false;
+function keyboardWalk(dt: number) {
   const a = myActor();
-  if (!a || !net || !keys.size || held) return;
-  const now = performance.now();
-  if (now < nextStep) return;
+  if (!a || !net || held) return;
   let ix = 0;
   let iz = 0;
   if (keys.has('up')) {
@@ -898,37 +904,58 @@ function keyboardWalk() {
     ix -= 1;
     iz += 1;
   }
-  ix = Math.sign(ix);
-  iz = Math.sign(iz);
-  if (!ix && !iz) return;
-  if (a.walking) {
-    const last = a.path[a.path.length - 1];
-    if (last && Math.hypot(last[0] - a.x, last[1] - a.z) > 0.35) return;
+  const now = performance.now();
+  if (!ix && !iz) {
+    if (gliding) {
+      gliding = false;
+      net.send({ t: 'glide', x: a.x, z: a.z, run: running });
+    }
+    return;
   }
-  const [tx, tz] = a.walking && a.path.length ? a.path[a.path.length - 1]! : a.tile();
+  const l = Math.hypot(ix, iz);
+  ix /= l;
+  iz /= l;
   const grid = buildGrid(ROOM_SIZE, [...items.values()]);
-  const free = (x: number, z: number) =>
-    x >= 0 && z >= 0 && x < ROOM_SIZE && z < ROOM_SIZE && grid.cells[x]![z] === 0;
-  let nx = tx + ix;
-  let nz = tz + iz;
-  if (!free(nx, nz)) {
-    if (ix && free(tx + ix, tz)) {
-      nx = tx + ix;
-      nz = tz;
-    } else if (iz && free(tx, tz + iz)) {
-      nx = tx;
-      nz = tz + iz;
-    } else return;
+  const [cx, cz] = a.tile();
+  const R = 0.28;
+  const free = (x: number, z: number) => {
+    const tx = Math.round(x);
+    const tz = Math.round(z);
+    if (tx < 0 || tz < 0 || tx >= ROOM_SIZE || tz >= ROOM_SIZE) return false;
+    if (tx === cx && tz === cz) return true;
+    return grid.cells[tx]![tz] === 0;
+  };
+  const st = WALK_SPEED * (running ? RUN_MULTIPLIER : 1) * dt;
+  let x = a.x;
+  let z = a.z;
+  const nx = x + ix * st;
+  if (free(nx + Math.sign(ix) * R, z)) x = nx;
+  const nz = z + iz * st;
+  if (free(x, nz + Math.sign(iz) * R)) z = nz;
+  x = Math.min(ROOM_SIZE - 0.68, Math.max(-0.32, x));
+  z = Math.min(ROOM_SIZE - 0.68, Math.max(-0.32, z));
+  a.glide(x, z, running, Math.atan2(ix, iz));
+  gliding = true;
+  pending.length = 0;
+  $('hint').style.opacity = '0';
+  // Pushing into the door opens the hotel (same as clicking it).
+  if (
+    (keys.has('up') || keys.has('right')) &&
+    z < -0.25 &&
+    Math.round(x) === DOOR_TILE[0] &&
+    Math.round(z) === DOOR_TILE[1] &&
+    now > doorNagUntil
+  ) {
+    doorNagUntil = now + 2500;
+    if (onboarded()) openNavigator();
+    else toast('Døren er låst 🔒 Klar startopgaverne først');
   }
-  if (ix && iz && (!free(tx + ix, tz) || !free(tx, tz + iz))) return;
-  nextStep = now + (running ? 80 : 120);
-  // Predict: extend the current walk (seamless) or start a new one right away.
-  if (a.walking && a.path.length && a.run === running && a.seatId === null) {
-    a.path.push([nx, nz]);
-    expectEcho([nx, nz]);
-  } else predictWalk([nx, nz], running);
-  net.send({ t: 'move', x: nx, z: nz, run: running });
+  if (now - lastGlideSent > 100) {
+    lastGlideSent = now;
+    net.send({ t: 'glide', x, z, run: running });
+  }
 }
+let doorNagUntil = 0;
 
 /* ---------------- buttons ---------------- */
 $('bNav').addEventListener(
@@ -1168,7 +1195,7 @@ function loop() {
   const dt = Math.min(clock.getDelta(), 0.05);
   time += dt;
   const now = net ? net.now() : Date.now();
-  keyboardWalk();
+  keyboardWalk(dt);
   for (const a of actors.values()) a.update(dt, now, items);
   roomGfx.update(dt, time);
   for (const g of objs.values())

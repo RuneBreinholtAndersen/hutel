@@ -23,6 +23,7 @@ Sidst opdateret: 6. november 2026. Rækkefølge: voksen-Hutel i lukket beta før
 
 ## Færdigt 6. november (eftermiddag)
 
+- ✅ Piletaster går frit og flydende som i prototypen (ikke felt for felt); serveren tjekker fart, vægge og møbler
 - ✅ Egen figur går med det samme (klienten forudser stien, serveren bekræfter bagefter) – også med piletaster
 - ✅ Login med e-mail-link, Google og Facebook via Supabase (`/api/config`, `/api/session`), slås til med to secrets
 - ✅ Første login med Google/Facebook/e-mail beder om navn, figur, 18+ og vilkår

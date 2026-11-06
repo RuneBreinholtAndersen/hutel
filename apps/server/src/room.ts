@@ -5,6 +5,8 @@ import {
   findPath,
   furniture,
   positionAt,
+  RUN_MULTIPLIER,
+  WALK_SPEED,
   ROOM_SIZE,
   tilesOf,
   type Look,
@@ -32,6 +34,8 @@ export interface PlayerState {
   action: 'wave' | 'dance' | null;
   actionUntil: number;
   send: ((msg: ServerMsg) => void) | null;
+  /** Time of the last arrow-key glide (for the speed check). */
+  lastGlide?: number;
   /** Users whose chat this player does not want to see. */
   blocked: () => readonly string[];
 }
@@ -157,9 +161,55 @@ export class RoomInstance {
     return tile;
   }
 
+  /**
+   * Arrow-key walking: the client moves freely and reports its position ~10×/s.
+   * The server caps the speed, keeps the figure inside the room and off furniture.
+   */
+  glide(p: PlayerState, x: number, z: number, run = false): boolean {
+    const now = Date.now();
+    const cur = positionAt(p.from, p.path, p.pathStart, p.run, now);
+    const dt = Math.min(1, (now - (p.lastGlide ?? now - 200)) / 1000);
+    p.lastGlide = now;
+    const max = WALK_SPEED * RUN_MULTIPLIER * dt * 1.5 + 0.25;
+    const dx = x - cur.x;
+    const dz = z - cur.z;
+    const d = Math.hypot(dx, dz);
+    if (d > max) {
+      x = cur.x + (dx / d) * max;
+      z = cur.z + (dz / d) * max;
+    }
+    x = Math.min(ROOM_SIZE - 0.68, Math.max(-0.32, x));
+    z = Math.min(ROOM_SIZE - 0.68, Math.max(-0.32, z));
+    const tx = Math.round(x);
+    const tz = Math.round(z);
+    const here = tx === Math.round(cur.x) && tz === Math.round(cur.z);
+    const grid = buildGrid(ROOM_SIZE, this.items);
+    const ok =
+      here || (tx >= 0 && tz >= 0 && tx < ROOM_SIZE && tz < ROOM_SIZE && grid.cells[tx]![tz] === 0);
+    p.seatId = null;
+    p.goalSeat = null;
+    if (p.action === 'dance') p.action = null;
+    p.from = [cur.x, cur.z];
+    p.path = ok ? [[x, z]] : [];
+    p.pathStart = now;
+    p.run = run;
+    // A rejected glide is sent without `glide` so the player's own client snaps back.
+    this.broadcast({
+      t: 'path',
+      id: p.id,
+      path: p.path,
+      pathStart: now,
+      run,
+      seatId: null,
+      from: p.from,
+      glide: ok || undefined,
+    });
+    return ok;
+  }
+
   walk(p: PlayerState, goal: Tile, run = false, seatItem?: PlacedItem): boolean {
     const now = Date.now();
-    const start = p.seatId !== null || p.path.length ? this.settle(p, now) : p.from;
+    const start = this.settle(p, now);
     const grid = buildGrid(ROOM_SIZE, this.items);
     const path = findPath(grid, start, goal, seatItem?.id ?? -1);
     if (!path) return false;
@@ -206,7 +256,7 @@ export class RoomInstance {
     const seated = p.goalSeat !== null && this.items.some((i) => i.id === p.goalSeat);
     p.seatId = seated ? p.goalSeat : null;
     p.goalSeat = null;
-    this.hooks.onArrive(this, p, p.from, seated);
+    this.hooks.onArrive(this, p, [Math.round(p.from[0]), Math.round(p.from[1])], seated);
   }
 
   /** Called ~10×/s: finishes paths and expires short actions. */

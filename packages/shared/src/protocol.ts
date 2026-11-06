@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { FURNITURE_TYPES, type FurnitureType } from './catalog';
-import { CHAT_MAX_LENGTH } from './constants';
+import { CHAT_MAX_LENGTH, ROOM_SIZE } from './constants';
 import { LookSchema, type Look } from './look';
 import type { PlacedItem } from './placement';
 import type { RoomAccess, RoomTheme } from './rooms';
@@ -19,6 +19,13 @@ export const ClientMsgSchema = z.discriminatedUnion('t', [
     password: z.string().max(40).optional(),
   }),
   z.object({ t: z.literal('move'), x: tileCoord, z: tileCoord, run: z.boolean().optional() }),
+  /** Free (non-tile) walking with the arrow keys: where my figure is now. */
+  z.object({
+    t: z.literal('glide'),
+    x: z.number().min(-1).max(ROOM_SIZE),
+    z: z.number().min(-1).max(ROOM_SIZE),
+    run: z.boolean().optional(),
+  }),
   z.object({ t: z.literal('sit'), itemId: z.number().int() }),
   z.object({
     t: z.literal('chat'),
@@ -155,6 +162,8 @@ export type ServerMsg =
       run: boolean;
       seatId: number | null;
       from: [number, number];
+      /** Set when this is an echo of the player's own arrow-key glide. */
+      glide?: boolean;
     }
   | { t: 'chat'; id: string; name: string; text: string; bot: boolean }
   | { t: 'action'; id: string; kind: 'wave' | 'dance' | null }

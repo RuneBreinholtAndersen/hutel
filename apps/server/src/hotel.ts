@@ -49,6 +49,7 @@ interface Session {
 
 const LIMIT_FOR: Partial<Record<ClientMsg['t'], LimitKind>> = {
   move: 'move',
+  glide: 'glide',
   sit: 'move',
   chat: 'chat',
   whisper: 'chat',
@@ -405,6 +406,9 @@ export class Hotel {
         return this.send(s, { t: 'navigator', rooms: this.navigator(user) });
       case 'move':
         if (room && player) room.walk(player, [msg.x, msg.z], msg.run);
+        return;
+      case 'glide':
+        if (room && player) room.glide(player, msg.x, msg.z, msg.run);
         return;
       case 'sit':
         if (room && player) room.sit(player, msg.itemId);

@@ -97,6 +97,19 @@ export class Actor {
     return [px, pz];
   }
 
+  /** Arrow-key walking: place the figure directly (no path) and keep the walk animation going. */
+  glide(x: number, z: number, run: boolean, face: number) {
+    this.from = [x, z];
+    this.path = [];
+    this.run = run;
+    this.face = face;
+    this.seatId = null;
+    this.pendingSeat = null;
+    if (this.action === 'dance') this.action = null;
+    this.glideAt = this.time;
+  }
+  private glideAt = -1;
+
   /** Tile the avatar is on (or heading to). */
   tile(): [number, number] {
     return [Math.round(this.x), Math.round(this.z)];
@@ -108,7 +121,7 @@ export class Actor {
     const pos = positionAt(this.from, this.path, this.pathStart, this.run, now);
     this.x = pos.x;
     this.z = pos.z;
-    this.walking = !pos.done;
+    this.walking = !pos.done || this.time - this.glideAt < 0.08;
     if (pos.done && this.path.length) {
       this.from = [this.path[this.path.length - 1]![0], this.path[this.path.length - 1]![1]];
       this.path = [];

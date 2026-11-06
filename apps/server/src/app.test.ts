@@ -277,6 +277,19 @@ describe('multiplayer', () => {
     b.c.ws.close();
   });
 
+  it('lets arrow keys glide freely but caps the speed', async () => {
+    const a = await login('Glider');
+    a.c.send({ t: 'glide', x: 5.6, z: 0.4, run: false });
+    const g = await a.c.waitFor('path', (m) => m.id === a.g.userId);
+    expect(g.glide).toBe(true);
+    expect(g.path[0]![0]).toBeCloseTo(5.6);
+    a.c.send({ t: 'glide', x: 0, z: 7, run: false }); // teleport attempt
+    const t = await a.c.waitFor('path', (m) => m.id === a.g.userId);
+    const end = t.path[0] ?? t.from;
+    expect(Math.hypot(end[0] - 5.6, end[1] - 0.4)).toBeLessThan(2);
+    a.c.ws.close();
+  });
+
   it('rejects invalid and unauthorised actions', async () => {
     const { c, welcome } = await login('Hacker');
     c.send({ t: 'give_me_coins', amount: 99999 });
