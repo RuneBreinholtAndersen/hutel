@@ -12,6 +12,7 @@ Data (gæster, værelser, chatlog) gemmes indtil videre i en fil på et Fly-volu
 - [ ] Opret appen ud fra `fly.toml` (uden at deploye endnu): `fly launch --no-deploy --copy-config`
   - Vælg et ledigt app-navn, hvis `hutel` er taget, og ret `app = "..."` i `fly.toml`
 - [ ] Opret et volume til data i Stockholm: `fly volumes create hutel_data --region arn --size 1`
+- [ ] Lukket beta – kun dem med en kode kan oprette sig: `fly secrets set BETA_INVITE_CODES=DIN-KODE` (flere koder adskilles med komma)
 - [ ] (Valgfrit) AI-beboere: `fly secrets set ANTHROPIC_API_KEY=sk-ant-...`
 - [ ] Deploy: `fly deploy`
 - [ ] Tjek at det kører: `https://<app-navn>.fly.dev/health` skal svare `{"ok":true,...}`

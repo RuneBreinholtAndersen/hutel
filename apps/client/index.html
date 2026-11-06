@@ -41,6 +41,23 @@
             autocomplete="off"
             placeholder="Fx Rune"
         /></label>
+        <label
+          >Adgangskode<input
+            id="suPw"
+            type="password"
+            minlength="8"
+            maxlength="72"
+            required
+            autocomplete="new-password"
+            placeholder="Mindst 8 tegn"
+        /></label>
+        <label
+          >Invitationskode<input
+            id="suInvite"
+            maxlength="40"
+            autocomplete="off"
+            placeholder="Fra den, der inviterede dig"
+        /></label>
         <div id="suLook"></div>
         <label class="check"><input type="checkbox" id="suAdult" /> Jeg er fyldt 18 år</label>
         <label class="check"
@@ -49,6 +66,23 @@
         >
         <p id="suError" class="error"></p>
         <button type="submit" class="primary">Tjek ind 🛎️</button>
+        <p class="sub">Har du allerede en konto? <a href="#login" id="toLogin">Log ind</a></p>
+      </form>
+      <form id="loginForm" class="card signup hidden">
+        <div class="logo">🏨</div>
+        <h1>Log ind på Hutel</h1>
+        <label>Dit navn<input id="liName" maxlength="16" required autocomplete="username" /></label>
+        <label
+          >Adgangskode<input
+            id="liPw"
+            type="password"
+            maxlength="72"
+            required
+            autocomplete="current-password"
+        /></label>
+        <p id="liError" class="error"></p>
+        <button type="submit" class="primary">Log ind 🔑</button>
+        <p class="sub">Ny på Hutel? <a href="#opret" id="toSignup">Opret en konto</a></p>
       </form>
       <div id="terms" class="card terms hidden">
         <h2>Vilkår og privatliv (kladde)</h2>

@@ -13,6 +13,7 @@ const app = createApp({
   clientDist: process.env.SERVE_CLIENT ? resolve(process.env.SERVE_CLIENT) : null,
   onboardingLock: process.env.ONBOARDING_LOCK !== 'false',
   anthropicApiKey: process.env.ANTHROPIC_API_KEY || undefined,
+  inviteCodes: (process.env.BETA_INVITE_CODES ?? '').split(',').filter((s) => s.trim()),
   botModel: process.env.BOT_MODEL ?? 'claude-haiku-5-5',
   botMaxCallsPerDay: Number(process.env.BOT_MAX_CALLS_PER_DAY ?? 300),
 });

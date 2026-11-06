@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import { mkdirSync, readFileSync, renameSync, writeFileSync, existsSync } from 'node:fs';
 import { dirname } from 'node:path';
 import type { BadgeId, Look, PlacedItem, QuestId, RoomAccess } from '@hutel/shared';
@@ -8,6 +8,8 @@ export interface UserRecord {
   name: string;
   nameLower: string;
   tokenHash: string;
+  /** scrypt$salt$hash – absent for very old dev accounts. */
+  passwordHash?: string;
   look: Look;
   coins: number;
   onlineSec: number;
@@ -73,7 +75,9 @@ export interface Store {
   getUser(id: string): UserRecord | undefined;
   getUserByName(name: string): UserRecord | undefined;
   getUserByToken(token: string): UserRecord | undefined;
-  createUser(name: string, look: Look): { user: UserRecord; token: string };
+  createUser(name: string, look: Look, password: string): { user: UserRecord; token: string };
+  /** Issues a new session token (old ones stop working). */
+  rotateToken(user: UserRecord): string;
   getRoom(id: string): RoomRecord | undefined;
   listRooms(): RoomRecord[];
   addReport(r: Omit<ReportRecord, 'id' | 'createdAt' | 'status'>): void;
@@ -86,6 +90,20 @@ export interface Store {
 
 export const hashSecret = (s: string) => createHash('sha256').update(s).digest('hex');
 export const newId = (prefix: string) => `${prefix}_${randomBytes(8).toString('hex')}`;
+
+export function hashPassword(pw: string): string {
+  const salt = randomBytes(16).toString('hex');
+  return `scrypt$${salt}$${scryptSync(pw, salt, 32).toString('hex')}`;
+}
+
+export function verifyPassword(pw: string, stored: string | undefined): boolean {
+  if (!stored) return false;
+  const [kind, salt, hash] = stored.split('$');
+  if (kind !== 'scrypt' || !salt || !hash) return false;
+  const a = Buffer.from(hash, 'hex');
+  const b = scryptSync(pw, salt, a.length);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
 const CHAT_RETENTION_MS = 30 * 24 * 3600 * 1000;
 const CHAT_MAX_ENTRIES = 20_000;
 
@@ -114,7 +132,14 @@ export class JsonFileStore implements Store {
     return Object.values(this.data.users).find((u) => u.tokenHash === h);
   }
 
-  createUser(name: string, look: Look) {
+  rotateToken(user: UserRecord) {
+    const token = randomBytes(32).toString('hex');
+    user.tokenHash = hashSecret(token);
+    this.touch();
+    return token;
+  }
+
+  createUser(name: string, look: Look, password: string) {
     const token = randomBytes(32).toString('hex');
     const id = newId('u');
     const roomId = newId('r');
@@ -137,6 +162,7 @@ export class JsonFileStore implements Store {
       name,
       nameLower: name.toLowerCase(),
       tokenHash: hashSecret(token),
+      passwordHash: hashPassword(password),
       look,
       coins: 30,
       onlineSec: 0,

@@ -12,7 +12,7 @@ import {
 import { z } from 'zod';
 import { Hotel, type HotelConfig } from './hotel';
 import { KeyedLimiter } from './ratelimit';
-import { JsonFileStore, type Store } from './store';
+import { JsonFileStore, verifyPassword, type Store } from './store';
 
 export const VERSION = '0.1.0';
 
@@ -23,13 +23,22 @@ export interface AppConfig extends HotelConfig {
   clientDist: string | null;
   /** Guest sign-ups allowed per IP per hour. */
   signupsPerHour?: number;
+  /** If set, a code from this list is needed to create an account (closed beta). */
+  inviteCodes?: string[];
 }
 
 const GuestSchema = z.object({
   name: z.string().min(2).max(16),
   look: LookSchema,
+  password: z.string().min(8).max(72),
+  invite: z.string().max(40).optional(),
   adult: z.literal(true),
   terms: z.literal(true),
+});
+
+const LoginSchema = z.object({
+  name: z.string().min(2).max(16),
+  password: z.string().min(1).max(72),
 });
 
 const MIME: Record<string, string> = {
@@ -77,6 +86,8 @@ export function createApp(
   const hotel = new Hotel(store, cfg);
   const perHour = cfg.signupsPerHour ?? 5;
   const signupLimiter = new KeyedLimiter(perHour, perHour / 3600);
+  const loginLimiter = new KeyedLimiter(10, 10 / 900);
+  const invites = (cfg.inviteCodes ?? []).map((c) => c.trim().toLowerCase()).filter(Boolean);
   const allowed = (origin: string | undefined) =>
     !origin ||
     cfg.clientOrigins.includes(origin) ||
@@ -117,7 +128,15 @@ export function createApp(
       }
       const parsed = GuestSchema.safeParse(body);
       if (!parsed.success)
-        return json(res, 400, { ok: false, error: 'Udfyld navn, figur og bekræft 18+ og vilkår.' });
+        return json(res, 400, {
+          ok: false,
+          error: 'Udfyld navn, en adgangskode på mindst 8 tegn, og bekræft 18+ og vilkår.',
+        });
+      if (invites.length && !invites.includes((parsed.data.invite ?? '').trim().toLowerCase()))
+        return json(res, 403, {
+          ok: false,
+          error: 'Hutel er i lukket beta – du skal bruge en gyldig invitationskode.',
+        });
       const name = parsed.data.name.trim();
       if (!isValidName(name))
         return json(res, 400, {
@@ -131,8 +150,32 @@ export function createApp(
         )
       )
         return json(res, 409, { ok: false, error: 'Navnet er taget – prøv et andet.' });
-      const { user, token } = store.createUser(name, parsed.data.look);
+      const { user, token } = store.createUser(name, parsed.data.look, parsed.data.password);
       return json(res, 200, { ok: true, token, userId: user.id });
+    }
+    if (req.method === 'POST' && url.pathname === '/api/login') {
+      const ip = (req.headers['fly-client-ip'] as string) ?? req.socket.remoteAddress ?? 'unknown';
+      let body: unknown;
+      try {
+        body = JSON.parse(await readBody(req));
+      } catch {
+        return json(res, 400, { ok: false, error: 'Ugyldig forespørgsel.' });
+      }
+      const parsed = LoginSchema.safeParse(body);
+      if (!parsed.success)
+        return json(res, 400, { ok: false, error: 'Skriv dit navn og din adgangskode.' });
+      const key = `${ip}:${parsed.data.name.toLowerCase()}`;
+      if (!loginLimiter.take(key))
+        return json(res, 429, {
+          ok: false,
+          error: 'For mange forsøg – vent et kvarter og prøv igen.',
+        });
+      const user = store.getUserByName(parsed.data.name.trim());
+      if (!user || !verifyPassword(parsed.data.password, user.passwordHash))
+        return json(res, 401, { ok: false, error: 'Forkert navn eller adgangskode.' });
+      if (user.bannedUntil && user.bannedUntil > Date.now())
+        return json(res, 403, { ok: false, error: 'Kontoen er midlertidigt udelukket.' });
+      return json(res, 200, { ok: true, token: store.rotateToken(user), userId: user.id });
     }
     if (cfg.clientDist && req.method === 'GET') {
       const rel = normalize(decodeURIComponent(url.pathname)).replace(/^(\.\.[/\\])+/, '');

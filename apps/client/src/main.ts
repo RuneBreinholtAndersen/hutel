@@ -918,14 +918,45 @@ $('chatForm').addEventListener('submit', (e) => {
 
 /* ---------------- sign-up ---------------- */
 let signupLook: Look = { ...DEFAULT_LOOK };
-function showSignup(error = '') {
+function showSignup(error = '', mode: 'signup' | 'login' = 'signup') {
   $('signup').classList.remove('hidden');
-  $('suError').textContent = error;
+  $('signupForm').classList.toggle('hidden', mode !== 'signup');
+  $('loginForm').classList.toggle('hidden', mode !== 'login');
+  $('suError').textContent = mode === 'signup' ? error : '';
+  $('liError').textContent = mode === 'login' ? error : '';
   lookEditor($('suLook'), signupLook, (l) => (signupLook = l));
 }
 $('termsLink').addEventListener('click', (e) => {
   e.preventDefault();
   $('terms').classList.remove('hidden');
+});
+$('toLogin').addEventListener('click', (e) => {
+  e.preventDefault();
+  showSignup('', 'login');
+});
+$('toSignup').addEventListener('click', (e) => {
+  e.preventDefault();
+  showSignup('', 'signup');
+});
+$('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try {
+    const res = await fetch(`${SERVER}/api/login`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name: $<HTMLInputElement>('liName').value.trim(),
+        password: $<HTMLInputElement>('liPw').value,
+      }),
+    });
+    const data = (await res.json()) as { ok: boolean; token?: string; error?: string };
+    if (!data.ok || !data.token)
+      return ($('liError').textContent = data.error ?? 'Noget gik galt.');
+    store.set(TOKEN_KEY, data.token);
+    start(data.token);
+  } catch {
+    $('liError').textContent = 'Kan ikke nå hotellet lige nu. Prøv igen om lidt.';
+  }
 });
 $('termsClose').addEventListener('click', () => $('terms').classList.add('hidden'));
 $('signupForm').addEventListener('submit', async (e) => {
@@ -939,7 +970,14 @@ $('signupForm').addEventListener('submit', async (e) => {
     const res = await fetch(`${SERVER}/api/guest`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ name, look: signupLook, adult, terms }),
+      body: JSON.stringify({
+        name,
+        look: signupLook,
+        password: $<HTMLInputElement>('suPw').value,
+        invite: $<HTMLInputElement>('suInvite').value.trim() || undefined,
+        adult,
+        terms,
+      }),
     });
     const data = (await res.json()) as { ok: boolean; token?: string; error?: string };
     if (!data.ok || !data.token)
@@ -959,7 +997,7 @@ function start(token: string) {
   net.onFatal = (code) => {
     if (code === 4001) {
       store.set(TOKEN_KEY, null);
-      showSignup('Din session er udløbet – opret dig igen.');
+      showSignup('Du er blevet logget ud – log ind igen.', 'login');
     } else if (code === 4003) toast('Din konto er midlertidigt udelukket.', 'error');
     else if (code === 4000) toast('Du er logget ind et andet sted.', 'error');
   };

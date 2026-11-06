@@ -4,7 +4,7 @@ import WebSocket from 'ws';
 import { DEFAULT_LOOK, type ServerMsg } from '@hutel/shared';
 import { createApp } from './app';
 
-const app = createApp({
+const cfg = {
   clientOrigins: ['http://localhost:5173'],
   dataFile: null,
   clientDist: null,
@@ -12,7 +12,8 @@ const app = createApp({
   botModel: 'test',
   botMaxCallsPerDay: 0,
   signupsPerHour: 1000,
-});
+};
+const app = createApp(cfg);
 let base = '';
 
 beforeAll(async () => {
@@ -25,7 +26,13 @@ async function guest(name: string) {
   const res = await fetch(`http://${base}/api/guest`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ name, look: DEFAULT_LOOK, adult: true, terms: true }),
+    body: JSON.stringify({
+      name,
+      look: DEFAULT_LOOK,
+      password: 'hemmelig123',
+      adult: true,
+      terms: true,
+    }),
   });
   return (await res.json()) as { ok: boolean; token: string; userId: string; error?: string };
 }
@@ -85,6 +92,58 @@ describe('http', () => {
       body: JSON.stringify({ name: 'NoConsent', look: DEFAULT_LOOK }),
     });
     expect(res.status).toBe(400);
+  });
+});
+
+describe('login', () => {
+  it('logs in with name and password and rejects wrong passwords', async () => {
+    const g = await guest('Loginbruger');
+    expect(g.ok).toBe(true);
+    const post = (body: unknown) =>
+      fetch(`http://${base}/api/login`, { method: 'POST', body: JSON.stringify(body) }).then(
+        async (r) => ({
+          status: r.status,
+          data: (await r.json()) as { ok: boolean; token?: string },
+        }),
+      );
+    expect((await post({ name: 'loginbruger', password: 'forkert' })).status).toBe(401);
+    const ok = await post({ name: 'Loginbruger', password: 'hemmelig123' });
+    expect(ok.data.ok).toBe(true);
+    expect(ok.data.token).not.toBe(g.token);
+  });
+  it('rejects short passwords', async () => {
+    const res = await fetch(`http://${base}/api/guest`, {
+      method: 'POST',
+      body: JSON.stringify({
+        name: 'Kortkode',
+        look: DEFAULT_LOOK,
+        password: '123',
+        adult: true,
+        terms: true,
+      }),
+    });
+    expect(res.status).toBe(400);
+  });
+  it('requires an invite code when the beta is closed', async () => {
+    const closed = createApp({ ...cfg, inviteCodes: ['KAGE2026'] });
+    await new Promise<void>((r) => closed.server.listen(0, r));
+    const port = (closed.server.address() as AddressInfo).port;
+    const send = (invite?: string) =>
+      fetch(`http://127.0.0.1:${port}/api/guest`, {
+        method: 'POST',
+        body: JSON.stringify({
+          name: 'Betagæst',
+          look: DEFAULT_LOOK,
+          password: 'hemmelig123',
+          invite,
+          adult: true,
+          terms: true,
+        }),
+      });
+    expect((await send()).status).toBe(403);
+    expect((await send('forkert')).status).toBe(403);
+    expect((await send('kage2026')).status).toBe(200);
+    await closed.close();
   });
 });
 

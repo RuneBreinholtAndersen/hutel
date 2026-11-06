@@ -32,7 +32,7 @@ docs/
 ```
 
 - **Realtid:** egen WebSocket-server (`ws`) i `apps/server`. Hvert hotelrum (lobby, café, brugerværelse) er en `RoomInstance`. Klienten forbinder til `/ws`, sender `{t:'auth', token}` og derefter intentioner. Alle beskeder er defineret i `packages/shared/src/protocol.ts` og valideres med zod.
-- **Login og data (nu):** gæstelogin via `POST /api/guest` (navn, figur, 18+ og vilkår) giver et token, som gemmes i browseren. Data ligger i `JsonFileStore` (`data/hutel-db.json`) bag interfacet `Store` i `apps/server/src/store.ts`.
+- **Login og data (nu):** konto via `POST /api/guest` (navn, adgangskode, figur, 18+, vilkår og evt. invitationskode fra `BETA_INVITE_CODES`) og login via `POST /api/login`. Begge giver et token, som gemmes i browseren; adgangskoder gemmes som scrypt-hash. Data ligger i `JsonFileStore` (`data/hutel-db.json`) bag interfacet `Store` i `apps/server/src/store.ts`.
 - **Login og data (næste skridt):** Supabase (EU-region). Lav en `SupabaseStore`, der implementerer `Store`, og skift gæstetoken ud med Supabase-login (magic link + Google). Resten af serveren skal ikke ændres.
 - **Bevægelse:** serveren beregner stier (`findPath`) og sender `path` med starttid. Klient og server bruger samme `positionAt()` til at regne positionen ud, så de er enige.
 - **Hosting:** klient på Vercel (`hutel.dk`), server i Docker på Fly.io eller Hetzner (`wss://play.hutel.dk`). Alternativt kan serveren selv levere klienten med `SERVE_CLIENT`.

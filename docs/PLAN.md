@@ -59,7 +59,8 @@ Samme kodebase og grafik som Hutel, men en helt separat verden for børn. Børn 
 ## Næste: Login, database og deploy
 
 - [ ] `SupabaseStore` der implementerer `Store` (tabeller: users, rooms, room_items, friends, reports, chatlog) med RLS
-- [ ] Supabase-login (magic link + Google) i stedet for gæstetoken. Behold 18+ og vilkår ved oprettelse
+- [ ] Glemt adgangskode (kræver e-mail – kommer med Supabase-login)
+- [ ] Supabase-login (magic link + Google) i stedet for det nuværende navn + adgangskode. Behold 18+ og vilkår ved oprettelse
 - [ ] Automatisk sletning af chatlog efter 30 dage i databasen (cron)
 - [ ] Første deploy til Fly.io og domænet hutel.dk peget på den (se `docs/DEPLOY.md`)
 - [ ] Cloudflare foran klient og server
@@ -183,6 +184,12 @@ Samme kodebase og grafik som Hutel, men en helt separat verden for børn. Børn 
 - ✅ Tokens og adgangskoder gemmes kun som hash
 - ✅ WebSocket-forbindelser kun fra tilladte domæner, maks. beskedstørrelse 4 KB
 - ✅ Chatlog slettes efter 30 dage
+
+### Login og lukket beta
+
+- ✅ Konto med navn og adgangskode (scrypt-hash), så man kan logge ind på alle enheder
+- ✅ Login med rate limit (10 forsøg pr. kvarter pr. IP og navn); nyt login logger andre enheder ud
+- ✅ Invitationskoder (`BETA_INVITE_CODES`) – uden gyldig kode kan man ikke oprette sig
 
 ### Klar til deploy
 
