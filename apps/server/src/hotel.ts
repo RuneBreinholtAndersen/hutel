@@ -7,6 +7,10 @@ import {
   furniture,
   isGreeting,
   PUBLIC_ROOMS,
+  DAILY_BONUS,
+  DAILY_POOL,
+  dailyQuestsFor,
+  danishDate,
   HOTEL_BONUS,
   HOTEL_QUESTS,
   QUESTS,
@@ -14,6 +18,8 @@ import {
   sanitizeChat,
   sellPrice,
   type BadgeId,
+  type DailyId,
+  type DailyView,
   type ClientMsg,
   type FriendView,
   type Me,
@@ -237,6 +243,7 @@ export class Hotel {
     this.sendFriends(user);
     this.notifyFriendsOf(user);
     this.join(s, user.homeRoomId);
+    this.daily(s, user, 'd_login');
   }
 
   private me(u: UserRecord): Me {
@@ -250,6 +257,7 @@ export class Hotel {
       badges: u.badges,
       homeRoomId: u.homeRoomId,
       motto: u.motto,
+      daily: this.dailyView(u),
     };
   }
 
@@ -263,6 +271,7 @@ export class Hotel {
       if (!user || !s) return;
       if (seated) this.quest(s, user, 'sit');
       if (seated && room.meta.id === 'cafe') this.quest(s, user, 'cafeSit');
+      if (seated && room.meta.id !== user.homeRoomId) this.daily(s, user, 'd_sit');
       if (
         room.meta.id === 'lobby' &&
         room.items.some(
@@ -356,6 +365,9 @@ export class Hotel {
       this.bots.startGuide(room, () => this.nextTip(user));
     this.bots.onHumanJoin(room, player);
     if (room.meta.id === 'lobby') this.quest(s, user, 'lobby');
+    if (room.meta.id === 'cafe') this.daily(s, user, 'd_cafe');
+    if (!room.meta.isPublic && room.meta.ownerId && room.meta.ownerId !== user.id)
+      this.daily(s, user, 'd_visit');
     if (room.meta.isPublic && this.onboarded(user)) {
       const tip = this.hotelTip(user, room.meta.id);
       if (tip) this.bots.hostSay(room, tip, 4500);
@@ -422,7 +434,10 @@ export class Hotel {
     const hotelAll = !!hotel && HOTEL_QUESTS.every((q) => user.quests.includes(q.id));
     this.send(s, { t: 'quest', id, reward, all, hotelAll });
     this.coins(s, user, reward);
-    if (all) this.badge(s, user, 'onboarded');
+    if (all) {
+      this.badge(s, user, 'onboarded');
+      this.daily(s, user, 'd_login');
+    }
     if (hotelAll) {
       this.badge(s, user, 'hotelkender');
       this.coins(s, user, HOTEL_BONUS);
@@ -443,6 +458,66 @@ export class Hotel {
     if (!left.length) return null;
     const here = left.find((id) => HOTEL_TIPS[id][0] === roomId) ?? left[0]!;
     return HOTEL_TIPS[here][1];
+  }
+
+  /* ---------------- daily quests ---------------- */
+
+  private ensureDaily(u: UserRecord) {
+    const date = danishDate();
+    if (u.daily?.date === date) return u.daily;
+    u.daily = {
+      date,
+      progress: {},
+      done: [],
+      streak: u.daily?.streak ?? 0,
+      lastFull: u.daily?.lastFull,
+    };
+    return u.daily;
+  }
+
+  private dailyView(u: UserRecord): DailyView {
+    const d = this.ensureDaily(u);
+    const yesterday = danishDate(Date.now() - 86_400_000);
+    const streak = d.lastFull === d.date || d.lastFull === yesterday ? d.streak : 0;
+    return {
+      date: d.date,
+      streak,
+      quests: dailyQuestsFor(d.date).map((id) => {
+        const q = DAILY_POOL.find((x) => x.id === id)!;
+        return {
+          id,
+          text: q.text,
+          reward: q.reward,
+          goal: q.goal,
+          progress: Math.min(q.goal, d.progress[id] ?? 0),
+          done: d.done.includes(id),
+        };
+      }),
+    };
+  }
+
+  /** Counts towards one of today's quests (only once the start quests are done). */
+  private daily(s: Session, u: UserRecord, id: DailyId, amount = 1) {
+    if (!this.onboarded(u)) return;
+    const d = this.ensureDaily(u);
+    const today = dailyQuestsFor(d.date);
+    if (!today.includes(id) || d.done.includes(id)) return;
+    const q = DAILY_POOL.find((x) => x.id === id)!;
+    d.progress[id] = (d.progress[id] ?? 0) + amount;
+    this.store.touch();
+    if (d.progress[id]! < q.goal) return this.send(s, { t: 'daily', daily: this.dailyView(u) });
+    d.done.push(id);
+    this.coins(s, u, q.reward);
+    let bonus: number | undefined;
+    if (today.every((t) => d.done.includes(t))) {
+      const yesterday = danishDate(Date.now() - 86_400_000);
+      d.streak = d.lastFull === yesterday ? d.streak + 1 : 1;
+      d.lastFull = d.date;
+      bonus = DAILY_BONUS;
+      this.coins(s, u, DAILY_BONUS);
+      if (d.streak >= 7) this.badge(s, u, 'streak7');
+    }
+    this.send(s, { t: 'daily', daily: this.dailyView(u), doneId: id, bonus });
   }
 
   /** Guide-Magnus' hint for the next start quest the guest hasn't done. */
@@ -511,6 +586,7 @@ export class Hotel {
         user.stats.chats++;
         if (user.stats.chats >= 100) this.badge(s, user, 'chatty');
         if (isGreeting(text)) this.quest(s, user, 'hello');
+        this.daily(s, user, 'd_chat');
         const lower = text.toLowerCase();
         if (room.meta.id === 'lobby' && /\bida\b/.test(lower)) this.quest(s, user, 'ida');
         if (room.meta.id === 'cafe' && lower.includes('kaffe') && !user.quests.includes('coffee')) {
@@ -528,6 +604,7 @@ export class Hotel {
         player.action = msg.kind === 'stop' ? null : msg.kind;
         player.actionUntil = Date.now() + 2500;
         room.broadcast({ t: 'action', id: player.id, kind: player.action });
+        if (msg.kind === 'wave' && room.players.size > 1) this.daily(s, user, 'd_wave');
         return;
       case 'look':
         user.look = msg.look;
@@ -853,6 +930,7 @@ export class Hotel {
       if (u.onlineSec % 60 === 0) {
         this.coins(s, u, COINS_PER_ONLINE_MINUTE, 'online');
         this.send(s, { t: 'online', onlineSec: u.onlineSec });
+        this.daily(s, u, 'd_online');
       }
       if (u.onlineSec === 3600) this.badge(s, u, 'online1h');
       if (u.onlineSec === 36_000) this.badge(s, u, 'online10h');

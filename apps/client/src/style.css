@@ -733,3 +733,16 @@ select {
     inset 0 -0.08em 0 #b97a06,
     0 0.04em 0.08em rgba(0, 0, 0, 0.35);
 }
+
+#quests li.qsub {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 240, 220, 0.18);
+  display: flex;
+  justify-content: space-between;
+  font-weight: 600;
+  color: #ffb347;
+}
+#quests li small {
+  opacity: 0.75;
+}

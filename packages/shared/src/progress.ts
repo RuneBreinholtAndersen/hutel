@@ -18,11 +18,56 @@ export const HOTEL_QUESTS = [
 ] as const;
 export const HOTEL_BONUS = 25;
 
+/** Daily quests: "log in" every day plus two more picked by date. Reset at midnight (Danish time). */
+export const DAILY_POOL = [
+  { id: 'd_login', text: 'Kig forbi hotellet i dag', reward: 5, goal: 1 },
+  { id: 'd_chat', text: 'Skriv 3 beskeder i chatten', reward: 5, goal: 3 },
+  { id: 'd_visit', text: 'Besøg en andens værelse', reward: 10, goal: 1 },
+  { id: 'd_sit', text: 'Sæt dig et sted uden for dit værelse', reward: 5, goal: 1 },
+  { id: 'd_wave', text: 'Vink til nogen 👋', reward: 5, goal: 1 },
+  { id: 'd_cafe', text: 'Tag en tur i caféen', reward: 5, goal: 1 },
+  { id: 'd_online', text: 'Vær på hotellet i 15 minutter', reward: 10, goal: 15 },
+] as const;
+export type DailyId = (typeof DAILY_POOL)[number]['id'];
+/** Extra coins when all of today's quests are done. */
+export const DAILY_BONUS = 10;
+
+/** Today's date in Denmark, e.g. "2026-11-06". */
+export function danishDate(now = Date.now()): string {
+  return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Copenhagen' }).format(now);
+}
+
+/** The three quests for a given day: always "log in", plus two that change daily. */
+export function dailyQuestsFor(date: string): DailyId[] {
+  let h = 0;
+  for (const ch of date) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  const rest = DAILY_POOL.slice(1).map((q) => q.id);
+  const a = rest[h % rest.length]!;
+  const others = rest.filter((id) => id !== a);
+  const b = others[(Math.imul(h ^ (h >>> 13), 2654435761) >>> 0) % others.length]!;
+  return ['d_login', a, b];
+}
+
+export interface DailyView {
+  date: string;
+  quests: {
+    id: DailyId;
+    text: string;
+    reward: number;
+    goal: number;
+    progress: number;
+    done: boolean;
+  }[];
+  /** Days in a row with all daily quests done. */
+  streak: number;
+}
+
 export type QuestId = (typeof QUESTS)[number]['id'] | (typeof HOTEL_QUESTS)[number]['id'];
 
 export const BADGES = {
   welcome: { name: 'Ny gæst', icon: '🔑', text: 'Tjekkede ind på Hutel' },
   onboarded: { name: 'Klar til hotellet', icon: '🎉', text: 'Klarede alle startopgaver' },
+  streak7: { name: 'Trofast gæst', icon: '📅', text: 'Dagens opgaver 7 dage i træk' },
   hotelkender: { name: 'Hotelkender', icon: '🗝️', text: 'Klarede alle hotel-opgaver' },
   online1h: { name: 'Stamgæst', icon: '⏱️', text: '1 time online' },
   online10h: { name: 'Fast inventar', icon: '🏆', text: '10 timer online' },

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  dailyQuestsFor,
+  danishDate,
   WALK_SPEED,
   buildGrid,
   canPlace,
@@ -94,5 +96,18 @@ describe('movement', () => {
     );
     expect(p.x).toBeCloseTo(1);
     expect(positionAt([0, 0], [[1, 0]], 0, false, 10_000).done).toBe(true);
+  });
+});
+
+describe('daily quests', () => {
+  it('always has log-in plus two different quests that change by date', () => {
+    const a = dailyQuestsFor('2026-11-06');
+    expect(a[0]).toBe('d_login');
+    expect(new Set(a).size).toBe(3);
+    const days = new Set(
+      Array.from({ length: 10 }, (_, i) => dailyQuestsFor(`2026-11-${10 + i}`).join()),
+    );
+    expect(days.size).toBeGreaterThan(3);
+    expect(danishDate(Date.UTC(2026, 10, 6, 23, 30))).toBe('2026-11-07'); // past midnight in DK
   });
 });

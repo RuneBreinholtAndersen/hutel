@@ -4,7 +4,7 @@ import { CHAT_MAX_LENGTH, ROOM_SIZE } from './constants';
 import { LookSchema, type Look } from './look';
 import type { PlacedItem } from './placement';
 import type { RoomAccess, RoomTheme } from './rooms';
-import type { BadgeId, QuestId } from './progress';
+import type { BadgeId, DailyView, QuestId } from './progress';
 
 const tileCoord = z.number().int().min(0).max(31);
 const furnitureType = z.enum(FURNITURE_TYPES as [FurnitureType, ...FurnitureType[]]);
@@ -119,6 +119,7 @@ export interface Me {
   badges: BadgeId[];
   homeRoomId: string;
   motto: string;
+  daily: DailyView;
 }
 
 export interface FriendView {
@@ -154,6 +155,7 @@ export interface ProfileView {
 export type ServerMsg =
   | { t: 'welcome'; me: Me; serverTime: number; onboardingLock: boolean; canReset: boolean }
   | { t: 'resetDone' }
+  | { t: 'daily'; daily: DailyView; doneId?: string; bonus?: number }
   | { t: 'room'; room: RoomView; serverTime: number }
   | { t: 'playerJoin'; player: PlayerView }
   | { t: 'playerLeave'; id: string }

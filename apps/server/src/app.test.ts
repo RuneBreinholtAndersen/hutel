@@ -365,6 +365,21 @@ describe('multiplayer', () => {
     c.ws.close();
   });
 
+  it('gives daily quests once the start quests are done', async () => {
+    const { c, g, welcome } = await login('Daglig');
+    expect(welcome.me.daily.quests).toHaveLength(3);
+    expect(welcome.me.daily.quests[0]!.id).toBe('d_login');
+    expect(c.msgs.some((m) => m.t === 'daily')).toBe(false); // not onboarded yet
+    app.store.getUser(g.userId)!.quests.push(...QUESTS.map((q) => q.id));
+    c.ws.close();
+    const c2 = new TestClient();
+    await c2.open();
+    c2.send({ t: 'auth', token: g.token });
+    const d = await c2.waitFor('daily', (m) => m.doneId === 'd_login');
+    expect(d.daily.quests[0]!.done).toBe(true);
+    c2.ws.close();
+  });
+
   it('handles friends, whispers, password rooms and blocking', async () => {
     const a = await login('Anna');
     const b = await login('Bo');

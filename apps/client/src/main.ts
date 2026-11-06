@@ -9,6 +9,7 @@ import {
   furniture,
   FURNITURE,
   FURNITURE_TYPES,
+  DAILY_BONUS,
   HOTEL_BONUS,
   HOTEL_QUESTS,
   QUESTS,
@@ -22,7 +23,6 @@ import {
   type Me,
   type NavigatorRoom,
   type PlacedItem,
-  type QuestId,
   type ProfileView,
   type RoomView,
   type ServerMsg,
@@ -221,8 +221,7 @@ function updateRoomUi() {
   $<HTMLButtonElement>('bBuild').disabled = !room.canBuild;
   $<HTMLButtonElement>('bShop').disabled = !isOwner();
   roomGfx.setDoorUnlocked(onboarded());
-  const hotelLeft = HOTEL_QUESTS.some((q) => !me!.quests.includes(q.id));
-  const showQuests = questsDone() ? hotelLeft : room.id === me.homeRoomId;
+  const showQuests = questsDone() || room.id === me.homeRoomId;
   $('quests').classList.toggle('hidden', !showQuests);
   $('quests').classList.remove('gone');
   renderQuests();
@@ -238,18 +237,42 @@ function goTo(roomId: string, password?: string) {
 }
 
 /* ---------------- quests / coins ---------------- */
+function questLi(done: boolean, text: string, reward: number, extra = '') {
+  return `<li class="${done ? 'done' : ''}"><span>${done ? '✅' : '⬜'}</span><span class="t">${esc(text)}${extra}</span><span class="r">+${reward} ${COIN}</span></li>`;
+}
 function renderQuests() {
   if (!me) return;
-  const list = questsDone() ? HOTEL_QUESTS : QUESTS;
-  $('qTitle').textContent = questsDone() ? '🗺️ Hotel-opgaver' : '✨ Startopgaver';
-  $('qlist').innerHTML = (list as readonly { id: QuestId; text: string; reward: number }[])
-    .map((q) => {
-      const done = me!.quests.includes(q.id);
-      return `<li class="${done ? 'done' : ''}"><span>${done ? '✅' : '⬜'}</span><span class="t">${esc(q.text)}</span><span class="r">+${q.reward} ${COIN}</span></li>`;
-    })
+  if (!questsDone()) {
+    $('qTitle').textContent = '✨ Startopgaver';
+    $('qlist').innerHTML = QUESTS.map((q) =>
+      questLi(me!.quests.includes(q.id), q.text, q.reward),
+    ).join('');
+    $('qCount').textContent =
+      `${QUESTS.filter((q) => me!.quests.includes(q.id)).length}/${QUESTS.length}`;
+    return;
+  }
+  const hotelLeft = HOTEL_QUESTS.some((q) => !me!.quests.includes(q.id));
+  const d = me.daily;
+  const dailyDone = d.quests.filter((q) => q.done).length;
+  let html = '';
+  if (hotelLeft)
+    html += HOTEL_QUESTS.map((q) => questLi(me!.quests.includes(q.id), q.text, q.reward)).join('');
+  html += `<li class="qsub"><span>📅 Dagens opgaver</span><span>${d.streak ? `🔥 ${d.streak} ${d.streak === 1 ? 'dag' : 'dage'} i træk` : `+${DAILY_BONUS} ${COIN} for alle`}</span></li>`;
+  html += d.quests
+    .map((q) =>
+      questLi(
+        q.done,
+        q.text,
+        q.reward,
+        !q.done && q.goal > 1 ? ` <small>(${q.progress}/${q.goal})</small>` : '',
+      ),
+    )
     .join('');
-  $('qCount').textContent =
-    `${list.filter((q) => me!.quests.includes(q.id)).length}/${list.length}`;
+  $('qlist').innerHTML = html;
+  $('qTitle').textContent = hotelLeft ? '🗺️ Hotel-opgaver' : '📅 Dagens opgaver';
+  $('qCount').textContent = hotelLeft
+    ? `${HOTEL_QUESTS.filter((q) => me!.quests.includes(q.id)).length}/${HOTEL_QUESTS.length}`
+    : `${dailyDone}/${d.quests.length}`;
 }
 function setCoins(c: number) {
   if (!me) return;
@@ -293,6 +316,21 @@ function handle(msg: ServerMsg) {
         a.dispose(stage.scene);
         actors.delete(msg.id);
       }
+      return;
+    }
+    case 'daily': {
+      if (!me) return;
+      me.daily = msg.daily;
+      renderQuests();
+      const q = msg.daily.quests.find((x) => x.id === msg.doneId);
+      if (q) toast(`✅ ${q.text} · +${q.reward} 🪙`);
+      if (msg.bonus)
+        setTimeout(() => {
+          confetti();
+          toast(
+            `📅 Dagens opgaver klaret! +${msg.bonus} 🪙 · 🔥 ${msg.daily.streak} ${msg.daily.streak === 1 ? 'dag' : 'dage'} i træk`,
+          );
+        }, 1400);
       return;
     }
     case 'resetDone':
@@ -359,7 +397,7 @@ function handle(msg: ServerMsg) {
         setTimeout(() => {
           confetti();
           toast(`🗝️ Alle hotel-opgaver klaret! Du er nu Hotelkender · +${HOTEL_BONUS} 🪙`);
-          $('quests').classList.add('gone');
+          renderQuests();
         }, 1200);
       if (msg.all)
         setTimeout(() => {

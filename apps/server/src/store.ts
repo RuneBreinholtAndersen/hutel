@@ -1,7 +1,7 @@
 import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import { mkdirSync, readFileSync, renameSync, writeFileSync, existsSync } from 'node:fs';
 import { dirname } from 'node:path';
-import type { BadgeId, Look, PlacedItem, QuestId, RoomAccess } from '@hutel/shared';
+import type { BadgeId, DailyId, Look, PlacedItem, QuestId, RoomAccess } from '@hutel/shared';
 
 export interface UserRecord {
   id: string;
@@ -23,6 +23,14 @@ export interface UserRecord {
   requests: string[];
   blocked: string[];
   stats: { chats: number; buys: number; moves: number };
+  /** Today's daily quests (rolls over at Danish midnight). */
+  daily?: {
+    date: string;
+    progress: Partial<Record<DailyId, number>>;
+    done: DailyId[];
+    streak: number;
+    lastFull?: string;
+  };
   role: 'user' | 'moderator' | 'admin';
   bannedUntil: number | null;
   createdAt: string;
@@ -151,6 +159,7 @@ export class JsonFileStore implements Store {
     user.badges = ['welcome'];
     user.motto = '';
     user.stats = { chats: 0, buys: 0, moves: 0 };
+    user.daily = undefined;
     const room = this.data.rooms[user.homeRoomId];
     if (room) {
       room.items = this.newRoomItems();
