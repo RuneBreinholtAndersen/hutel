@@ -7,6 +7,7 @@ import { QUIZ as QUIZ_FOR_TEST } from './games';
 
 const cfg = {
   allowReset: true,
+  adminNames: ['chefen'],
   clientOrigins: ['http://localhost:5173'],
   dataFile: null,
   clientDist: null,
@@ -463,6 +464,35 @@ describe('multiplayer', () => {
     expect(ev.events.find((e) => e.id === 'test')!.roomId).toBe('cafe');
     app.hotel.manualEvent = null;
     c.ws.close();
+  });
+
+  it('lets admins see reports and mute, kick and ban', async () => {
+    const boss = await login('Chefen');
+    expect(boss.welcome.me.role).toBe('admin');
+    const troll = await login('Trold');
+    const victim = await login('Offer');
+    victim.c.send({ t: 'report', userId: troll.g.userId, reason: 'grimt sprog' });
+    await victim.c.waitFor('toast');
+    troll.c.send({ t: 'admin', action: 'reports' }); // not allowed
+    boss.c.send({ t: 'admin', action: 'reports' });
+    const reps = await boss.c.waitFor('adminReports');
+    const rep = reps.reports.find((r) => r.target.name === 'Trold')!;
+    expect(rep.status).toBe('open');
+    expect(troll.c.msgs.some((m) => m.t === 'adminReports')).toBe(false);
+    boss.c.send({ t: 'admin', action: 'mute', userId: troll.g.userId, minutes: 10 });
+    await troll.c.waitFor('toast', (m) => /pause/.test(m.text));
+    troll.c.send({ t: 'chat', text: 'hallo' });
+    await troll.c.waitFor('toast', (m) => /pause i chatten/.test(m.text));
+    boss.c.send({ t: 'admin', action: 'resolve', reportId: rep.id });
+    await boss.c.waitFor(
+      'adminReports',
+      (m) => m.reports.find((r) => r.id === rep.id)!.status === 'closed',
+    );
+    boss.c.send({ t: 'admin', action: 'ban', userId: troll.g.userId, minutes: 60 });
+    await new Promise<void>((r) => troll.c.ws.once('close', () => r()));
+    expect(app.store.getUser(troll.g.userId)!.bannedUntil).toBeGreaterThan(Date.now());
+    boss.c.ws.close();
+    victim.c.ws.close();
   });
 
   it('handles friends, whispers, password rooms and blocking', async () => {

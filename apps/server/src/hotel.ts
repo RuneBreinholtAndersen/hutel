@@ -3,6 +3,7 @@ import {
   EVENTS,
   scheduledEvents,
   type ActiveEvent,
+  type AdminReport,
   CLOTHES,
   lookAllowed,
   ClientMsgSchema,
@@ -59,6 +60,8 @@ export interface HotelConfig {
   botMaxCallsPerDay: number;
   /** Test phase: players may reset their own progress ("Start forfra"). */
   allowReset?: boolean;
+  /** Names (lower-case) that get the admin role. They should log in with Google (2FA). */
+  adminNames?: string[];
 }
 
 export interface Connection {
@@ -98,6 +101,7 @@ const LIMIT_FOR: Partial<Record<ClientMsg['t'], LimitKind>> = {
   move: 'move',
   glide: 'glide',
   reset: 'build',
+  admin: 'build',
   stash: 'build',
   placeInv: 'build',
   tradeStart: 'social',
@@ -257,6 +261,9 @@ export class Hotel {
       return s.conn.close(4001, 'invalid token');
     }
     if (user.bannedUntil && user.bannedUntil > Date.now()) return s.conn.close(4003, 'banned');
+    const shouldBeAdmin = (this.cfg.adminNames ?? []).includes(user.name.toLowerCase());
+    if (shouldBeAdmin && user.role === 'user') user.role = 'admin';
+    if (!shouldBeAdmin && user.role === 'admin') user.role = 'user';
     const old = this.byUser.get(user.id);
     if (old && old !== s) {
       this.toast(old, 'Du er logget ind et andet sted.');
@@ -293,6 +300,7 @@ export class Hotel {
       daily: this.dailyView(u),
       wardrobe: u.wardrobe ?? [],
       inventory: u.inventory ?? [],
+      role: u.role,
     };
   }
 
@@ -497,6 +505,128 @@ export class Hotel {
     if (!left.length) return null;
     const here = left.find((id) => HOTEL_TIPS[id][0] === roomId) ?? left[0]!;
     return HOTEL_TIPS[here][1];
+  }
+
+  /* ---------------- moderation ---------------- */
+
+  private adminReports(): AdminReport[] {
+    const who = (id: string) => this.store.getUser(id);
+    return [...this.store.listReports()]
+      .sort((a, b) =>
+        a.status === b.status
+          ? b.createdAt.localeCompare(a.createdAt)
+          : a.status === 'open'
+            ? -1
+            : 1,
+      )
+      .slice(0, 60)
+      .map((r) => {
+        const t = who(r.targetId);
+        return {
+          id: r.id,
+          createdAt: r.createdAt,
+          status: r.status,
+          from: { id: r.fromId, name: who(r.fromId)?.name ?? '?' },
+          target: {
+            id: r.targetId,
+            name: t?.name ?? '?',
+            bannedUntil: t?.bannedUntil ?? null,
+            mutedUntil: t?.mutedUntil ?? null,
+          },
+          reason: r.reason,
+          roomId: r.roomId,
+          context: r.context.slice(-12).map((c) => ({ name: c.name, text: c.text, at: c.at })),
+        };
+      });
+  }
+
+  private admin(s: Session, user: UserRecord, msg: Extract<ClientMsg, { t: 'admin' }>) {
+    if (user.role === 'user') return this.strike(s);
+    const log = (action: string, target?: string, detail?: string) =>
+      this.store.logAdmin({ at: new Date().toISOString(), by: user.id, action, target, detail });
+    const target = msg.userId ? this.store.getUser(msg.userId) : undefined;
+    const ts = target && this.byUser.get(target.id);
+    const done = (text: string) => {
+      this.toast(s, `🛡️ ${text}`);
+      this.send(s, { t: 'adminReports', reports: this.adminReports() });
+    };
+    switch (msg.action) {
+      case 'reports':
+        return this.send(s, { t: 'adminReports', reports: this.adminReports() });
+      case 'resolve': {
+        const r = this.store.listReports().find((x) => x.id === msg.reportId);
+        if (!r) return;
+        r.status = r.status === 'open' ? 'closed' : 'open';
+        this.store.touch();
+        log('resolve', r.targetId, r.id);
+        return done(r.status === 'closed' ? 'Sagen er løst' : 'Sagen er åbnet igen');
+      }
+      case 'warn':
+        if (!target) return;
+        if (ts)
+          this.toast(
+            ts,
+            `⚠️ Besked fra en moderator: ${msg.text ?? 'Husk at være venlig på Hutel.'}`,
+            'error',
+          );
+        log('warn', target.id, msg.text);
+        return done(`${target.name} har fået en advarsel`);
+      case 'mute':
+      case 'unmute':
+        if (!target) return;
+        target.mutedUntil =
+          msg.action === 'mute' ? Date.now() + (msg.minutes ?? 60) * 60_000 : null;
+        this.store.touch();
+        if (ts && msg.action === 'mute')
+          this.toast(
+            ts,
+            `🔇 Du er sat på pause i chatten i ${msg.minutes ?? 60} minutter.`,
+            'error',
+          );
+        log(msg.action, target.id, String(msg.minutes ?? ''));
+        return done(
+          msg.action === 'mute'
+            ? `${target.name} er sat på pause`
+            : `${target.name} kan skrive igen`,
+        );
+      case 'ban':
+      case 'unban':
+        if (!target || target.role !== 'user') return;
+        target.bannedUntil =
+          msg.action === 'ban' ? Date.now() + (msg.minutes ?? 7 * 24 * 60) * 60_000 : null;
+        this.store.touch();
+        if (ts && msg.action === 'ban') ts.conn.close(4003, 'banned');
+        log(msg.action, target.id, String(msg.minutes ?? ''));
+        return done(
+          msg.action === 'ban'
+            ? `${target.name} er udelukket`
+            : `${target.name} er ikke længere udelukket`,
+        );
+      case 'kick':
+        if (!target || !ts) return;
+        this.toast(ts, 'En moderator har sendt dig tilbage til dit værelse.', 'error');
+        this.join(ts, target.homeRoomId);
+        log('kick', target.id);
+        return done(`${target.name} er sendt hjem`);
+      case 'eventStart': {
+        const r = PUBLIC_ROOMS.find((x) => x.id === msg.roomId);
+        if (!r) return;
+        this.manualEvent = {
+          id: `special_${Date.now()}`,
+          name: msg.text || `Fest i ${r.name}`,
+          roomId: r.id,
+          until: Date.now() + (msg.minutes ?? 60) * 60_000,
+        };
+        log('eventStart', undefined, `${r.id} ${msg.minutes ?? 60}`);
+        this.checkEvents();
+        return done('Eventet er startet');
+      }
+      case 'eventStop':
+        this.manualEvent = null;
+        log('eventStop');
+        this.checkEvents();
+        return done('Eventet er stoppet');
+    }
   }
 
   /* ---------------- events ---------------- */
@@ -749,6 +879,8 @@ export class Hotel {
         if (!room || !player) return;
         const text = filterChat(sanitizeChat(msg.text));
         if (!text) return;
+        if (user.mutedUntil && user.mutedUntil > Date.now())
+          return this.toast(s, 'Du er sat på pause i chatten et stykke tid.', 'error');
         if (text.startsWith('/') && this.game(s, user, room, player, text)) return;
         this.sayInRoom(room, player, text);
         this.quizAnswer(s, user, room, text);
@@ -836,7 +968,11 @@ export class Hotel {
       case 'friendRemove':
         return this.friendRemove(user, msg.userId);
       case 'whisper':
+        if (user.mutedUntil && user.mutedUntil > Date.now())
+          return this.toast(s, 'Du er sat på pause i chatten et stykke tid.', 'error');
         return this.whisper(s, user, msg.to, msg.text);
+      case 'admin':
+        return this.admin(s, user, msg);
       case 'block':
         return this.block(s, user, msg.userId, msg.block);
       case 'report':

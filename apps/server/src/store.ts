@@ -41,6 +41,8 @@ export interface UserRecord {
   };
   role: 'user' | 'moderator' | 'admin';
   bannedUntil: number | null;
+  /** Can't chat until this time. */
+  mutedUntil?: number | null;
   createdAt: string;
   lastSeen: string;
 }
@@ -77,6 +79,14 @@ export interface ChatLogRecord {
   text: string;
 }
 
+export interface AdminLogRecord {
+  at: string;
+  by: string;
+  action: string;
+  target?: string;
+  detail?: string;
+}
+
 export interface TradeRecord {
   at: string;
   a: string;
@@ -92,6 +102,7 @@ interface Data {
   reports: ReportRecord[];
   chatlog: ChatLogRecord[];
   trades?: TradeRecord[];
+  adminLog?: AdminLogRecord[];
 }
 
 /**
@@ -119,6 +130,8 @@ export interface Store {
   /** Every completed trade is logged (for support and fraud checks). */
   logTrade(entry: TradeRecord): void;
   listReports(): ReportRecord[];
+  /** Every moderator action is logged. */
+  logAdmin(entry: AdminLogRecord): void;
   recentChat(roomId: string, limit: number): ChatLogRecord[];
   /** Call after mutating a record returned by the store. */
   touch(): void;
@@ -273,6 +286,11 @@ export class JsonFileStore implements Store {
   }
   listReports() {
     return this.data.reports;
+  }
+  logAdmin(entry: AdminLogRecord) {
+    (this.data.adminLog ??= []).push(entry);
+    if (this.data.adminLog.length > 5000) this.data.adminLog.splice(0, 500);
+    this.touch();
   }
 
   logChat(entry: ChatLogRecord) {

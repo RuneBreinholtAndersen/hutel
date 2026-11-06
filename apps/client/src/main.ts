@@ -31,6 +31,8 @@ import {
   type ProfileView,
   type RoomView,
   type ServerMsg,
+  type AdminReport,
+  type ClientMsg,
   type TradeOfferView,
   type TradeView,
 } from '@hutel/shared';
@@ -360,6 +362,8 @@ function handle(msg: ServerMsg) {
       renderEventBar();
       if (panelKind === 'nav' && lastRooms) renderNavigator(lastRooms);
       return;
+    case 'adminReports':
+      return renderAdmin(msg.reports);
     case 'sys':
       logLine({ text: msg.text, cls: 'game' });
       if (msg.id) bubble(msg.id, '🎮', msg.text);
@@ -630,6 +634,7 @@ function renderFigure() {
       `<div class="row"><label>Motto</label><input id="motto" maxlength="60" value="${esc(me.motto)}" style="width:100%"></div><div id="lookEd"></div>
     <h3>Mine badges</h3><div class="badges">${me.badges.map((b) => `<span class="badge">${BADGES[b].icon} ${BADGES[b].name}</span>`).join('')}</div>
     <h3>Konto</h3><button id="logout" class="small danger">Log ud på denne enhed</button>
+    ${me.role !== 'user' ? `<button id="openAdmin" class="small">🛡️ Moderation</button>` : ''}
     ${canReset ? `<h3>Test</h3><p class="sub">Nulstil mønter, opgaver, badges og dit værelse, og prøv starten igen. Navn, figur og venner beholdes.</p><button id="resetMe" class="small danger">🔄 Start forfra</button>` : ''}`,
   );
   let lookT: number | undefined;
@@ -656,6 +661,9 @@ function renderFigure() {
     me!.motto = (e.target as HTMLInputElement).value;
     net?.send({ t: 'motto', motto: me!.motto });
   });
+  document
+    .getElementById('openAdmin')
+    ?.addEventListener('click', () => net?.send({ t: 'admin', action: 'reports' }));
   $('resetMe')?.addEventListener('click', () => {
     if (confirmReset) {
       net?.send({ t: 'reset' });
@@ -673,6 +681,68 @@ function renderFigure() {
     store.set(TOKEN_KEY, null);
     void signOut(authCfg).finally(() => location.reload());
   });
+}
+
+/* ---------------- moderation ---------------- */
+function renderAdmin(reports: AdminReport[]) {
+  const until = (t: number | null) =>
+    t && t > Date.now()
+      ? new Date(t).toLocaleString('da-DK', { dateStyle: 'short', timeStyle: 'short' })
+      : '';
+  const card = (r: AdminReport) => `<div class="li rep ${r.status}"><div class="grow">
+      <b>${esc(r.target.name)}</b> <small>rapporteret af ${esc(r.from.name)} · ${new Date(r.createdAt).toLocaleString('da-DK', { dateStyle: 'short', timeStyle: 'short' })}${r.roomId ? ` · ${esc(r.roomId)}` : ''}</small>
+      <p>“${esc(r.reason || 'Ingen begrundelse')}”</p>
+      ${r.target.mutedUntil && r.target.mutedUntil > Date.now() ? `<small>🔇 På pause til ${until(r.target.mutedUntil)}</small> ` : ''}
+      ${r.target.bannedUntil && r.target.bannedUntil > Date.now() ? `<small>⛔ Udelukket til ${until(r.target.bannedUntil)}</small>` : ''}
+      ${r.context.length ? `<details><summary>Chat før rapporten (${r.context.length})</summary>${r.context.map((c) => `<div class="ctx"><b>${esc(c.name)}:</b> ${esc(c.text)}</div>`).join('')}</details>` : ''}
+      <div class="chips">
+        <button data-ad="warn" data-u="${r.target.id}">⚠️ Advar</button>
+        <button data-ad="mute" data-u="${r.target.id}" data-m="60">🔇 Pause 1 t</button>
+        <button data-ad="unmute" data-u="${r.target.id}">Fjern pause</button>
+        <button data-ad="kick" data-u="${r.target.id}">🚪 Send hjem</button>
+        <button data-ad="ban" data-u="${r.target.id}" data-m="10080" class="danger">⛔ Udeluk 7 dage</button>
+        <button data-ad="unban" data-u="${r.target.id}">Ophæv</button>
+        <button data-ad="resolve" data-r="${r.id}" class="primary">${r.status === 'open' ? '✅ Løst' : '↩️ Genåbn'}</button>
+      </div></div></div>`;
+  const open = reports.filter((r) => r.status === 'open');
+  const closed = reports.filter((r) => r.status === 'closed');
+  openPanel(
+    'admin',
+    head('🛡️ Moderation', 'Alle handlinger bliver logget.') +
+      `<h3>Åbne sager (${open.length})</h3><div class="list">${open.map(card).join('') || '<p class="sub">Ingen åbne sager 🎉</p>'}</div>
+      <h3>Start et event</h3><div class="row" style="display:flex;gap:6px;flex-wrap:wrap">
+        <select id="evRoom">${['lobby', 'cafe', 'roof', 'arcade', 'pool'].map((r) => `<option value="${r}">${r}</option>`).join('')}</select>
+        <input id="evName" maxlength="60" placeholder="Navn, fx Kagefest">
+        <select id="evMin"><option value="30">30 min</option><option value="60" selected>1 time</option><option value="120">2 timer</option></select>
+        <button id="evStart" class="small primary">🎉 Start</button><button id="evStop" class="small">Stop</button></div>
+      ${closed.length ? `<h3>Løste sager</h3><div class="list">${closed.slice(0, 20).map(card).join('')}</div>` : ''}`,
+  );
+  $('panel')
+    .querySelectorAll<HTMLElement>('[data-ad]')
+    .forEach((b) =>
+      b.addEventListener('click', () => {
+        const action = b.dataset.ad as Extract<ClientMsg, { t: 'admin' }>['action'];
+        const text = action === 'warn' ? (prompt('Besked til brugeren?') ?? undefined) : undefined;
+        net?.send({
+          t: 'admin',
+          action,
+          userId: b.dataset.u,
+          reportId: b.dataset.r,
+          minutes: b.dataset.m ? Number(b.dataset.m) : undefined,
+          text,
+        });
+      }),
+    );
+  $('evStart').addEventListener('click', () =>
+    net?.send({
+      t: 'admin',
+      action: 'eventStart',
+      roomId: $<HTMLSelectElement>('evRoom').value,
+      text: $<HTMLInputElement>('evName').value.trim() || undefined,
+      minutes: Number($<HTMLSelectElement>('evMin').value),
+    }),
+  );
+  $('evStop').addEventListener('click', () => net?.send({ t: 'admin', action: 'eventStop' }));
 }
 
 /* ---------------- trading ---------------- */
@@ -834,6 +904,7 @@ function renderProfile(p: ProfileView) {
           ${p.friend ? `<button data-a="pm">💬 Skriv privat</button><button data-a="unfriend">Fjern ven</button>` : `<button data-a="friend" class="primary">➕ Tilføj ven</button>`}
           ${inMyRoom ? `<button data-a="rights">🔨 Giv byggerettigheder</button><button data-a="norights">Fjern rettigheder</button>` : ''}
           ${p.here && questsDone() ? `<button data-a="trade">🤝 Byt</button>` : ''}
+          ${me?.role !== 'user' ? `<button data-a="modmute">🔇 Pause 1 t</button><button data-a="modkick">🚪 Send hjem</button>` : ''}
           <button data-a="block">${p.blocked ? 'Fjern blokering' : '🚫 Blokér'}</button><button data-a="report" class="danger">⚠️ Rapportér</button></div>
          <div id="repBox" class="hidden" style="margin-top:10px"><textarea id="repText" rows="3" maxlength="300" placeholder="Hvad skete der?" style="width:100%"></textarea><button id="repSend" class="small danger">Send rapport</button></div>`
         : ''),
@@ -848,6 +919,8 @@ function renderProfile(p: ProfileView) {
         if (a === 'rights') net?.send({ t: 'rights', userId: p.id, grant: true });
         if (a === 'norights') net?.send({ t: 'rights', userId: p.id, grant: false });
         if (a === 'block') net?.send({ t: 'block', userId: p.id, block: !p.blocked });
+        if (a === 'modmute') net?.send({ t: 'admin', action: 'mute', userId: p.id, minutes: 60 });
+        if (a === 'modkick') net?.send({ t: 'admin', action: 'kick', userId: p.id });
         if (a === 'trade') {
           closePanel();
           net?.send({ t: 'tradeStart', userId: p.id });

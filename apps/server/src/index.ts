@@ -27,6 +27,10 @@ const app = createApp({
       .filter((p) => p.length === 2 && p[0] && p[1]),
   ),
   allowReset: process.env.ALLOW_RESET !== 'false',
+  adminNames: (process.env.ADMIN_NAMES ?? '')
+    .split(',')
+    .map((n) => n.trim().toLowerCase())
+    .filter(Boolean),
   botModel: process.env.BOT_MODEL ?? 'claude-haiku-5-5',
   botMaxCallsPerDay: Number(process.env.BOT_MAX_CALLS_PER_DAY ?? 300),
 });

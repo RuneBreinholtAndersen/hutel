@@ -822,3 +822,18 @@ select {
     font-size: 12px;
   }
 }
+
+.rep.closed {
+  opacity: 0.6;
+}
+.rep p {
+  margin: 4px 0;
+}
+.rep .ctx {
+  font-size: 12px;
+  opacity: 0.85;
+}
+.rep details {
+  margin: 4px 0;
+  font-size: 12px;
+}

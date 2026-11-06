@@ -51,6 +51,32 @@ export const ClientMsgSchema = z.discriminatedUnion('t', [
   }),
   z.object({ t: z.literal('tradeAccept') }),
   z.object({ t: z.literal('tradeCancel') }),
+  /** Moderators and admins only (checked on the server). */
+  z.object({
+    t: z.literal('admin'),
+    action: z.enum([
+      'reports',
+      'resolve',
+      'warn',
+      'mute',
+      'unmute',
+      'ban',
+      'unban',
+      'kick',
+      'eventStart',
+      'eventStop',
+    ]),
+    reportId: z.string().max(40).optional(),
+    userId: z.string().max(40).optional(),
+    minutes: z
+      .number()
+      .int()
+      .min(1)
+      .max(60 * 24 * 365)
+      .optional(),
+    text: z.string().max(200).optional(),
+    roomId: z.string().max(40).optional(),
+  }),
   /** Test phase: wipe my progress (coins, quests, badges, room) and start over. */
   z.object({ t: z.literal('reset') }),
   z.object({
@@ -150,6 +176,18 @@ export interface Me {
   wardrobe: string[];
   /** Furniture not placed in a room. */
   inventory: InvItem[];
+  role: 'user' | 'moderator' | 'admin';
+}
+
+export interface AdminReport {
+  id: string;
+  createdAt: string;
+  status: 'open' | 'closed';
+  from: { id: string; name: string };
+  target: { id: string; name: string; bannedUntil: number | null; mutedUntil: number | null };
+  reason: string;
+  roomId: string | null;
+  context: { name: string; text: string; at: number }[];
 }
 
 export interface InvItem {
@@ -206,6 +244,7 @@ export interface ProfileView {
 export type ServerMsg =
   | { t: 'welcome'; me: Me; serverTime: number; onboardingLock: boolean; canReset: boolean }
   | { t: 'resetDone' }
+  | { t: 'adminReports'; reports: AdminReport[] }
   | { t: 'events'; events: ActiveEvent[] }
   /** A system line in the room (game results etc.); shown over `id` if given. */
   | { t: 'sys'; text: string; id?: string }
