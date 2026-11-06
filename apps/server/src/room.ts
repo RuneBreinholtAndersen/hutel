@@ -15,6 +15,8 @@ import {
   type PetView,
   type RoomShape,
   type RoomCategory,
+  type TileHeights,
+  canStep,
   type RoomAccess,
   type RoomTheme,
   type RoomView,
@@ -56,6 +58,7 @@ export interface RoomMeta {
   size: number;
   shape: RoomShape;
   category: RoomCategory;
+  heights: TileHeights;
   paidSize: number;
   wall: string | null;
   floor: string | null;
@@ -82,7 +85,7 @@ export class RoomInstance {
 
   /** Size and floor plan, for the grid and placement rules. */
   floor() {
-    return { size: this.meta.size, shape: this.meta.shape };
+    return { size: this.meta.size, shape: this.meta.shape, heights: this.meta.heights };
   }
 
   humans(): PlayerState[] {
@@ -129,6 +132,7 @@ export class RoomInstance {
       size: this.meta.size,
       shape: this.meta.shape,
       category: this.meta.category,
+      heights: this.meta.heights,
       paidSize: this.meta.paidSize,
       wall: this.meta.wall,
       floor: this.meta.floor,
@@ -218,7 +222,8 @@ export class RoomInstance {
         tz >= 0 &&
         tx < this.meta.size &&
         tz < this.meta.size &&
-        grid.cells[tx]![tz] === 0);
+        grid.cells[tx]![tz] === 0 &&
+        canStep(grid, Math.round(cur.x), Math.round(cur.z), tx, tz));
     p.seatId = null;
     p.goalSeat = null;
     if (p.action === 'dance') p.action = null;

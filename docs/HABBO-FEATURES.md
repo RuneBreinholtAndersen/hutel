@@ -2,7 +2,7 @@
 
 Listen sammenligner Hutel med de klassiske funktioner fra Habbo Hotel. Navne, grafik og møbler kopieres ikke: vi laver vores egen version af idéen.
 
-_Senest opdateret: 6. november 2026 (byg om: størrelse og form)._
+_Senest opdateret: 6. november 2026 (trapper og platforme, navigator med søgning og kategorier)._
 
 **Sådan læses den**
 - **Værdi**: hvor meget det betyder for spillerne (★–★★★)
@@ -15,18 +15,16 @@ _Senest opdateret: 6. november 2026 (byg om: størrelse og form)._
 
 Det her mener jeg giver mest spil for pengene, i den rækkefølge:
 
-- [ ] **1. Trapper og niveauer** – forhøjede felter og trapper i egne rum (størrelse og form er lavet). ★★ · M
-- [ ] **2. Rum-kategorier og søgning i navigatoren** – "Fest", "Chill", "Spil", "Handel", favoritter og "mest populære lige nu". ★★★ · S
-- [ ] **3. Profil-side ("hjem-side")** – motto, badges, venner, værelser, et gæstebog-felt. ★★ · M
-- [ ] **4. Rum-spil som møbler** – frysekamp/snebold-arena, farvefelter man løber på (som "Battle Banzai"), stoleleg, kapløb. Serveren styrer reglerne. ★★★ · L
-- [ ] **5. Wired light: møbler der reagerer** – trykplader, "når nogen går her → tænd lampe / teleportér / sig noget". Giver brugerne mulighed for at bygge deres egne spil. ★★★ · L
-- [ ] **6. Teleportere mellem rum** – to møbler der hænger sammen, også mellem forskellige brugeres værelser. ★★ · M
-- [ ] **7. Grupper/klubber** – navn, logo-generator (vores egen), medlemsliste, gruppe-rum, gruppe-badge ved navnet. ★★ · M
-- [ ] **8. Sjældne møbler ("rares")** – begrænsede møbler, der kun sælges en uge eller i et bestemt antal, med serienummer. Driver byttehandel. ★★★ · S (vi har allerede bytte + inventar)
-- [ ] **9. Marked** – sæt ting til salg for mønter; andre kan købe, mens du er offline. Kræver transaktioner og log (findes allerede for bytte). ★★ · M
-- [ ] **10. Lyd og musik** – jukebox med egne korte melodier, lyde ved klik, dør, mønter. Generér selv musik/lyde, så intet kopieres. ★★ · M
-- [ ] **11. Mobil-kontroller** – tryk-for-at-gå er der, men knapper og paneler skal tilpasses små skærme. ★★★ · M
-- [ ] **12. Hutel Junior** – menu-chat, forældrekonto, vennekoder, egen server/database (se PLAN.md). ★★★ · L
+- [ ] **1. Profil-side ("hjem-side")** – motto, badges, venner, værelser, et gæstebog-felt. ★★ · M
+- [ ] **2. Rum-spil som møbler** – frysekamp/snebold-arena, farvefelter man løber på (som "Battle Banzai"), stoleleg, kapløb. Serveren styrer reglerne. ★★★ · L
+- [ ] **3. Wired light: møbler der reagerer** – trykplader, "når nogen går her → tænd lampe / teleportér / sig noget". Giver brugerne mulighed for at bygge deres egne spil. ★★★ · L
+- [ ] **4. Teleportere mellem rum** – to møbler der hænger sammen, også mellem forskellige brugeres værelser. ★★ · M
+- [ ] **5. Grupper/klubber** – navn, logo-generator (vores egen), medlemsliste, gruppe-rum, gruppe-badge ved navnet. ★★ · M
+- [ ] **6. Sjældne møbler ("rares")** – begrænsede møbler, der kun sælges en uge eller i et bestemt antal, med serienummer. Driver byttehandel. ★★★ · S (vi har allerede bytte + inventar)
+- [ ] **7. Marked** – sæt ting til salg for mønter; andre kan købe, mens du er offline. Kræver transaktioner og log (findes allerede for bytte). ★★ · M
+- [ ] **8. Lyd og musik** – jukebox med egne korte melodier, lyde ved klik, dør, mønter. Generér selv musik/lyde, så intet kopieres. ★★ · M
+- [ ] **9. Mobil-kontroller** – tryk-for-at-gå er der, men knapper og paneler skal tilpasses små skærme. ★★★ · M
+- [ ] **10. Hutel Junior** – menu-chat, forældrekonto, vennekoder, egen server/database (se PLAN.md). ★★★ · L
 
 ## 💡 Habbo-funktioner vi mangler (fuld liste)
 
@@ -44,7 +42,7 @@ Det her mener jeg giver mest spil for pengene, i den rækkefølge:
 - [ ] **Gulvplan-editor** – tegn selv gulvets form, højde, dørens placering. L
 - [ ] **Stable møbler** (højde/z-akse) – sætte ting oven på hinanden, hylder på væggen. M–L
 - [ ] **Rum-indstillinger** – maks. antal gæster, hvem må tale, "kun venner", forbudt-liste. S
-- [ ] **Rum-vurdering** – 👍 til rum, "top-rum" i navigatoren. S
+- [ ] **Rum-vurdering** – 👍 til rum, "top-rum" i navigatoren (kategorier og søgning findes). S
 - [ ] **Rotér/flyt flere ting på én gang**, "fortryd". M
 - [ ] **Byggeklodser** – fleksible blokke man kan farve og stable (vores egen variant). M
 
@@ -103,6 +101,8 @@ Det her mener jeg giver mest spil for pengene, i den rækkefølge:
 - ✅ Store offentlige rum (lobby og café 12×12) og loft på 25 gæster pr. rum
 - ✅ Eget værelse + lejlighed med soveværelse, badeværelse, køkken og altan
 - ✅ Byg-tilstand: flyt, rotér, gem væk og placér møbler; farvevarianter
+- ✅ Trapper og platforme: felter i 0–3 trin, man går ét trin ad gangen
+- ✅ Navigator med søgning, kategorier (fest, chill, spil, handel), favoritter og populære rum
 - ✅ Byg om: egne rum fra 7×7 til 12×12 i fem former (kvadrat, bred, L, spejlet L, U)
 - ✅ Kæledyr (hund, kat, drage) med mad, tricks og level
 - ✅ Tapet og gulve man køber og skifter selv

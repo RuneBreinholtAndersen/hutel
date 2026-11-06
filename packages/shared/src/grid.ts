@@ -6,6 +6,14 @@ export interface Grid {
   readonly depth: number;
   /** 0 = free, otherwise the id of the furniture item occupying the tile. */
   readonly cells: number[][];
+  /** Floor height of each tile in steps (missing = flat). */
+  h?: number[][];
+}
+
+/** You can walk between tiles at most one step apart in height. */
+export function canStep(grid: Grid, ax: number, az: number, bx: number, bz: number): boolean {
+  if (!grid.h) return true;
+  return Math.abs((grid.h[ax]?.[az] ?? 0) - (grid.h[bx]?.[bz] ?? 0)) <= 1;
 }
 
 export function createGrid(width: number, depth: number): Grid {
@@ -63,7 +71,11 @@ export function findPath(grid: Grid, start: Tile, goal: Tile, seatId = -1): Tile
       const nx = x + dx;
       const nz = z + dz;
       if (!ok(nx, nz) || prev.has(key(nx, nz))) continue;
+      if (!canStep(grid, x, z, nx, nz)) continue;
       if (dx && dz && (!isFree(grid, x + dx, z) || !isFree(grid, x, z + dz))) continue;
+      // No diagonal shortcuts across a step.
+      if (dx && dz && (!canStep(grid, x, z, x + dx, z) || !canStep(grid, x, z, x, z + dz)))
+        continue;
       prev.set(key(nx, nz), key(x, z));
       queue.push([nx, nz]);
     }

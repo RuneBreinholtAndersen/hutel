@@ -6,7 +6,14 @@ import type { PlacedItem } from './placement';
 import { ROOM_CATEGORY_IDS, type RoomAccess, type RoomCategory, type RoomTheme } from './rooms';
 import type { BadgeId, DailyView, QuestId } from './progress';
 import type { ActiveEvent } from './events';
-import { MAX_USER_ROOM_SIZE, MIN_USER_ROOM_SIZE, ROOM_SHAPE_IDS, type RoomShape } from './layout';
+import {
+  MAX_TILE_HEIGHT,
+  MAX_USER_ROOM_SIZE,
+  MIN_USER_ROOM_SIZE,
+  ROOM_SHAPE_IDS,
+  type RoomShape,
+  type TileHeights,
+} from './layout';
 import { PET_KIND_IDS, PET_TRICK_IDS, type PetAct, type PetInfo, type PetView } from './pets';
 
 const tileCoord = z.number().int().min(0).max(31);
@@ -43,6 +50,13 @@ export const ClientMsgSchema = z.discriminatedUnion('t', [
   /** Take a pet out (it follows you) or send it home (null). */
   z.object({ t: z.literal('petOut'), id: z.string().max(40).nullable() }),
   z.object({ t: z.literal('petFeed') }),
+  /** Raise or lower one floor tile in my own room (0 = floor level). */
+  z.object({
+    t: z.literal('setHeight'),
+    x: tileCoord,
+    z: tileCoord,
+    h: z.number().int().min(0).max(MAX_TILE_HEIGHT),
+  }),
   /** Change the size and floor plan of my own room. */
   z.object({
     t: z.literal('renovate'),
@@ -206,6 +220,8 @@ export interface RoomView {
   /** Floor plan (holes in the square). */
   shape: RoomShape;
   category: RoomCategory;
+  /** Raised tiles (stairs and platforms). */
+  heights: TileHeights;
   /** Biggest size the owner has paid for (renovating up to it again is free). */
   paidSize: number;
   /** Wallpaper / floor chosen by the owner (null = the theme's own). */
@@ -338,6 +354,7 @@ export type ServerMsg =
   /** A system line in the room (game results etc.); shown over `id` if given. */
   | { t: 'sys'; text: string; id?: string }
   | { t: 'wardrobe'; wardrobe: string[] }
+  | { t: 'heights'; heights: TileHeights }
   | { t: 'pets'; pets: PetInfo[]; active: string | null }
   | { t: 'petView'; ownerId: string; pet: PetView | null }
   | { t: 'petAct'; ownerId: string; act: PetAct; say?: string }

@@ -6,6 +6,9 @@ import {
   type FloorDef,
   type RoomShape,
   type RoomTheme,
+  type TileHeights,
+  STEP_HEIGHT,
+  tileHeight,
   type WallpaperDef,
 } from '@hutel/shared';
 import { box, canvasTex, cyl, lin, M, N, rbox, rnd, setRoomSizeN, sph, T, tw } from './helpers';
@@ -13,7 +16,8 @@ import { box, canvasTex, cyl, lin, M, N, rbox, rnd, setRoomSizeN, sph, T, tw } f
 const H = 3.0;
 /** Floor plan of the current room (set by setSize). */
 let SHAPE: RoomShape = 'square';
-const floorNow = () => ({ size: N, shape: SHAPE });
+let HEIGHTS: TileHeights = {};
+const floorNow = () => ({ size: N, shape: SHAPE, heights: HEIGHTS });
 
 const trim = M(0x7a4528, { roughness: 0.6 });
 const gold = M(0xe0b04a, { metalness: 0.6, roughness: 0.35 });
@@ -511,17 +515,18 @@ export function createRoom(scene: T.Scene) {
         if (!isFloorTile(fl, x, z)) continue;
         // Other floor plans get a base block under every tile (no slab under the holes).
         if (SHAPE !== 'square') shell.add(box(1.04, 0.5, 1.04, base, tw(x), -0.37, tw(z)));
+        const hy = tileHeight(fl, x, z) * STEP_HEIGHT;
         const t = rbox(
           0.97,
-          0.12,
+          0.12 + hy,
           0.97,
           M(0xbd8250, { roughness: 0.55 }),
           tw(x),
-          -0.06,
+          -0.06 + hy / 2,
           tw(z),
           0.03,
         );
-        t.castShadow = false;
+        t.castShadow = hy > 0;
         t.userData.tile = { x, z };
         t.userData.alt = (x + z) % 2;
         shell.add(t);
@@ -658,11 +663,20 @@ export function createRoom(scene: T.Scene) {
       paint();
     },
     /** Changes the floor size. Call setTheme afterwards to recolour the new tiles. */
-    setSize(n: number, shape: RoomShape = 'square') {
-      if (n === N && shape === SHAPE && tiles.length) return;
+    setSize(n: number, shape: RoomShape = 'square', heights: TileHeights = {}) {
+      const same = JSON.stringify(heights) === JSON.stringify(HEIGHTS);
+      if (n === N && shape === SHAPE && same && tiles.length) return;
       setRoomSizeN(n);
       SHAPE = shape;
+      HEIGHTS = { ...heights };
       buildShell();
+      paint();
+    },
+    /** Stairs and platforms changed: rebuild the floor tiles. */
+    setHeights(heights: TileHeights) {
+      HEIGHTS = { ...heights };
+      buildShell();
+      paint();
     },
     setDoorUnlocked: (on: boolean) =>
       (exitLamp.material as T.MeshBasicMaterial).color.setHex(on ? 0x4fd16b : 0xd8433a),

@@ -4,7 +4,13 @@ import WebSocket from 'ws';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { DEFAULT_LOOK, QUESTS, ROOM_CAPACITY, type ServerMsg } from '@hutel/shared';
+import {
+  DEFAULT_LOOK,
+  DOOR_TILE as DOOR_TILE_FOR_TEST,
+  QUESTS,
+  ROOM_CAPACITY,
+  type ServerMsg,
+} from '@hutel/shared';
 import { createApp } from './app';
 import { QUIZ as QUIZ_FOR_TEST } from './games';
 
@@ -748,6 +754,31 @@ describe('multiplayer', () => {
     expect(fav.rooms.find((r) => r.id === 'arcade')!.category).toBe('spil');
     owner.c.ws.close();
     other.c.ws.close();
+  });
+
+  it('raises tiles into stairs in your own room and blocks climbing two steps at once', async () => {
+    const { c, g } = await login('Trappebygger');
+    const u = app.store.getUser(g.userId)!;
+    c.send({ t: 'setHeight', x: DOOR_TILE_FOR_TEST[0], z: DOOR_TILE_FOR_TEST[1], h: 1 });
+    await c.waitFor('toast', (m) => /døren/.test(m.text));
+    c.send({ t: 'setHeight', x: 6, z: 6, h: 2 });
+    expect((await c.waitFor('heights')).heights['6,6']).toBe(2);
+    expect(app.store.getRoom(u.homeRoomId)!.heights!['6,6']).toBe(2);
+    c.send({ t: 'move', x: 6, z: 6 }); // two steps up from the floor: no path
+    await new Promise((r) => setTimeout(r, 200));
+    expect(
+      c.msgs.some(
+        (m) => m.t === 'path' && m.id === g.userId && m.path.some(([x, z]) => x === 6 && z === 6),
+      ),
+    ).toBe(false);
+    c.send({ t: 'setHeight', x: 6, z: 5, h: 1 });
+    await c.waitFor('heights', (m) => m.heights['6,5'] === 1);
+    c.send({ t: 'move', x: 6, z: 6 });
+    const p = await c.waitFor('path', (m) => m.id === g.userId && m.path.length > 0);
+    expect(p.path[p.path.length - 1]).toEqual([6, 6]);
+    c.send({ t: 'setHeight', x: 6, z: 6, h: 0 });
+    await c.waitFor('heights', (m) => m.heights['6,6'] === undefined);
+    c.ws.close();
   });
 
   it('whispers only to someone in the same room, hidden from others', async () => {

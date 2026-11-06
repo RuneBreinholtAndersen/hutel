@@ -40,6 +40,10 @@ import {
   ROOM_CATEGORY_IDS,
   type RoomCategory,
   type Floor,
+  STEP_HEIGHT,
+  tileHeight,
+  canStep,
+  MAX_TILE_HEIGHT,
   WALLPAPERS,
   FLOORS,
   type WallpaperDef,
@@ -166,7 +170,11 @@ function makeGrid(n: number) {
 /** Size of the room we are in. */
 const rs = () => room?.size ?? ROOM_SIZE;
 /** Size and floor plan of the room we are in. */
-const fl = (): Floor => (room ? { size: room.size, shape: room.shape } : ROOM_SIZE);
+const fl = (): Floor =>
+  room ? { size: room.size, shape: room.shape, heights: room.heights } : ROOM_SIZE;
+/** World height of the floor at tile coordinates (x, z). */
+const groundAt = (x: number, z: number) =>
+  room ? tileHeight(fl(), Math.round(x), Math.round(z)) * STEP_HEIGHT : 0;
 
 /* ---------------- state ---------------- */
 let net: Net | null = null;
@@ -285,7 +293,7 @@ function placeObj(it: PlacedItem, lift = 0) {
     return g;
   }
   const f = footprint(it);
-  g.position.set(tw(it.x) + (f.w - 1) / 2, lift, tw(it.z) + (f.d - 1) / 2);
+  g.position.set(tw(it.x) + (f.w - 1) / 2, lift + groundAt(it.x, it.z), tw(it.z) + (f.d - 1) / 2);
   g.rotation.y = (it.rot * Math.PI) / 2;
   return g;
 }
@@ -313,7 +321,7 @@ function setRoom(view: RoomView) {
     gridHelper.geometry.dispose();
     gridHelper = makeGrid(view.size);
   }
-  roomGfx.setSize(view.size, view.shape);
+  roomGfx.setSize(view.size, view.shape, view.heights);
   stage.setRoomSize(view.size);
   roomGfx.setTheme(view.theme);
   applyDecor();
@@ -450,6 +458,12 @@ function handle(msg: ServerMsg) {
         bubble(`pet:${msg.ownerId}`, `${PET_KINDS[p.view.kind].icon} ${p.view.name}`, msg.say);
       return;
     }
+    case 'heights':
+      if (!room) return;
+      room.heights = msg.heights;
+      roomGfx.setHeights(msg.heights);
+      for (const it of items.values()) placeObj(it);
+      return;
     case 'decor':
       if (room) {
         room.wall = msg.wall;
@@ -1490,12 +1504,28 @@ function setBuild(on: boolean) {
   hoverM.visible = false;
   updateBuildbar();
 }
+/** Terrain tool in build mode: raise or lower the tile you click. */
+let terrain: 'up' | 'down' | null = null;
+function setTerrain(t: 'up' | 'down' | null) {
+  terrain = terrain === t ? null : t;
+  if (terrain) cancelHeld();
+  updateBuildbar();
+}
 function updateBuildbar() {
   $('buildbar').classList.toggle('hidden', !build);
   const h = !!held;
+  if (!build) terrain = null;
   $('bbText').textContent = h
     ? 'Klik på gulvet for at placere · R roterer · F skifter farve'
-    : 'Byggetilstand: klik på et møbel for at flytte det';
+    : terrain === 'up'
+      ? 'Klik på et felt for at hæve det et trin (lav trapper ét trin ad gangen)'
+      : terrain === 'down'
+        ? 'Klik på et felt for at sænke det et trin'
+        : 'Byggetilstand: klik på et møbel for at flytte det';
+  $('bbUp').classList.toggle('hidden', h);
+  $('bbDown').classList.toggle('hidden', h);
+  $('bbUp').classList.toggle('on', terrain === 'up');
+  $('bbDown').classList.toggle('on', terrain === 'down');
   $('bbRot').classList.toggle('hidden', !h);
   $('bbColor').classList.toggle(
     'hidden',
@@ -1531,7 +1561,7 @@ function updHeld() {
     placeM.position.set(side ? tw(0) : g.position.x, 0.02, side ? g.position.z : tw(0));
   } else {
     placeM.scale.set(f.w, f.d, 1);
-    placeM.position.set(g.position.x, 0.02, g.position.z);
+    placeM.position.set(g.position.x, 0.02 + groundAt(held.item.x, held.item.z), g.position.z);
   }
   (placeM.material as T.MeshBasicMaterial).color.setHex(heldOk() ? 0x6fd36f : 0xe0564a);
 }
@@ -1704,9 +1734,9 @@ function onHover() {
     onDoor || onActor || (it && (build || furniture(it.type).seat || furniture(it.type).states))
       ? 'pointer'
       : 'default';
-  if (t && !build && !it && !onActor) {
+  if (t && ((!build && !it && !onActor) || (build && terrain))) {
     hoverM.visible = true;
-    hoverM.position.set(tw(t.x), 0.012, tw(t.z));
+    hoverM.position.set(tw(t.x), 0.012 + groundAt(t.x, t.z), tw(t.z));
   } else hoverM.visible = false;
 }
 function onClick() {
@@ -1715,6 +1745,14 @@ function onClick() {
     const t = heldTarget();
     if (t) moveHeldTo(t);
     return tryPlace();
+  }
+  if (build && terrain) {
+    const t = hitTile();
+    if (!t || !room) return;
+    const cur = tileHeight(fl(), t.x, t.z);
+    const h = Math.max(0, Math.min(MAX_TILE_HEIGHT, cur + (terrain === 'up' ? 1 : -1)));
+    if (h !== cur) net.send({ t: 'setHeight', x: t.x, z: t.z, h });
+    return;
   }
   if (build) {
     const it = hitItem(true);
@@ -1915,7 +1953,7 @@ function keyboardWalk(dt: number) {
     const tz = Math.round(z);
     if (tx < 0 || tz < 0 || tx >= rs() || tz >= rs()) return false;
     if (tx === cx && tz === cz) return true;
-    return grid.cells[tx]![tz] === 0;
+    return grid.cells[tx]![tz] === 0 && canStep(grid, cx, cz, tx, tz);
   };
   const st = WALK_SPEED * (running ? RUN_MULTIPLIER : 1) * dt;
   let x = a.x;
@@ -1974,6 +2012,8 @@ $('bbColor').addEventListener('click', recolorHeld);
 $('bbSell').addEventListener('click', sellHeld);
 $('bbStash').addEventListener('click', stashHeld);
 $('bbCancel').addEventListener('click', cancelHeld);
+$('bbUp').addEventListener('click', () => setTerrain('up'));
+$('bbDown').addEventListener('click', () => setTerrain('down'));
 $('qHead').addEventListener('click', () => $('quests').classList.toggle('min'));
 $('chatForm').addEventListener('submit', (e) => {
   e.preventDefault();
@@ -2209,10 +2249,10 @@ function loop() {
   time += dt;
   const now = net ? net.now() : Date.now();
   keyboardWalk(dt);
-  for (const a of actors.values()) a.update(dt, now, items);
+  for (const a of actors.values()) a.update(dt, now, items, groundAt);
   for (const p of pets.values()) {
     const o = actors.get(p.ownerId);
-    if (o) p.update(dt, o.obj.position);
+    if (o) p.update(dt, o.obj.position, groundAt(p.x + rs() / 2 - 0.5, p.z + rs() / 2 - 0.5));
   }
   roomGfx.update(dt, time);
   for (const g of objs.values()) {

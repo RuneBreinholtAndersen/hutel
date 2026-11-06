@@ -128,7 +128,15 @@ export class Actor {
     return [Math.round(this.x), Math.round(this.z)];
   }
 
-  update(dt: number, now: number, items: Map<number, PlacedItem>) {
+  /** Current ground height under the figure (eases between steps). */
+  private hy = 0;
+
+  update(
+    dt: number,
+    now: number,
+    items: Map<number, PlacedItem>,
+    ground: (x: number, z: number) => number = () => 0,
+  ) {
     const u = parts(this.obj);
     this.time += dt;
     const pos = positionAt(this.from, this.path, this.pathStart, this.run, now);
@@ -194,7 +202,10 @@ export class Actor {
     if (this.blink < -0.13) this.blink = rnd(2, 5);
     const k = this.walking ? (0.05 - bob) * 0.5 : 0;
     u.rig.scale.set(1 + k, 1 - k, 1 + k);
-    this.obj.position.set(tw(this.x), lying ? 0.62 : seat ? 0.27 : bob, tw(this.z));
+    const g = ground(this.x, this.z);
+    this.hy += (g - this.hy) * Math.min(1, dt * 14);
+    if (Math.abs(g - this.hy) > 1.5) this.hy = g;
+    this.obj.position.set(tw(this.x), (lying ? 0.62 : seat ? 0.27 : bob) + this.hy, tw(this.z));
     if (lying) {
       // shift so the body lies along the bed (head on the pillow side)
       const r = (seat!.rot * Math.PI) / 2;

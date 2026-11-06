@@ -1,7 +1,7 @@
 import { furniture, type FurnitureType } from './catalog';
 import { createGrid, type Grid, type Tile } from './grid';
 import { DOOR_TILE } from './rooms';
-import { floorSize, isFloorTile, leftWallLength, type Floor } from './layout';
+import { floorSize, isFloorTile, leftWallLength, tileHeight, type Floor } from './layout';
 
 export interface PlacedItem {
   id: number;
@@ -48,9 +48,14 @@ export function buildGrid(floor: Floor, items: readonly PlacedItem[], excludeId?
   const size = floorSize(floor);
   const g = createGrid(size, size);
   // Tiles outside the floor plan are blocked (-2; -1 means "no seat" in findPath).
-  if (typeof floor !== 'number')
+  if (typeof floor !== 'number') {
     for (let x = 0; x < size; x++)
       for (let z = 0; z < size; z++) if (!isFloorTile(floor, x, z)) g.cells[x]![z] = -2;
+    if (floor.heights && Object.keys(floor.heights).length)
+      g.h = Array.from({ length: size }, (_, x) =>
+        Array.from({ length: size }, (_, z) => tileHeight(floor, x, z)),
+      );
+  }
   for (const it of items) {
     if (it.id === excludeId || furniture(it.type).walk) continue;
     for (const [x, z] of tilesOf(it))
@@ -90,6 +95,9 @@ export function canPlace(
     );
   }
   const walk = !!furniture(it.type).walk;
+  // Furniture stands level: every tile under it must be at the same height.
+  const hs = new Set(tilesOf(it).map(([x, z]) => tileHeight(floor, x, z)));
+  if (hs.size > 1) return false;
   for (const [x, z] of tilesOf(it)) {
     if (!isFloorTile(floor, x, z)) return false;
     for (const o of items) {

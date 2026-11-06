@@ -44,6 +44,7 @@ import {
   themeWindowTile,
   themeWallBlocks,
   canPlace,
+  isFloorTile,
   MAX_USER_ROOM_SIZE,
   SIZE_PRICES,
   renovationPrice,
@@ -152,6 +153,7 @@ const LIMIT_FOR: Partial<Record<ClientMsg['t'], LimitKind>> = {
   petOut: 'build',
   petFeed: 'build',
   renovate: 'build',
+  setHeight: 'build',
   petTrick: 'social',
   petRename: 'build',
   admin: 'build',
@@ -215,6 +217,7 @@ export class Hotel {
         size: def.size ?? ROOM_SIZE,
         shape: 'square' as const,
         category: def.category,
+        heights: {},
         paidSize: def.size ?? ROOM_SIZE,
         wall: null,
         floor: null,
@@ -440,6 +443,7 @@ export class Hotel {
         size: rec.size ?? ROOM_SIZE,
         shape: rec.shape ?? 'square',
         category: rec.category ?? 'andet',
+        heights: (rec.heights ??= {}),
         paidSize: rec.paidSize ?? ROOM_SIZE,
         wall: rec.wall ?? null,
         floor: rec.floor ?? null,
@@ -1123,6 +1127,8 @@ export class Hotel {
         return this.buyPet(s, user, msg.kind as PetKind, msg.name, msg.color);
       case 'petOut':
         return this.petOut(s, user, msg.id);
+      case 'setHeight':
+        return this.setHeight(s, user, msg.x, msg.z, msg.h);
       case 'renovate':
         return this.renovate(s, user, msg.size, msg.shape as RoomShape);
       case 'petFeed':
@@ -1212,6 +1218,27 @@ export class Hotel {
     }
   }
 
+  /* ---------------- stairs and platforms ---------------- */
+
+  private setHeight(s: Session, user: UserRecord, x: number, z: number, h: number) {
+    const room = s.room;
+    const rec = room && this.roomRecord(room);
+    if (!room || !rec || (rec.ownerId !== user.id && !rec.rights.includes(user.id)))
+      return this.toast(s, 'Du kan kun bygge i rum, hvor du har byggerettigheder.', 'error');
+    const floor = room.floor();
+    if (!isFloorTile(floor, x, z)) return;
+    if (x === DOOR_TILE[0] && z === DOOR_TILE[1])
+      return this.toast(s, 'Feltet foran døren skal blive på gulvet.', 'error');
+    if (room.items.some((it) => tilesOf(it).some(([a, b]) => a === x && b === z)))
+      return this.toast(s, 'Flyt møblet væk fra feltet først.', 'error');
+    const heights = (rec.heights ??= {});
+    if (h === 0) delete heights[`${x},${z}`];
+    else heights[`${x},${z}`] = h;
+    room.meta.heights = heights;
+    this.store.touch();
+    room.broadcast({ t: 'heights', heights });
+  }
+
   /* ---------------- renovation ---------------- */
 
   /**
@@ -1230,7 +1257,13 @@ export class Hotel {
       return this.toast(s, `🔒 ${size}×${size} kræver level ${tier.minLevel}`, 'error');
     const price = renovationPrice(paid, size);
     if (user.coins < price) return this.toast(s, 'Du har ikke mønter nok.', 'error');
-    const floor = { size, shape };
+    const heights = Object.fromEntries(
+      Object.entries(rec.heights ?? {}).filter(([k]) => {
+        const [hx, hz] = k.split(',').map(Number) as [number, number];
+        return isFloorTile({ size, shape }, hx, hz);
+      }),
+    );
+    const floor = { size, shape, heights };
     const blocks = themeWallBlocks(room.meta.theme, floor);
     const keep: PlacedItem[] = [];
     const moved: PlacedItem[] = [];
@@ -1241,6 +1274,7 @@ export class Hotel {
     for (const it of moved)
       inv.push(it.color ? { type: it.type, color: it.color } : { type: it.type });
     rec.items.splice(0, rec.items.length, ...keep);
+    rec.heights = room.meta.heights = heights;
     rec.size = room.meta.size = size;
     rec.shape = room.meta.shape = shape;
     rec.paidSize = room.meta.paidSize = Math.max(paid, size);

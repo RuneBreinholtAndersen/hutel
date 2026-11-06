@@ -14,7 +14,6 @@ Sidst opdateret: 6. november 2026. Rækkefølge: voksen-Hutel i lukket beta før
 - [ ] Sæt `SUPABASE_URL` og `SUPABASE_ANON_KEY` som Fly-secrets og deploy igen
 - [ ] Facebook-login (sat på pause): opret Meta-app, indsæt App ID/Secret i Supabase, og sæt `AUTH_PROVIDERS=google,facebook`
 - [ ] Sæt dig selv som admin: `fly secrets set ADMIN_NAMES=rune` (log ind med Google med totrinsbekræftelse)
-- [ ] Trapper og niveauer (forhøjede felter) i egne rum
 - [ ] Før lancering: slå "Start forfra" fra med `fly secrets set ALLOW_RESET=false`
 - [ ] Udgiv Google-login for alle (kræver hutel.dk og en side med privatlivspolitik) – indtil da: tilføj beta-testere som testbrugere i Google Cloud → Audience
 - ✅ Supabase-projekt `hutel` oprettet (gratis org "Hutel", EU/Irland), redirect-URL'er sat
@@ -26,6 +25,8 @@ Sidst opdateret: 6. november 2026. Rækkefølge: voksen-Hutel i lukket beta før
 
 ## Færdigt 6. november (eftermiddag)
 
+- ✅ Trapper og platforme: hæv/sænk felter 0–3 trin i byggetilstand; man går ét trin ad gangen, møbler står vandret
+- ✅ Navigator: søgning (rum og ejere), kategorier (fest, chill, spil, handel), favoritter ⭐ og "populære lige nu"
 - ✅ Byg om: egne rum kan være 7×7 til 12×12 og have form som kvadrat, bred, L, spejlet L eller U; møbler der ikke passer lægges i inventaret
 - ✅ Kæledyr: hund, kat og drage (lv 4) der følger dig, kan fodres, lærer tricks (sæt dig, hop, rul, tig, dans) og stiger i level; svarer når man siger deres navn
 - ✅ Gamle faner genindlæser selv efter et deploy

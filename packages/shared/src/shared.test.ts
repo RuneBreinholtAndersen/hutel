@@ -21,6 +21,7 @@ import {
   ROOM_SIZE,
   DOOR_TILE,
   findPath,
+  canStep,
   MIN_USER_ROOM_SIZE,
   MAX_USER_ROOM_SIZE,
   ROOM_SHAPE_IDS,
@@ -127,6 +128,23 @@ describe('floor plans', () => {
     expect(canPlace(f, [], { id: 1, type: 'painting', x: 5, z: 0, rot: 1 })).toBe(false);
     expect(renovationPrice(8, 10)).toBe(80);
     expect(renovationPrice(10, 9)).toBe(0);
+  });
+});
+
+describe('stairs and platforms', () => {
+  it('walks one step up or down at a time and keeps furniture level', () => {
+    // A staircase 1-2-3 along x on row z=3, and a tall block at (5,5).
+    const f = { size: 8, heights: { '1,3': 1, '2,3': 2, '3,3': 3, '5,5': 3 } };
+    const g = buildGrid(f, []);
+    expect(canStep(g, 0, 3, 1, 3)).toBe(true);
+    expect(canStep(g, 0, 3, 2, 3)).toBe(false);
+    const path = findPath(g, [0, 3], [3, 3])!;
+    expect(path.map(([x]) => x)).toEqual([1, 2, 3]);
+    // The 3-high block can't be climbed from the floor.
+    expect(findPath(g, [5, 4], [5, 5])).toBeNull();
+    // A sofa (2 wide) can't stand half on a step.
+    expect(canPlace(f, [], { id: 1, type: 'sofa', x: 0, z: 3, rot: 0 })).toBe(false);
+    expect(canPlace(f, [], { id: 1, type: 'plant', x: 3, z: 3, rot: 0 })).toBe(true);
   });
 });
 

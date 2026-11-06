@@ -134,6 +134,7 @@ export class Pet {
   x = 0;
   z = 0;
   y = 0;
+  private gy = 0;
 
   constructor(
     public view: PetView,
@@ -159,7 +160,7 @@ export class Pet {
     this.actT = 0;
   }
 
-  update(dt: number, owner: { x: number; z: number }) {
+  update(dt: number, owner: { x: number; z: number }, ground = 0) {
     this.time += dt;
     const dx = owner.x - this.x;
     const dz = owner.z - this.z;
@@ -226,8 +227,9 @@ export class Pet {
       }
       if (t > len) this.act = null;
     }
+    this.gy += (ground - this.gy) * Math.min(1, dt * 12);
     this.y = y;
-    this.obj.position.set(this.x, y, this.z);
+    this.obj.position.set(this.x, y + this.gy, this.z);
     this.obj.rotation.y = this.face;
   }
 

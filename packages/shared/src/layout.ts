@@ -16,8 +16,19 @@ export const ROOM_SHAPE_IDS = Object.keys(ROOM_SHAPES) as RoomShape[];
 export const MIN_USER_ROOM_SIZE = 7;
 export const MAX_USER_ROOM_SIZE = 12;
 
-/** A floor: either a plain square size or a size with a shape. */
-export type Floor = number | { size: number; shape?: RoomShape };
+/** Raised tiles: "x,z" → height in steps (1..MAX_TILE_HEIGHT). Flat tiles are left out. */
+export type TileHeights = Record<string, number>;
+export const MAX_TILE_HEIGHT = 3;
+/** World height of one step. */
+export const STEP_HEIGHT = 0.35;
+
+/** A floor: either a plain square size or a size with a shape and raised tiles. */
+export type Floor = number | { size: number; shape?: RoomShape; heights?: TileHeights };
+
+/** Height of a tile in steps (0 = floor level). */
+export function tileHeight(f: Floor, x: number, z: number): number {
+  return typeof f === 'number' ? 0 : (f.heights?.[`${x},${z}`] ?? 0);
+}
 
 export const floorSize = (f: Floor) => (typeof f === 'number' ? f : f.size);
 export const floorShape = (f: Floor): RoomShape =>

@@ -9,6 +9,7 @@ import type {
   PetKind,
   RoomShape,
   RoomCategory,
+  TileHeights,
   QuestId,
   RoomAccess,
   RoomTheme,
@@ -103,6 +104,8 @@ export interface RoomRecord {
   size?: number;
   shape?: RoomShape;
   category?: RoomCategory;
+  /** Raised tiles: "x,z" → steps. */
+  heights?: TileHeights;
   paidSize?: number;
 }
 
