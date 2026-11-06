@@ -172,7 +172,7 @@ describe('social login (Supabase)', () => {
       ...cfg,
       supabaseUrl: 'https://x.supabase.co',
       supabaseAnonKey: 'anon',
-      claimNames: { ejer: 'ejer@example.com' },
+      claimNames: { ejer: 'ejerkonto@example.com' },
       verifyAuthToken: async (t) =>
         t.startsWith('good-') ? { id: t.slice(5), email: `${t.slice(5)}@example.com` } : null,
     });
@@ -226,7 +226,10 @@ describe('social login (Supabase)', () => {
     expect(
       (await post({ accessToken: 'good-nogen', profile: { ...profile, name: 'Ejer' } })).status,
     ).toBe(409);
-    const took = await post({ accessToken: 'good-ejer', profile: { ...profile, name: 'Ejer' } });
+    const took = await post({
+      accessToken: 'good-ejerkonto',
+      profile: { ...profile, name: 'Ejer' },
+    });
     expect(took.body.userId).toBe(ejId);
     await sb.close();
   });
