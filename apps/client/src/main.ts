@@ -9,6 +9,8 @@ import {
   furniture,
   FURNITURE,
   FURNITURE_TYPES,
+  HOTEL_BONUS,
+  HOTEL_QUESTS,
   QUESTS,
   ROOM_SIZE,
   RUN_MULTIPLIER,
@@ -20,6 +22,7 @@ import {
   type Me,
   type NavigatorRoom,
   type PlacedItem,
+  type QuestId,
   type ProfileView,
   type RoomView,
   type ServerMsg,
@@ -218,8 +221,10 @@ function updateRoomUi() {
   $<HTMLButtonElement>('bBuild').disabled = !room.canBuild;
   $<HTMLButtonElement>('bShop').disabled = !isOwner();
   roomGfx.setDoorUnlocked(onboarded());
-  const showQuests = !questsDone() && room.id === me.homeRoomId;
+  const hotelLeft = HOTEL_QUESTS.some((q) => !me!.quests.includes(q.id));
+  const showQuests = questsDone() ? hotelLeft : room.id === me.homeRoomId;
   $('quests').classList.toggle('hidden', !showQuests);
+  $('quests').classList.remove('gone');
   renderQuests();
 }
 
@@ -235,11 +240,16 @@ function goTo(roomId: string, password?: string) {
 /* ---------------- quests / coins ---------------- */
 function renderQuests() {
   if (!me) return;
-  $('qlist').innerHTML = QUESTS.map((q) => {
-    const done = me!.quests.includes(q.id);
-    return `<li class="${done ? 'done' : ''}"><span>${done ? '✅' : '⬜'}</span><span class="t">${esc(q.text)}</span><span class="r">+${q.reward} ${COIN}</span></li>`;
-  }).join('');
-  $('qCount').textContent = `${me.quests.length}/${QUESTS.length}`;
+  const list = questsDone() ? HOTEL_QUESTS : QUESTS;
+  $('qTitle').textContent = questsDone() ? '🗺️ Hotel-opgaver' : '✨ Startopgaver';
+  $('qlist').innerHTML = (list as readonly { id: QuestId; text: string; reward: number }[])
+    .map((q) => {
+      const done = me!.quests.includes(q.id);
+      return `<li class="${done ? 'done' : ''}"><span>${done ? '✅' : '⬜'}</span><span class="t">${esc(q.text)}</span><span class="r">+${q.reward} ${COIN}</span></li>`;
+    })
+    .join('');
+  $('qCount').textContent =
+    `${list.filter((q) => me!.quests.includes(q.id)).length}/${list.length}`;
 }
 function setCoins(c: number) {
   if (!me) return;
@@ -342,15 +352,21 @@ function handle(msg: ServerMsg) {
     case 'quest': {
       if (!me) return;
       if (!me.quests.includes(msg.id)) me.quests.push(msg.id);
-      const q = QUESTS.find((x) => x.id === msg.id)!;
+      const q = [...QUESTS, ...HOTEL_QUESTS].find((x) => x.id === msg.id)!;
       toast(`✅ ${q.text} · +${msg.reward} 🪙`);
       renderQuests();
+      if (msg.hotelAll)
+        setTimeout(() => {
+          confetti();
+          toast(`🗝️ Alle hotel-opgaver klaret! Du er nu Hotelkender · +${HOTEL_BONUS} 🪙`);
+          $('quests').classList.add('gone');
+        }, 1200);
       if (msg.all)
         setTimeout(() => {
           confetti();
-          toast('🎉 Alle startopgaver klaret! Døren er åben – klik på den for at se hotellet 🚪');
+          toast('🎉 Alle startopgaver klaret! Døren er åben – tryk på Rum og find lobbyen 🚪');
           $('quests').classList.add('gone');
-          setTimeout(() => updateRoomUi(), 900);
+          setTimeout(() => updateRoomUi(), 1600);
         }, 1200);
       return;
     }

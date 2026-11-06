@@ -176,7 +176,7 @@ export type ServerMsg =
   | { t: 'roomMeta'; name: string; description: string; access: RoomAccess }
   | { t: 'coins'; coins: number; reason?: string }
   | { t: 'online'; onlineSec: number }
-  | { t: 'quest'; id: QuestId; reward: number; all: boolean }
+  | { t: 'quest'; id: QuestId; reward: number; all: boolean; hotelAll?: boolean }
   | { t: 'badge'; id: BadgeId }
   | { t: 'friends'; friends: FriendView[]; requests: { id: string; name: string }[] }
   | { t: 'whisper'; from: string; fromName: string; to: string; text: string }

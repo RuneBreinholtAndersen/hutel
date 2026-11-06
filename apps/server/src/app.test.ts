@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { AddressInfo } from 'node:net';
 import WebSocket from 'ws';
-import { DEFAULT_LOOK, type ServerMsg } from '@hutel/shared';
+import { DEFAULT_LOOK, QUESTS, type ServerMsg } from '@hutel/shared';
 import { createApp } from './app';
 
 const cfg = {
@@ -345,6 +345,24 @@ describe('multiplayer', () => {
     const r2 = await c2.waitFor('room');
     expect(r2.room.items.some((i) => i.type === 'plant' && i.x === 6 && i.z === 6)).toBe(false);
     c2.ws.close();
+  });
+
+  it('unlocks hotel quests in the lobby and café after the start quests', async () => {
+    const { c, g } = await login('Turist');
+    c.send({ t: 'join', roomId: 'lobby' });
+    await c.waitFor('room', (m) => m.room.id === 'lobby');
+    await new Promise((r) => setTimeout(r, 100));
+    expect(c.msgs.some((m) => m.t === 'quest' && m.id === 'lobby')).toBe(false); // not onboarded yet
+    app.store.getUser(g.userId)!.quests.push(...QUESTS.map((q) => q.id));
+    c.send({ t: 'join', roomId: 'cafe' });
+    await c.waitFor('room', (m) => m.room.id === 'cafe');
+    c.send({ t: 'chat', text: 'en kaffe tak' });
+    expect((await c.waitFor('quest', (m) => m.id === 'coffee')).reward).toBe(5);
+    c.send({ t: 'join', roomId: 'lobby' });
+    await c.waitFor('quest', (m) => m.id === 'lobby');
+    c.send({ t: 'chat', text: 'hej ida' });
+    await c.waitFor('quest', (m) => m.id === 'ida');
+    c.ws.close();
   });
 
   it('handles friends, whispers, password rooms and blocking', async () => {

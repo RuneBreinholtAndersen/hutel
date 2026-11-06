@@ -13,6 +13,7 @@ Sidst opdateret: 6. november 2026. Rækkefølge: voksen-Hutel i lukket beta før
 - [ ] Opret et Supabase-projekt i EU-region og slå login med e-mail, Google og Facebook til (se `docs/DEPLOY.md` → "Login med e-mail, Google og Facebook")
 - [ ] Sæt `SUPABASE_URL` og `SUPABASE_ANON_KEY` som Fly-secrets og deploy igen
 - [ ] Facebook-login (sat på pause): opret Meta-app, indsæt App ID/Secret i Supabase, og sæt `AUTH_PROVIDERS=google,facebook`
+- [ ] Daglige opgaver (fx log ind i dag, besøg en vens værelse)
 - [ ] Før lancering: slå "Start forfra" fra med `fly secrets set ALLOW_RESET=false`
 - [ ] Udgiv Google-login for alle (kræver hutel.dk og en side med privatlivspolitik) – indtil da: tilføj beta-testere som testbrugere i Google Cloud → Audience
 - ✅ Supabase-projekt `hutel` oprettet (gratis org "Hutel", EU/Irland), redirect-URL'er sat
@@ -24,6 +25,7 @@ Sidst opdateret: 6. november 2026. Rækkefølge: voksen-Hutel i lukket beta før
 
 ## Færdigt 6. november (eftermiddag)
 
+- ✅ Hotel-opgaver efter startopgaverne: lobby, Ida, akvariet, kaffe hos Luna, sæt dig i caféen, hils på en rigtig gæst – badge "Hotelkender" + 25 mønter; Ida/Luna giver tips
 - ✅ Testknap "Start forfra" under Figur: nulstiller mønter, opgaver, badges og værelse
 - ✅ Magnus 🤖 står på nye gæsters værelse og guider gennem startopgaverne, siger farvel og går, når de er klaret
 - ✅ Piletaster går frit og flydende som i prototypen (ikke felt for felt); serveren tjekker fart, vægge og møbler

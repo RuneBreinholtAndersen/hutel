@@ -407,10 +407,19 @@ export class Bots {
     if (!g) return;
     g.tip = null;
     setTimeout(() => {
-      g.speak(room, `Sejt, ${name}! Nu er døren åben – vi ses i lobbyen 👋`);
+      g.speak(
+        room,
+        `Sejt, ${name}! Døren er åben – tryk på Rum og kom ned i lobbyen, Ida venter 👋`,
+      );
       room.walk(g.state, [6, 0]);
     }, 1800);
     setTimeout(() => this.removeGuide(room), 6000);
+  }
+
+  /** Lets the room's host (Ida, Luna) say something, e.g. a hint for the next hotel quest. */
+  hostSay(room: RoomInstance, text: string, delay = 3500) {
+    const host = this.inRoom(room).find((b) => b.persona.host);
+    if (host) setTimeout(() => room.players.has(host.state.id) && host.speak(room, text), delay);
   }
 
   /** The room instance is gone (e.g. after "Start forfra"): drop its guide. */

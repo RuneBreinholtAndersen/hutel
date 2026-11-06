@@ -7,7 +7,10 @@ import {
   furniture,
   isGreeting,
   PUBLIC_ROOMS,
+  HOTEL_BONUS,
+  HOTEL_QUESTS,
   QUESTS,
+  tilesOf,
   sanitizeChat,
   sellPrice,
   type BadgeId,
@@ -49,13 +52,23 @@ interface Session {
   strikes: number;
 }
 
-const GUIDE_TIPS: Record<QuestId, string> = {
+const GUIDE_TIPS: Record<(typeof QUESTS)[number]['id'], string> = {
   walk: 'Prøv at gå hen til vinduet – brug piletasterne eller klik på gulvet 🪟',
   hello: 'Skriv "hej" i chatten nederst, så siger jeg hej tilbage 👋',
   sit: 'Klik på sofaen eller lænestolen for at sætte dig 🛋️',
   look: 'Tryk på Figur nederst og giv dig selv et nyt look 👕',
   move: 'Tryk på Byg 🔨, tag fat i et møbel og flyt det et andet sted hen',
   buy: 'Åbn Butik 🛒, køb noget for dine mønter og placér det på værelset',
+};
+
+/** [room where it happens, hint] for each hotel quest. */
+const HOTEL_TIPS: Record<(typeof HOTEL_QUESTS)[number]['id'], [string, string]> = {
+  lobby: ['', 'Tryk på Rum og find lobbyen 🧭'],
+  ida: ['lobby', 'Skriv "Hej Ida" i chatten, så siger jeg hej 🛎️'],
+  aquarium: ['lobby', 'Gå hen og kig på akvariet – fiskene hedder Bob og Bent 🐠'],
+  coffee: ['cafe', 'Skriv "kaffe" i chatten, så laver jeg en kop til dig ☕'],
+  cafeSit: ['cafe', 'Find en ledig stol eller sofa og sæt dig 🪑'],
+  greetHuman: ['', 'Sig hej til en rigtig gæst, når du møder en – det giver flest mønter 👋'],
 };
 
 const LIMIT_FOR: Partial<Record<ClientMsg['t'], LimitKind>> = {
@@ -249,6 +262,18 @@ export class Hotel {
       const s = this.byUser.get(p.id);
       if (!user || !s) return;
       if (seated) this.quest(s, user, 'sit');
+      if (seated && room.meta.id === 'cafe') this.quest(s, user, 'cafeSit');
+      if (
+        room.meta.id === 'lobby' &&
+        room.items.some(
+          (it) =>
+            it.type === 'aquarium' &&
+            tilesOf(it).some(
+              ([x, z]) => Math.max(Math.abs(x - tile[0]), Math.abs(z - tile[1])) <= 1,
+            ),
+        )
+      )
+        this.quest(s, user, 'aquarium');
       if (room.meta.id === user.homeRoomId && tile[0] <= 1 && tile[1] >= 1 && tile[1] <= 3)
         this.quest(s, user, 'walk');
     },
@@ -330,6 +355,11 @@ export class Hotel {
     if (room.meta.id === user.homeRoomId && !this.onboarded(user))
       this.bots.startGuide(room, () => this.nextTip(user));
     this.bots.onHumanJoin(room, player);
+    if (room.meta.id === 'lobby') this.quest(s, user, 'lobby');
+    if (room.meta.isPublic && this.onboarded(user)) {
+      const tip = this.hotelTip(user, room.meta.id);
+      if (tip) this.bots.hostSay(room, tip, 4500);
+    }
     this.notifyFriendsOf(user);
   }
 
@@ -383,16 +413,36 @@ export class Hotel {
 
   private quest(s: Session, user: UserRecord, id: QuestId) {
     if (user.quests.includes(id)) return;
-    const q = QUESTS.find((x) => x.id === id)!;
+    const start = QUESTS.find((x) => x.id === id);
+    const hotel = HOTEL_QUESTS.find((x) => x.id === id);
+    if (!start && (!hotel || !this.onboarded(user))) return;
+    const reward = (start ?? hotel)!.reward;
     user.quests.push(id);
-    const all = this.onboarded(user);
-    this.send(s, { t: 'quest', id, reward: q.reward, all });
-    this.coins(s, user, q.reward);
+    const all = !!start && this.onboarded(user);
+    const hotelAll = !!hotel && HOTEL_QUESTS.every((q) => user.quests.includes(q.id));
+    this.send(s, { t: 'quest', id, reward, all, hotelAll });
+    this.coins(s, user, reward);
     if (all) this.badge(s, user, 'onboarded');
-    if (s.room?.meta.id === user.homeRoomId) {
+    if (hotelAll) {
+      this.badge(s, user, 'hotelkender');
+      this.coins(s, user, HOTEL_BONUS);
+    }
+    if (start && s.room?.meta.id === user.homeRoomId) {
       if (all) this.bots.endGuide(s.room, user.name);
       else this.bots.guideTip(s.room);
     }
+    if (hotel && s.room?.meta.isPublic && !hotelAll) {
+      const tip = this.hotelTip(user, s.room.meta.id);
+      if (tip) this.bots.hostSay(s.room, `Flot! ${tip}`, 2200);
+    }
+  }
+
+  /** Ida's/Luna's hint for the next hotel quest that can be done in this room (or elsewhere). */
+  private hotelTip(user: UserRecord, roomId: string): string | null {
+    const left = HOTEL_QUESTS.filter((q) => !user.quests.includes(q.id)).map((q) => q.id);
+    if (!left.length) return null;
+    const here = left.find((id) => HOTEL_TIPS[id][0] === roomId) ?? left[0]!;
+    return HOTEL_TIPS[here][1];
   }
 
   /** Guide-Magnus' hint for the next start quest the guest hasn't done. */
@@ -461,6 +511,15 @@ export class Hotel {
         user.stats.chats++;
         if (user.stats.chats >= 100) this.badge(s, user, 'chatty');
         if (isGreeting(text)) this.quest(s, user, 'hello');
+        const lower = text.toLowerCase();
+        if (room.meta.id === 'lobby' && /\bida\b/.test(lower)) this.quest(s, user, 'ida');
+        if (room.meta.id === 'cafe' && lower.includes('kaffe') && !user.quests.includes('coffee')) {
+          this.quest(s, user, 'coffee');
+          if (user.quests.includes('coffee'))
+            this.bots.hostSay(room, `Værsgo, ${user.name} – en varm kop kaffe ☕`, 1200);
+        }
+        if (isGreeting(text) && room.humans().some((h) => h.id !== player.id))
+          this.quest(s, user, 'greetHuman');
         this.bots.onChat(room, player, text);
         return;
       }
