@@ -13,14 +13,36 @@ const userId = z.string().min(1).max(40);
 /** Every message a client may send. Anything else is rejected by the server. */
 export const ClientMsgSchema = z.discriminatedUnion('t', [
   z.object({ t: z.literal('auth'), token: z.string().min(10).max(200) }),
-  z.object({ t: z.literal('join'), roomId: z.string().min(1).max(40), password: z.string().max(40).optional() }),
+  z.object({
+    t: z.literal('join'),
+    roomId: z.string().min(1).max(40),
+    password: z.string().max(40).optional(),
+  }),
   z.object({ t: z.literal('move'), x: tileCoord, z: tileCoord, run: z.boolean().optional() }),
   z.object({ t: z.literal('sit'), itemId: z.number().int() }),
-  z.object({ t: z.literal('chat'), text: z.string().min(1).max(CHAT_MAX_LENGTH * 2) }),
+  z.object({
+    t: z.literal('chat'),
+    text: z
+      .string()
+      .min(1)
+      .max(CHAT_MAX_LENGTH * 2),
+  }),
   z.object({ t: z.literal('action'), kind: z.enum(['wave', 'dance', 'stop']) }),
   z.object({ t: z.literal('look'), look: LookSchema }),
-  z.object({ t: z.literal('buy'), type: furnitureType, x: tileCoord, z: tileCoord, rot: z.number().int().min(0).max(3) }),
-  z.object({ t: z.literal('moveItem'), id: z.number().int(), x: tileCoord, z: tileCoord, rot: z.number().int().min(0).max(3) }),
+  z.object({
+    t: z.literal('buy'),
+    type: furnitureType,
+    x: tileCoord,
+    z: tileCoord,
+    rot: z.number().int().min(0).max(3),
+  }),
+  z.object({
+    t: z.literal('moveItem'),
+    id: z.number().int(),
+    x: tileCoord,
+    z: tileCoord,
+    rot: z.number().int().min(0).max(3),
+  }),
   z.object({ t: z.literal('sellItem'), id: z.number().int() }),
   z.object({
     t: z.literal('roomSettings'),
@@ -33,7 +55,14 @@ export const ClientMsgSchema = z.discriminatedUnion('t', [
   z.object({ t: z.literal('friendRequest'), name: z.string().min(2).max(16) }),
   z.object({ t: z.literal('friendRespond'), userId, accept: z.boolean() }),
   z.object({ t: z.literal('friendRemove'), userId }),
-  z.object({ t: z.literal('whisper'), to: userId, text: z.string().min(1).max(CHAT_MAX_LENGTH * 2) }),
+  z.object({
+    t: z.literal('whisper'),
+    to: userId,
+    text: z
+      .string()
+      .min(1)
+      .max(CHAT_MAX_LENGTH * 2),
+  }),
   z.object({ t: z.literal('block'), userId, block: z.boolean() }),
   z.object({ t: z.literal('report'), userId, reason: z.string().min(3).max(300) }),
   z.object({ t: z.literal('profile'), userId }),
@@ -114,11 +143,19 @@ export interface ProfileView {
 }
 
 export type ServerMsg =
-  | { t: 'welcome'; me: Me; serverTime: number }
+  | { t: 'welcome'; me: Me; serverTime: number; onboardingLock: boolean }
   | { t: 'room'; room: RoomView; serverTime: number }
   | { t: 'playerJoin'; player: PlayerView }
   | { t: 'playerLeave'; id: string }
-  | { t: 'path'; id: string; path: [number, number][]; pathStart: number; run: boolean; seatId: number | null; from: [number, number] }
+  | {
+      t: 'path';
+      id: string;
+      path: [number, number][];
+      pathStart: number;
+      run: boolean;
+      seatId: number | null;
+      from: [number, number];
+    }
   | { t: 'chat'; id: string; name: string; text: string; bot: boolean }
   | { t: 'action'; id: string; kind: 'wave' | 'dance' | null }
   | { t: 'look'; id: string; look: Look }

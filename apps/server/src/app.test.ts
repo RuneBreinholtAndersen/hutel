@@ -43,7 +43,11 @@ class TestClient {
   send(m: unknown) {
     this.ws.send(JSON.stringify(m));
   }
-  async waitFor<T extends ServerMsg['t']>(t: T, pred: (m: Extract<ServerMsg, { t: T }>) => boolean = () => true, ms = 2000) {
+  async waitFor<T extends ServerMsg['t']>(
+    t: T,
+    pred: (m: Extract<ServerMsg, { t: T }>) => boolean = () => true,
+    ms = 2000,
+  ) {
     const start = Date.now();
     while (Date.now() - start < ms) {
       const m = this.msgs.find((x) => x.t === t && pred(x as Extract<ServerMsg, { t: T }>));
@@ -76,7 +80,10 @@ describe('http', () => {
   it('rejects bad names, duplicates and missing consent', async () => {
     expect((await guest('<b>x</b>')).ok).toBe(false);
     expect((await guest('Ida')).ok).toBe(false);
-    const res = await fetch(`http://${base}/api/guest`, { method: 'POST', body: JSON.stringify({ name: 'NoConsent', look: DEFAULT_LOOK }) });
+    const res = await fetch(`http://${base}/api/guest`, {
+      method: 'POST',
+      body: JSON.stringify({ name: 'NoConsent', look: DEFAULT_LOOK }),
+    });
     expect(res.status).toBe(400);
   });
 });

@@ -1,109 +1,76 @@
-# Hutel.dk – plan for multiplayer-udgaven
+# Hutel.dk – plan
 
 Status opdateres løbende. Åbne punkter står øverst, færdige punkter (✅) står nederst.
 
+Sidst opdateret: 6. november 2026.
+
 ---
 
-## Det skal Rune gøre selv (før/under Milepæl 0)
+## Det skal Rune gøre selv
 
+- [ ] Opret et privat, tomt GitHub-repo `hutel` (ingen README, .gitignore eller licens), så koden kan skubbes op
 - [ ] Registrér domænet **hutel.dk** (ledigt hos Simply pr. 6. nov. 2026)
-- [ ] Opret et privat GitHub-repo `hutel` og læg denne startpakke i det
-- [ ] Opret et Supabase-projekt i EU-region og giv Claude Code URL + anon key + service role key via `.env`
+- [ ] Opret et Supabase-projekt i EU-region (bruges når fil-lageret skal skiftes ud)
 - [ ] Opret konto hos Fly.io (eller Hetzner) til realtidsserveren
 - [ ] Forbind repoet til Vercel til klienten
-- [ ] Opret en Anthropic API-nøgle til AI-beboerne (bruges først i Milepæl 3)
+- [ ] Opret en Anthropic API-nøgle til AI-beboerne og læg den i serverens secrets som `ANTHROPIC_API_KEY`
 
 ---
 
-## Milepæl 0 – Opsætning ✅
+## Næste: Login, database og deploy
 
-Færdig: `pnpm dev` starter klient og server, og klienten viser, at serveren svarer på `/health`. Se punkterne under "Færdigt" nederst.
-
----
-
-## Milepæl 1 – Fundament: to mennesker i samme lobby
-
-- [ ] Port prototypen til moduler i `apps/client`: renderer, lys, rum, møbler, figurer, input, UI
-- [ ] Flyt møbelkatalog og placeringsregler til `packages/shared` (med tests). Pathfinding er allerede flyttet
-- [ ] Login med Supabase (magic link + Google), 18+-bekræftelse, vilkår og privatlivspolitik (kladder)
-- [ ] Tabeller: `profiles` (navn, look, mønter, online-tid), med RLS
-- [ ] Figur-editor gemmer look i `profiles`
-- [ ] Colyseus-rummet `lobby`: join med JWT, liste over spillere med position og look
-- [ ] Bevægelse: klik og piletaster sender intention, serveren validerer og synkroniserer. Shift = løb
-- [ ] Siddepladser synkroniseret (sofa, lænestol)
-- [ ] Chat med talebobler: maks. 120 tegn, rate limit, ordfilter
-- [ ] Online-tid giver 1 mønt pr. minut, beregnet på serveren
-- [ ] Genforbindelse ved netværksudfald
-
-**Færdig når:** Rune og Tina kan logge ind fra hver deres computer, se hinandens figurer gå rundt i lobbyen og chatte.
+- [ ] `SupabaseStore` der implementerer `Store` (tabeller: users, rooms, room_items, friends, reports, chatlog) med RLS
+- [ ] Supabase-login (magic link + Google) i stedet for gæstetoken. Behold 18+ og vilkår ved oprettelse
+- [ ] Automatisk sletning af chatlog efter 30 dage i databasen (cron)
+- [ ] Dockerfile til serveren og deploy til Fly.io (`wss://play.hutel.dk`)
+- [ ] Deploy af klienten til Vercel (`hutel.dk`) med `VITE_SERVER_URL`
+- [ ] Cloudflare foran klient og server
 
 ---
 
-## Milepæl 2 – Egne værelser og navigator
+## Mobil og iOS-app
 
-- [ ] Tabeller: `rooms` (ejer, navn, beskrivelse, adgang), `room_items` (møbler og placering), `inventory`
-- [ ] Hver ny bruger får et værelse med startmøbler
-- [ ] Startopgaverne (de 6 fra prototypen) på serveren, med konfetti og oplåsning af døren
-- [ ] Byggetilstand synkroniseret: flyt, rotér, sælg. Serveren tjekker rettigheder og placering
-- [ ] Butik: køb møbler for mønter (serveren trækker mønterne)
-- [ ] Adgang til værelser: åbent, ringeklokke (ejeren lukker ind) eller adgangskode
-- [ ] Rettigheder: ejeren kan give venner lov til at flytte møbler
-- [ ] **Navigatoren**: offentlige rum (Lobby, Café, Tagterrasse) og brugernes værelser, sorteret efter antal besøgende, plus søgning
-- [ ] Døre og elevator flytter én mellem rum
-
-**Færdig når:** man kan besøge hinandens værelser via navigatoren, og indretning bliver gemt.
+- [x] Spillet virker i mobilens browser: tryk for at gå, træk for at panorere, knib for at zoome, chat i fuld bredde
+- [ ] PWA: manifest og ikon, så man kan lægge Hutel på hjemmeskærmen
+- [ ] iOS-app med Capacitor (samme kode pakket som app)
+- [ ] App Store-krav til chat-apps med brugerindhold: filter, rapportér, blokér og kontaktoplysninger er på plads – mangler moderatorværktøj og hurtig reaktion på rapporter
+- [ ] Aldersgrænse i App Store sat til 17+ (chat med fremmede)
 
 ---
 
-## Milepæl 3 – AI-beboere
+## Milepæl 4 – Det sociale (resten)
 
-- [ ] Bot-spillere på serveren, der joiner rum som almindelige spillere
-- [ ] 4–6 faste personligheder (fx receptionisten Ida i lobbyen, Magnus der hilser på nye, en caféejer)
-- [ ] Svar via Anthropic API med kort systemprompt, dansk, venlig tone, inden for Hutels univers
-- [ ] Tydelig 🤖-markering ved navn og i profil
-- [ ] Rate limit pr. bot, dagligt loft over API-forbrug, fallback til faste replikker
-- [ ] Bots byder nye spillere velkommen og hjælper med startopgaverne
-
-**Færdig når:** hotellet føles levende, også når der kun er én rigtig spiller online.
-
----
-
-## Milepæl 4 – Det sociale
-
-- [ ] Venneliste med anmodninger og online-status
-- [ ] Private beskeder mellem venner
-- [ ] Profilkort: figur, motto, badges, hvornår man startede
-- [ ] Badges og præstationer (fx "100 timer online", "Første værelse", "Social sommerfugl")
-- [ ] Følg en ven ind i det rum, vedkommende er i
-- [ ] Handlinger: vink, dans, sid, smil
+- [ ] Følg en ven direkte via profilen (findes via vennelisten)
+- [ ] Ringeklokke på låste værelser: ejeren kan lukke en gæst ind
+- [ ] Notifikationer når en ven kommer online
 
 ---
 
 ## Milepæl 5 – Økonomi og byttehandel
 
 - [ ] Daglig login-bonus og stigende bonus for flere dage i træk
-- [ ] Byttehandel mellem spillere med dobbelt bekræftelse (begge skal godkende)
+- [ ] Byttehandel mellem spillere med dobbelt bekræftelse
 - [ ] Sjældne, tidsbegrænsede møbler i begrænset antal
 - [ ] Log over alle handler (mod snyd)
 
 ---
 
-## Milepæl 6 – Events og minispil
+## Milepæl 6 – Events, minispil og flere rum
 
-- [ ] Café og tagterrasse som offentlige rum
-- [ ] Planlagte events med nedtælling i navigatoren (chataftener, temaaftener)
-- [ ] Første minispil (fx snebold-kamp eller quiz-aften med en AI-vært)
+- [ ] Tagterrassen som offentligt rum
+- [ ] Elevatoren i lobbyen fører til etagerne
+- [ ] Planlagte events med nedtælling i navigatoren
+- [ ] Første minispil (fx quiz-aften med en AI-vært)
 - [ ] Sæsonting: julehue, påskeæg osv.
+- [ ] Flere frisurer, tøj og tilbehør til figurerne
 
 ---
 
 ## Milepæl 7 – Moderation og lukket beta
 
-- [ ] Rapportér, blokér og gør tavs
-- [ ] Moderator-rolle: advar, smid ud af rum, udeluk midlertidigt eller permanent
-- [ ] Automatisk filter + AI-hjælp til at markere problematiske beskeder til en moderator
-- [ ] Sletning af chatlog efter 30 dage
-- [ ] Endelige vilkår og privatlivspolitik
+- [ ] Moderator-side: se rapporter med chat-kontekst, advar, smid ud, udeluk (felterne `role` og `bannedUntil` findes allerede)
+- [ ] AI-hjælp til at markere problematiske beskeder til en moderator
+- [ ] Endelige vilkår og privatlivspolitik (der er en kladde i tilmeldingen)
 - [ ] Lukket beta for venner og familie
 - [ ] Simpel statistik: antal online, aktive pr. dag
 
@@ -111,10 +78,8 @@ Færdig: `pnpm dev` starter klient og server, og klienten viser, at serveren sva
 
 ## Sikkerhed før offentlig lancering
 
-- [ ] Gennemgå alle servermeddelelser: skema-validering og rate limits
-- [ ] Test af snyd: forsøg at teleportere, give sig selv mønter, dublere møbler og placere møbler i andres værelser
 - [ ] Gennemgå RLS-politikker i Supabase
-- [ ] Cloudflare foran klient og server (beskyttelse mod overbelastningsangreb)
+- [ ] Cloudflare foran klient og server
 - [ ] Sentry og alarmer sat op
 - [ ] Gendannelse fra backup afprøvet
 - [ ] Ekstern sikkerhedstest (pentest) eller gennemgang af en sikkerhedskyndig
@@ -130,27 +95,66 @@ Færdig: `pnpm dev` starter klient og server, og klienten viser, at serveren sva
 
 ---
 
-## Færdigt: Milepæl 0 ✅
+## Færdigt ✅
+
+### Multiplayer-fundament
+
+- ✅ Realtidsserver (WebSocket) med rum: Lobbyen, Caféen og et eget værelse til hver gæst
+- ✅ Gæstelogin med navn, figur, 18+-bekræftelse og vilkår (kladde)
+- ✅ Serveren bestemmer al bevægelse (pathfinding på serveren), klient og server regner positioner ens
+- ✅ Gå med klik og piletaster/WASD, løb med Shift, sid i sofaer og stole
+- ✅ Chat med talebobler og chatlog, ordfilter og rate limit
+- ✅ Vink og dans
+- ✅ Automatisk genforbindelse ved netværksudfald, og kun én aktiv session pr. bruger
+- ✅ Testet med to browsere samtidig (desktop og mobil) i samme lobby
+
+### Værelser og navigator
+
+- ✅ Startmøbler på eget værelse, gemt på serveren
+- ✅ Byg: flyt, rotér og sælg møbler – serveren tjekker rettigheder og placering
+- ✅ Butik med mønter (trækkes på serveren)
+- ✅ Adgang: åbent, låst eller adgangskode
+- ✅ Byggerettigheder til andre gæster
+- ✅ Navigator med offentlige rum, værelser med gæster og venners værelser
+- ✅ Døren åbner navigatoren, når startopgaverne er klaret
+
+### Opgaver, mønter og badges
+
+- ✅ 6 startopgaver på serveren med mønter, konfetti og oplåsning af døren
+- ✅ 1 mønt pr. minut online (beregnet på serveren)
+- ✅ Badges: Ny gæst, Klar til hotellet, Stamgæst, Fast inventar, Social sommerfugl, Shoppinglysten, Indretningsarkitekt, Snakkesalig
+
+### Det sociale
+
+- ✅ Venneliste med anmodninger og online-status samt hvilket rum vennen er i
+- ✅ Private beskeder til venner (`/w navn besked`)
+- ✅ Profilkort med motto, badges og knapper (tilføj ven, skriv, rettigheder, blokér, rapportér)
+- ✅ Blokér (man ser ikke længere personens beskeder) og rapportér (gemmes med de seneste 20 chatlinjer)
+
+### AI-beboere
+
+- ✅ Ida (reception) og Magnus i lobbyen, Luna (café) og Oskar i caféen
+- ✅ Tydelig 🤖-markering og egen profil, der siger at de er AI
+- ✅ Byder nye gæster velkommen, svarer når de bliver nævnt, småsnakker en gang imellem
+- ✅ Bruger Anthropic API når `ANTHROPIC_API_KEY` er sat, ellers faste replikker. Dagligt loft og rate limit
+
+### Sikkerhed indbygget
+
+- ✅ Alle klientbeskeder valideres med zod, ukendte beskeder afvises, gentagne forsøg lukker forbindelsen
+- ✅ Rate limits på bevægelse, chat, byg og sociale handlinger, samt på tilmeldinger pr. IP
+- ✅ Chattekst vises altid som ren tekst (ingen HTML)
+- ✅ Tokens og adgangskoder gemmes kun som hash
+- ✅ WebSocket-forbindelser kun fra tilladte domæner, maks. beskedstørrelse 4 KB
+- ✅ Chatlog slettes efter 30 dage
+
+### Milepæl 0
 
 - ✅ Monorepo med pnpm workspaces: `apps/client`, `apps/server`, `packages/shared`
-- ✅ TypeScript strict, ESLint, Prettier, Vitest
-- ✅ `.env.example` og `.gitignore`
-- ✅ `pnpm dev` starter klient og server samtidig
+- ✅ TypeScript strict, ESLint, Prettier, Vitest (23 tests)
 - ✅ GitHub Actions: lint, typecheck, test, build og sikkerhedstjek af afhængigheder
-- ✅ README med kom-i-gang
-- ✅ Pathfinding flyttet til `packages/shared` med tests (forskud på Milepæl 1)
+- ✅ README og `.env.example`
 
----
+### Prototypen
 
-## Allerede lavet i prototypen ✅
-
-- ✅ Isometrisk 3D-værelse med varmt lys, bloom og afrundede møbler
+- ✅ Isometrisk 3D-rum med varmt lys, bloom og afrundede møbler
 - ✅ Figurer i animationsfilm-stil med frisurer, briller, skæg og farver
-- ✅ Gå med klik og piletaster/WASD, løb med Shift
-- ✅ Sid i sofa og lænestol
-- ✅ Chat med talebobler og chatlog
-- ✅ Byggetilstand: flyt, rotér og sælg møbler
-- ✅ Møbelbutik med mønter
-- ✅ 6 startopgaver med mønter, konfetti og oplåsning af døren
-- ✅ 1 mønt pr. minut online
-- ✅ Dør til lobbyen med reception, elevator ("snart") og receptionisten Ida

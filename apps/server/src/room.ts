@@ -1,7 +1,20 @@
 import {
-  buildGrid, canPlace, DOOR_TILE, findPath, furniture, positionAt, ROOM_SIZE, tilesOf,
-  type Look, type PlacedItem, type PlayerView, type RoomAccess, type RoomTheme, type RoomView,
-  type ServerMsg, type Tile,
+  buildGrid,
+  canPlace,
+  DOOR_TILE,
+  findPath,
+  furniture,
+  positionAt,
+  ROOM_SIZE,
+  tilesOf,
+  type Look,
+  type PlacedItem,
+  type PlayerView,
+  type RoomAccess,
+  type RoomTheme,
+  type RoomView,
+  type ServerMsg,
+  type Tile,
 } from '@hutel/shared';
 
 export interface PlayerState {
@@ -60,22 +73,39 @@ export class RoomInstance {
 
   occupiedTiles(except?: string): Tile[] {
     const now = Date.now();
-    return [...this.players.values()].filter((p) => p.id !== except).map((p) => this.tileOf(p, now));
+    return [...this.players.values()]
+      .filter((p) => p.id !== except)
+      .map((p) => this.tileOf(p, now));
   }
 
   view(p: PlayerState): PlayerView {
     return {
-      id: p.id, name: p.name, look: p.look, x: p.from[0], z: p.from[1], path: p.path,
-      pathStart: p.pathStart, run: p.run, seatId: p.seatId, action: p.action, bot: p.bot,
+      id: p.id,
+      name: p.name,
+      look: p.look,
+      x: p.from[0],
+      z: p.from[1],
+      path: p.path,
+      pathStart: p.pathStart,
+      run: p.run,
+      seatId: p.seatId,
+      action: p.action,
+      bot: p.bot,
     };
   }
 
   roomView(forUser: string): RoomView {
     return {
-      id: this.meta.id, name: this.meta.name, description: this.meta.description, theme: this.meta.theme,
-      ownerId: this.meta.ownerId, ownerName: this.meta.ownerName, access: this.meta.access,
+      id: this.meta.id,
+      name: this.meta.name,
+      description: this.meta.description,
+      theme: this.meta.theme,
+      ownerId: this.meta.ownerId,
+      ownerName: this.meta.ownerName,
+      access: this.meta.access,
       canBuild: this.hooks.canBuild(this, forUser),
-      items: this.items, players: [...this.players.values()].map((p) => this.view(p)),
+      items: this.items,
+      players: [...this.players.values()].map((p) => this.view(p)),
     };
   }
 
@@ -90,17 +120,26 @@ export class RoomInstance {
   /** Adds a player at the door (or the nearest free tile). */
   add(p: PlayerState, at: Tile = DOOR_TILE) {
     const grid = buildGrid(ROOM_SIZE, this.items);
+    const taken = new Set(this.occupiedTiles(p.id).map((t) => t.join()));
+    const free = (x: number, z: number) => grid.cells[x]![z] === 0 && !taken.has(`${x},${z}`);
     let start: Tile = at;
-    if (grid.cells[start[0]]![start[1]] !== 0) {
+    if (!free(at[0], at[1])) {
       outer: for (let r = 1; r < ROOM_SIZE; r++)
         for (let x = 0; x < ROOM_SIZE; x++)
           for (let z = 0; z < ROOM_SIZE; z++)
-            if (Math.max(Math.abs(x - at[0]), Math.abs(z - at[1])) === r && grid.cells[x]![z] === 0) {
+            if (Math.max(Math.abs(x - at[0]), Math.abs(z - at[1])) === r && free(x, z)) {
               start = [x, z];
               break outer;
             }
     }
-    Object.assign(p, { from: [start[0], start[1]], path: [], pathStart: Date.now(), seatId: null, goalSeat: null, action: null });
+    Object.assign(p, {
+      from: [start[0], start[1]],
+      path: [],
+      pathStart: Date.now(),
+      seatId: null,
+      goalSeat: null,
+      action: null,
+    });
     this.players.set(p.id, p);
     this.broadcast({ t: 'playerJoin', player: this.view(p) }, { except: p.id });
   }
@@ -132,7 +171,15 @@ export class RoomInstance {
     p.pathStart = now;
     p.run = run;
     if (!path.length) this.arrive(p);
-    this.broadcast({ t: 'path', id: p.id, path: p.path, pathStart: now, run, seatId: p.goalSeat, from: p.from });
+    this.broadcast({
+      t: 'path',
+      id: p.id,
+      path: p.path,
+      pathStart: now,
+      run,
+      seatId: p.goalSeat,
+      from: p.from,
+    });
     return true;
   }
 
@@ -140,12 +187,17 @@ export class RoomInstance {
     const it = this.items.find((i) => i.id === itemId);
     if (!it || !furniture(it.type).seat) return false;
     const taken = new Set(
-      [...this.players.values()].filter((o) => o !== p && (o.seatId === itemId || o.goalSeat === itemId)).map((o) => this.tileOf(o).join()),
+      [...this.players.values()]
+        .filter((o) => o !== p && (o.seatId === itemId || o.goalSeat === itemId))
+        .map((o) => this.tileOf(o).join()),
     );
     const here = this.tileOf(p);
     const seats = tilesOf(it)
       .filter((t) => !taken.has(t.join()))
-      .sort((a, b) => Math.hypot(a[0] - here[0], a[1] - here[1]) - Math.hypot(b[0] - here[0], b[1] - here[1]));
+      .sort(
+        (a, b) =>
+          Math.hypot(a[0] - here[0], a[1] - here[1]) - Math.hypot(b[0] - here[0], b[1] - here[1]),
+      );
     for (const s of seats) if (this.walk(p, s, run, it)) return true;
     return false;
   }
@@ -180,7 +232,15 @@ export class RoomInstance {
       if (p.seatId === itemId || p.goalSeat === itemId) {
         p.seatId = null;
         p.goalSeat = null;
-        this.broadcast({ t: 'path', id: p.id, path: [], pathStart: Date.now(), run: false, seatId: null, from: p.from });
+        this.broadcast({
+          t: 'path',
+          id: p.id,
+          path: [],
+          pathStart: Date.now(),
+          run: false,
+          seatId: null,
+          from: p.from,
+        });
       }
   }
 

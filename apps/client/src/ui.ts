@@ -1,0 +1,143 @@
+import { BEARDS, GLASSES, HAIR_STYLES, PALETTE, type Look } from '@hutel/shared';
+
+export const $ = <E extends HTMLElement = HTMLElement>(id: string) =>
+  document.getElementById(id) as E;
+export const esc = (s: string) =>
+  s.replace(
+    /[&<>"']/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!,
+  );
+const hex = (n: number) => '#' + n.toString(16).padStart(6, '0');
+
+let toastT: number | undefined;
+export function toast(text: string, kind: 'info' | 'error' = 'info') {
+  const el = $('toast');
+  el.textContent = text;
+  el.className = 'show' + (kind === 'error' ? ' error' : '');
+  clearTimeout(toastT);
+  toastT = window.setTimeout(() => (el.className = ''), 2600);
+}
+
+export function pop(text: string) {
+  const d = document.createElement('div');
+  d.className = 'pop';
+  d.textContent = text;
+  document.body.appendChild(d);
+  setTimeout(() => d.remove(), 1700);
+}
+
+export function logLine(parts: { name?: string; text: string; cls?: string }) {
+  const d = document.createElement('div');
+  if (parts.cls) d.className = parts.cls;
+  if (parts.name) {
+    const b = document.createElement('b');
+    b.textContent = parts.name + ': ';
+    d.appendChild(b);
+  }
+  d.appendChild(document.createTextNode(parts.text));
+  const L = $('log');
+  L.appendChild(d);
+  while (L.children.length > 9) L.removeChild(L.firstChild!);
+}
+
+export function confetti() {
+  const c = $<HTMLCanvasElement>('confetti');
+  const g = c.getContext('2d')!;
+  c.width = innerWidth;
+  c.height = innerHeight;
+  const cols = ['#ffb347', '#ff6b6b', '#4fd1c5', '#f9e07f', '#9f7aea', '#68d391', '#fff6ea'];
+  const r = (a: number, b: number) => a + Math.random() * (b - a);
+  const P = Array.from({ length: 180 }, () => ({
+    x: innerWidth / 2 + r(-60, 60),
+    y: innerHeight * 0.45,
+    vx: r(-9, 9),
+    vy: r(-15, -5),
+    a: r(0, 6.3),
+    va: r(-0.3, 0.3),
+    w: r(6, 11),
+    h: r(4, 7),
+    c: cols[Math.floor(Math.random() * cols.length)]!,
+  }));
+  const t0 = performance.now();
+  const f = () => {
+    const t = (performance.now() - t0) / 1000;
+    g.clearRect(0, 0, c.width, c.height);
+    for (const p of P) {
+      p.vy += 0.35;
+      p.vx *= 0.99;
+      p.x += p.vx;
+      p.y += p.vy;
+      p.a += p.va;
+      g.save();
+      g.translate(p.x, p.y);
+      g.rotate(p.a);
+      g.globalAlpha = Math.max(0, 1 - Math.max(0, t - 2.2));
+      g.fillStyle = p.c;
+      g.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      g.restore();
+    }
+    if (t < 3.3) requestAnimationFrame(f);
+    else g.clearRect(0, 0, c.width, c.height);
+  };
+  f();
+}
+
+const LABELS = { skin: 'Hud', hair: 'Hår', eyes: 'Øjne', shirt: 'Trøje', pants: 'Bukser' } as const;
+const OPTS = {
+  hairStyle: {
+    label: 'Frisure',
+    vals: HAIR_STYLES,
+    names: {
+      kort: 'Kort',
+      krøller: 'Krøller',
+      hestehale: 'Hestehale',
+      langt: 'Langt',
+      kasket: 'Kasket',
+      skaldet: 'Skaldet',
+    },
+  },
+  glasses: {
+    label: 'Briller',
+    vals: GLASSES,
+    names: { ingen: 'Ingen', runde: 'Runde', sol: 'Solbriller' },
+  },
+  beard: {
+    label: 'Skæg',
+    vals: BEARDS,
+    names: { ingen: 'Intet', stubbe: 'Stubbe', fuld: 'Fuldskæg' },
+  },
+} as const;
+
+/** Renders swatches and chips for editing a look. */
+export function lookEditor(el: HTMLElement, look: Look, onChange: (look: Look) => void) {
+  const render = () => {
+    el.innerHTML =
+      Object.entries(OPTS)
+        .map(
+          ([k, o]) =>
+            `<div class="row"><label>${o.label}</label><div class="chips">${o.vals.map((v) => `<button type="button" data-k="${k}" data-v="${v}" class="${look[k as keyof Look] === v ? 'on' : ''}">${(o.names as Record<string, string>)[v]}</button>`).join('')}</div></div>`,
+        )
+        .join('') +
+      (Object.keys(LABELS) as (keyof typeof LABELS)[])
+        .map(
+          (k) =>
+            `<div class="row"><label>${LABELS[k]}</label><div class="sw">${PALETTE[k].map((c) => `<i data-c="${k}" data-v="${c}" style="background:${hex(c)}" class="${look[k] === c ? 'sel' : ''}"></i>`).join('')}</div></div>`,
+        )
+        .join('');
+    el.querySelectorAll<HTMLElement>('[data-k]').forEach((b) =>
+      b.addEventListener('click', () => {
+        look = { ...look, [b.dataset.k!]: b.dataset.v } as Look;
+        render();
+        onChange(look);
+      }),
+    );
+    el.querySelectorAll<HTMLElement>('[data-c]').forEach((b) =>
+      b.addEventListener('click', () => {
+        look = { ...look, [b.dataset.c!]: Number(b.dataset.v) } as Look;
+        render();
+        onChange(look);
+      }),
+    );
+  };
+  render();
+}

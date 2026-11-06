@@ -1,7 +1,24 @@
 import {
-  BADGES, ClientMsgSchema, COINS_PER_ONLINE_MINUTE, DOOR_TILE, filterChat, furniture, isGreeting,
-  PUBLIC_ROOMS, QUESTS, sanitizeChat, sellPrice, type BadgeId, type ClientMsg, type FriendView, type Me,
-  type NavigatorRoom, type PlacedItem, type QuestId, type ServerMsg, type Tile,
+  BADGES,
+  ClientMsgSchema,
+  COINS_PER_ONLINE_MINUTE,
+  DOOR_TILE,
+  filterChat,
+  furniture,
+  isGreeting,
+  PUBLIC_ROOMS,
+  QUESTS,
+  sanitizeChat,
+  sellPrice,
+  type BadgeId,
+  type ClientMsg,
+  type FriendView,
+  type Me,
+  type NavigatorRoom,
+  type PlacedItem,
+  type QuestId,
+  type ServerMsg,
+  type Tile,
 } from '@hutel/shared';
 import { Bots } from './bots';
 import { createLimits, type Bucket, type LimitKind } from './ratelimit';
@@ -31,10 +48,25 @@ interface Session {
 }
 
 const LIMIT_FOR: Partial<Record<ClientMsg['t'], LimitKind>> = {
-  move: 'move', sit: 'move', chat: 'chat', whisper: 'chat', action: 'move',
-  buy: 'build', moveItem: 'build', sellItem: 'build', roomSettings: 'build', rights: 'build', look: 'build',
-  friendRequest: 'social', friendRespond: 'social', friendRemove: 'social', block: 'social', report: 'social',
-  profile: 'social', motto: 'social', navigator: 'social',
+  move: 'move',
+  sit: 'move',
+  chat: 'chat',
+  whisper: 'chat',
+  action: 'move',
+  buy: 'build',
+  moveItem: 'build',
+  sellItem: 'build',
+  roomSettings: 'build',
+  rights: 'build',
+  look: 'build',
+  friendRequest: 'social',
+  friendRespond: 'social',
+  friendRemove: 'social',
+  block: 'social',
+  report: 'social',
+  profile: 'social',
+  motto: 'social',
+  navigator: 'social',
 };
 
 export class Hotel {
@@ -50,14 +82,31 @@ export class Hotel {
     private readonly cfg: HotelConfig,
   ) {
     for (const def of PUBLIC_ROOMS) {
-      const meta = { id: def.id, name: def.name, description: def.description, theme: def.theme, isPublic: true, ownerId: null, ownerName: null, access: 'open' as const };
-      this.rooms.set(def.id, new RoomInstance(meta, def.items.map((i) => ({ ...i })), this.hooks));
+      const meta = {
+        id: def.id,
+        name: def.name,
+        description: def.description,
+        theme: def.theme,
+        isPublic: true,
+        ownerId: null,
+        ownerName: null,
+        access: 'open' as const,
+      };
+      this.rooms.set(
+        def.id,
+        new RoomInstance(
+          meta,
+          def.items.map((i) => ({ ...i })),
+          this.hooks,
+        ),
+      );
     }
     this.bots = new Bots(
       {
         room: (id) => this.rooms.get(id),
         say: (room, bot, text) => this.sayInRoom(room, bot, text),
-        recent: (roomId) => this.store.recentChat(roomId, 8).map((c) => ({ name: c.name, text: c.text })),
+        recent: (roomId) =>
+          this.store.recentChat(roomId, 8).map((c) => ({ name: c.name, text: c.text })),
       },
       { apiKey: cfg.anthropicApiKey, model: cfg.botModel, maxCallsPerDay: cfg.botMaxCallsPerDay },
     );
@@ -78,7 +127,14 @@ export class Hotel {
   /* ---------------- connections ---------------- */
 
   open(conn: Connection) {
-    const s: Session = { conn, user: null, room: null, player: null, limits: createLimits(), strikes: 0 };
+    const s: Session = {
+      conn,
+      user: null,
+      room: null,
+      player: null,
+      limits: createLimits(),
+      strikes: 0,
+    };
     this.sessions.add(s);
     return {
       message: (raw: string) => this.onRaw(s, raw),
@@ -145,14 +201,29 @@ export class Hotel {
     }
     s.user = user;
     this.byUser.set(user.id, s);
-    this.send(s, { t: 'welcome', me: this.me(user), serverTime: Date.now() });
+    this.send(s, {
+      t: 'welcome',
+      me: this.me(user),
+      serverTime: Date.now(),
+      onboardingLock: this.cfg.onboardingLock,
+    });
     this.sendFriends(user);
     this.notifyFriendsOf(user);
     this.join(s, user.homeRoomId);
   }
 
   private me(u: UserRecord): Me {
-    return { id: u.id, name: u.name, look: u.look, coins: u.coins, onlineSec: u.onlineSec, quests: u.quests, badges: u.badges, homeRoomId: u.homeRoomId, motto: u.motto };
+    return {
+      id: u.id,
+      name: u.name,
+      look: u.look,
+      coins: u.coins,
+      onlineSec: u.onlineSec,
+      quests: u.quests,
+      badges: u.badges,
+      homeRoomId: u.homeRoomId,
+      motto: u.motto,
+    };
   }
 
   /* ---------------- rooms ---------------- */
@@ -164,9 +235,12 @@ export class Hotel {
       const s = this.byUser.get(p.id);
       if (!user || !s) return;
       if (seated) this.quest(s, user, 'sit');
-      if (room.meta.id === user.homeRoomId && tile[0] <= 1 && tile[1] >= 1 && tile[1] <= 3) this.quest(s, user, 'walk');
+      if (room.meta.id === user.homeRoomId && tile[0] <= 1 && tile[1] >= 1 && tile[1] <= 3)
+        this.quest(s, user, 'walk');
     },
-    canBuild: (room, userId) => !!room.meta.ownerId && (room.meta.ownerId === userId || this.roomRecord(room)?.rights.includes(userId) === true),
+    canBuild: (room, userId) =>
+      !!room.meta.ownerId &&
+      (room.meta.ownerId === userId || this.roomRecord(room)?.rights.includes(userId) === true),
   };
 
   private roomRecord(room: RoomInstance): RoomRecord | undefined {
@@ -180,7 +254,16 @@ export class Hotel {
     if (!rec) return undefined;
     const owner = this.store.getUser(rec.ownerId);
     const room = new RoomInstance(
-      { id: rec.id, name: rec.name, description: rec.description, theme: 'home', isPublic: false, ownerId: rec.ownerId, ownerName: owner?.name ?? null, access: rec.access },
+      {
+        id: rec.id,
+        name: rec.name,
+        description: rec.description,
+        theme: 'home',
+        isPublic: false,
+        ownerId: rec.ownerId,
+        ownerName: owner?.name ?? null,
+        access: rec.access,
+      },
       rec.items,
       this.hooks,
     );
@@ -205,14 +288,26 @@ export class Hotel {
       if (rec.access === 'locked') return this.toast(s, 'Værelset er låst 🔒');
       if (rec.access === 'password') {
         if (!password) return this.send(s, { t: 'needPassword', roomId });
-        if (hashSecret(password) !== rec.passwordHash) return this.toast(s, 'Forkert adgangskode', 'error');
+        if (hashSecret(password) !== rec.passwordHash)
+          return this.toast(s, 'Forkert adgangskode', 'error');
       }
     }
     this.leaveRoom(s);
     const player: PlayerState = {
-      id: user.id, name: user.name, look: user.look, bot: false, from: [DOOR_TILE[0], DOOR_TILE[1]], path: [], pathStart: Date.now(),
-      run: false, seatId: null, goalSeat: null, action: null, actionUntil: 0,
-      send: (m) => this.send(s, m), blocked: () => user.blocked,
+      id: user.id,
+      name: user.name,
+      look: user.look,
+      bot: false,
+      from: [DOOR_TILE[0], DOOR_TILE[1]],
+      path: [],
+      pathStart: Date.now(),
+      run: false,
+      seatId: null,
+      goalSeat: null,
+      action: null,
+      actionUntil: 0,
+      send: (m) => this.send(s, m),
+      blocked: () => user.blocked,
     };
     room.add(player);
     s.room = room;
@@ -233,18 +328,31 @@ export class Hotel {
 
   private navigator(user: UserRecord): NavigatorRoom[] {
     const out: NavigatorRoom[] = PUBLIC_ROOMS.map((r) => ({
-      id: r.id, name: r.name, description: r.description, ownerName: null, access: 'open', public: true,
+      id: r.id,
+      name: r.name,
+      description: r.description,
+      ownerName: null,
+      access: 'open',
+      public: true,
       users: this.rooms.get(r.id)?.humans().length ?? 0,
     }));
     const guest = this.store
       .listRooms()
       .map((rec) => ({ rec, users: this.rooms.get(rec.id)?.humans().length ?? 0 }))
-      .filter(({ rec, users }) => users > 0 || rec.ownerId === user.id || user.friends.includes(rec.ownerId))
+      .filter(
+        ({ rec, users }) =>
+          users > 0 || rec.ownerId === user.id || user.friends.includes(rec.ownerId),
+      )
       .sort((a, b) => b.users - a.users)
       .slice(0, 40)
       .map(({ rec, users }) => ({
-        id: rec.id, name: rec.name, description: rec.description, ownerName: this.store.getUser(rec.ownerId)?.name ?? null,
-        access: rec.access, users, public: false,
+        id: rec.id,
+        name: rec.name,
+        description: rec.description,
+        ownerName: this.store.getUser(rec.ownerId)?.name ?? null,
+        access: rec.access,
+        users,
+        public: false,
       }));
     return [...out, ...guest];
   }
@@ -283,7 +391,11 @@ export class Hotel {
 
   /* ---------------- message handling ---------------- */
 
-  private handle(s: Session, user: UserRecord, msg: Exclude<ClientMsg, { t: 'auth' } | { t: 'ping' }>) {
+  private handle(
+    s: Session,
+    user: UserRecord,
+    msg: Exclude<ClientMsg, { t: 'auth' } | { t: 'ping' }>,
+  ) {
     const room = s.room;
     const player = s.player;
     switch (msg.t) {
@@ -360,9 +472,17 @@ export class Hotel {
     return { room, rec };
   }
 
-  private buy(s: Session, user: UserRecord, type: PlacedItem['type'], x: number, z: number, rot: number) {
+  private buy(
+    s: Session,
+    user: UserRecord,
+    type: PlacedItem['type'],
+    x: number,
+    z: number,
+    rot: number,
+  ) {
     const own = this.ownRoom(s, user);
-    if (!own || own.rec.ownerId !== user.id) return this.toast(s, 'Du kan kun købe møbler til dit eget værelse.', 'error');
+    if (!own || own.rec.ownerId !== user.id)
+      return this.toast(s, 'Du kan kun købe møbler til dit eget værelse.', 'error');
     const def = furniture(type);
     if (def.noShop) return;
     if (own.rec.items.length >= 120) return this.toast(s, 'Værelset er fyldt helt op.', 'error');
@@ -396,7 +516,8 @@ export class Hotel {
 
   private sellItem(s: Session, user: UserRecord, id: number) {
     const own = this.ownRoom(s, user);
-    if (!own || own.rec.ownerId !== user.id) return this.toast(s, 'Kun ejeren kan sælge møbler.', 'error');
+    if (!own || own.rec.ownerId !== user.id)
+      return this.toast(s, 'Kun ejeren kan sælge møbler.', 'error');
     const idx = own.rec.items.findIndex((i) => i.id === id);
     if (idx < 0) return;
     const [item] = own.rec.items.splice(idx, 1);
@@ -405,20 +526,32 @@ export class Hotel {
     this.coins(s, user, sellPrice(item!.type), 'sold');
   }
 
-  private roomSettings(s: Session, user: UserRecord, msg: Extract<ClientMsg, { t: 'roomSettings' }>) {
+  private roomSettings(
+    s: Session,
+    user: UserRecord,
+    msg: Extract<ClientMsg, { t: 'roomSettings' }>,
+  ) {
     const own = this.ownRoom(s, user);
-    if (!own || own.rec.ownerId !== user.id) return this.toast(s, 'Kun ejeren kan ændre værelset.', 'error');
+    if (!own || own.rec.ownerId !== user.id)
+      return this.toast(s, 'Kun ejeren kan ændre værelset.', 'error');
     const { rec, room } = own;
     if (msg.name) rec.name = filterChat(sanitizeChat(msg.name)).slice(0, 30) || rec.name;
-    if (msg.description !== undefined) rec.description = filterChat(sanitizeChat(msg.description)).slice(0, 80);
+    if (msg.description !== undefined)
+      rec.description = filterChat(sanitizeChat(msg.description)).slice(0, 80);
     if (msg.access) {
-      if (msg.access === 'password' && !msg.password && !rec.passwordHash) return this.toast(s, 'Vælg en adgangskode.', 'error');
+      if (msg.access === 'password' && !msg.password && !rec.passwordHash)
+        return this.toast(s, 'Vælg en adgangskode.', 'error');
       rec.access = msg.access;
     }
     if (msg.password) rec.passwordHash = hashSecret(msg.password);
     Object.assign(room.meta, { name: rec.name, description: rec.description, access: rec.access });
     this.store.touch();
-    room.broadcast({ t: 'roomMeta', name: rec.name, description: rec.description, access: rec.access });
+    room.broadcast({
+      t: 'roomMeta',
+      name: rec.name,
+      description: rec.description,
+      access: rec.access,
+    });
     this.toast(s, 'Værelset er opdateret');
   }
 
@@ -430,9 +563,15 @@ export class Hotel {
     own.rec.rights = own.rec.rights.filter((r) => r !== targetId);
     if (grant) own.rec.rights.push(targetId);
     this.store.touch();
-    this.toast(s, grant ? `${target.name} kan nu flytte møbler her` : `${target.name} har ikke længere rettigheder`);
+    this.toast(
+      s,
+      grant
+        ? `${target.name} kan nu flytte møbler her`
+        : `${target.name} har ikke længere rettigheder`,
+    );
     const ts = this.byUser.get(targetId);
-    if (ts && ts.room === own.room) this.send(ts, { t: 'room', room: own.room.roomView(targetId), serverTime: Date.now() });
+    if (ts && ts.room === own.room)
+      this.send(ts, { t: 'room', room: own.room.roomView(targetId), serverTime: Date.now() });
   }
 
   /* ---------------- social ---------------- */
@@ -443,7 +582,13 @@ export class Hotel {
       .filter((f): f is UserRecord => !!f)
       .map((f) => {
         const fs = this.byUser.get(f.id);
-        return { id: f.id, name: f.name, online: !!fs, roomId: fs?.room?.meta.id ?? null, roomName: fs?.room?.meta.name ?? null };
+        return {
+          id: f.id,
+          name: f.name,
+          online: !!fs,
+          roomId: fs?.room?.meta.id ?? null,
+          roomName: fs?.room?.meta.name ?? null,
+        };
       })
       .sort((a, b) => Number(b.online) - Number(a.online) || a.name.localeCompare(b.name, 'da'));
   }
@@ -451,7 +596,10 @@ export class Hotel {
   private sendFriends(user: UserRecord) {
     const s = this.byUser.get(user.id);
     if (!s) return;
-    const requests = user.requests.map((id) => this.store.getUser(id)).filter((u): u is UserRecord => !!u).map((u) => ({ id: u.id, name: u.name }));
+    const requests = user.requests
+      .map((id) => this.store.getUser(id))
+      .filter((u): u is UserRecord => !!u)
+      .map((u) => ({ id: u.id, name: u.name }));
     this.send(s, { t: 'friends', friends: this.friendViews(user), requests });
   }
 
@@ -464,7 +612,8 @@ export class Hotel {
 
   private friendRequest(s: Session, user: UserRecord, name: string) {
     const target = this.store.getUserByName(name.trim());
-    if (!target || target.id === user.id) return this.toast(s, 'Fandt ingen gæst med det navn.', 'error');
+    if (!target || target.id === user.id)
+      return this.toast(s, 'Fandt ingen gæst med det navn.', 'error');
     if (user.friends.includes(target.id)) return this.toast(s, `I er allerede venner`);
     if (target.blocked.includes(user.id)) return this.toast(s, 'Venneanmodning sendt');
     if (user.requests.includes(target.id)) return this.friendRespond(s, user, target.id, true);
@@ -486,7 +635,8 @@ export class Hotel {
       this.toast(s, `Du og ${other.name} er nu venner 🎉`);
       const os = this.byUser.get(other.id);
       if (os) this.toast(os, `${user.name} accepterede din venneanmodning 🎉`);
-      for (const u of [user, other]) if (u.friends.length >= 5) this.badge(this.byUser.get(u.id), u, 'social');
+      for (const u of [user, other])
+        if (u.friends.length >= 5) this.badge(this.byUser.get(u.id), u, 'social');
       this.sendFriends(other);
     }
     this.store.touch();
@@ -506,7 +656,8 @@ export class Hotel {
 
   private whisper(s: Session, user: UserRecord, to: string, raw: string) {
     const target = this.store.getUser(to);
-    if (!target || !user.friends.includes(to)) return this.toast(s, 'Du kan kun skrive privat til venner.', 'error');
+    if (!target || !user.friends.includes(to))
+      return this.toast(s, 'Du kan kun skrive privat til venner.', 'error');
     const text = filterChat(sanitizeChat(raw));
     if (!text) return;
     const ts = this.byUser.get(to);
@@ -514,7 +665,13 @@ export class Hotel {
     const msg: ServerMsg = { t: 'whisper', from: user.id, fromName: user.name, to, text };
     if (!target.blocked.includes(user.id)) this.send(ts, msg);
     this.send(s, msg);
-    this.store.logChat({ at: Date.now(), roomId: `pm:${[user.id, to].sort().join(':')}`, userId: user.id, name: user.name, text });
+    this.store.logChat({
+      at: Date.now(),
+      roomId: `pm:${[user.id, to].sort().join(':')}`,
+      userId: user.id,
+      name: user.name,
+      text,
+    });
   }
 
   private block(s: Session, user: UserRecord, otherId: string, block: boolean) {
@@ -531,7 +688,10 @@ export class Hotel {
   private report(s: Session, user: UserRecord, targetId: string, reason: string) {
     const roomId = s.room?.meta.id ?? null;
     this.store.addReport({
-      fromId: user.id, targetId, reason: sanitizeChat(reason).slice(0, 300), roomId,
+      fromId: user.id,
+      targetId,
+      reason: sanitizeChat(reason).slice(0, 300),
+      roomId,
       context: roomId ? this.store.recentChat(roomId, 20) : [],
     });
     this.toast(s, 'Tak. En moderator kigger på det.');
@@ -541,14 +701,34 @@ export class Hotel {
     const target = this.store.getUser(targetId);
     const botPlayer = s.room?.players.get(targetId);
     if (!target && botPlayer?.bot) {
-      return this.send(s, { t: 'profile', profile: { id: targetId, name: botPlayer.name, look: botPlayer.look, motto: 'AI-beboer på Hutel 🤖', badges: [], since: '', bot: true, friend: false, blocked: false } });
+      return this.send(s, {
+        t: 'profile',
+        profile: {
+          id: targetId,
+          name: botPlayer.name,
+          look: botPlayer.look,
+          motto: 'AI-beboer på Hutel 🤖',
+          badges: [],
+          since: '',
+          bot: true,
+          friend: false,
+          blocked: false,
+        },
+      });
     }
     if (!target) return;
     this.send(s, {
       t: 'profile',
       profile: {
-        id: target.id, name: target.name, look: target.look, motto: target.motto, badges: target.badges,
-        since: target.createdAt.slice(0, 10), bot: false, friend: user.friends.includes(target.id), blocked: user.blocked.includes(target.id),
+        id: target.id,
+        name: target.name,
+        look: target.look,
+        motto: target.motto,
+        badges: target.badges,
+        since: target.createdAt.slice(0, 10),
+        bot: false,
+        friend: user.friends.includes(target.id),
+        blocked: user.blocked.includes(target.id),
       },
     });
   }

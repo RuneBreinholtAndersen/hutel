@@ -1,7 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import {
-  buildGrid, canPlace, ClientMsgSchema, DEFAULT_HOME_ITEMS, DEFAULT_LOOK, filterChat, footprint,
-  isGreeting, isValidName, LookSchema, positionAt, PUBLIC_ROOMS, sanitizeChat, ROOM_SIZE, DOOR_TILE,
+  buildGrid,
+  canPlace,
+  ClientMsgSchema,
+  DEFAULT_HOME_ITEMS,
+  DEFAULT_LOOK,
+  filterChat,
+  footprint,
+  isGreeting,
+  isValidName,
+  LookSchema,
+  positionAt,
+  PUBLIC_ROOMS,
+  sanitizeChat,
+  ROOM_SIZE,
+  DOOR_TILE,
 } from './index';
 
 describe('placement', () => {
@@ -10,7 +23,10 @@ describe('placement', () => {
     expect(footprint({ type: 'sofa', rot: 1 })).toEqual({ w: 1, d: 2 });
   });
   it('lets rugs sit under furniture but not furniture on furniture', () => {
-    const items = [{ id: 1, type: 'rug' as const, x: 0, z: 0, rot: 0 }, { id: 2, type: 'table' as const, x: 0, z: 0, rot: 0 }];
+    const items = [
+      { id: 1, type: 'rug' as const, x: 0, z: 0, rot: 0 },
+      { id: 2, type: 'table' as const, x: 0, z: 0, rot: 0 },
+    ];
     expect(canPlace(8, items, { id: 3, type: 'plant', x: 0, z: 0, rot: 0 })).toBe(false);
     expect(canPlace(8, items, { id: 3, type: 'plant', x: 1, z: 1, rot: 0 })).toBe(true);
     expect(canPlace(8, items, { id: 3, type: 'rug', x: 1, z: 1, rot: 0 })).toBe(false);
@@ -20,7 +36,10 @@ describe('placement', () => {
     expect(canPlace(8, [], { id: 1, type: 'plant', x: 3, z: 3, rot: 0 }, [[3, 3]])).toBe(false);
   });
   it('keeps every predefined room valid and the door tile free', () => {
-    const rooms = [...PUBLIC_ROOMS.map((r) => r.items), DEFAULT_HOME_ITEMS.map((it, i) => ({ ...it, id: i + 1 }))];
+    const rooms = [
+      ...PUBLIC_ROOMS.map((r) => r.items),
+      DEFAULT_HOME_ITEMS.map((it, i) => ({ ...it, id: i + 1 })),
+    ];
     for (const items of rooms) {
       for (const it of items) expect(canPlace(ROOM_SIZE, items, it)).toBe(true);
       expect(buildGrid(ROOM_SIZE, items).cells[DOOR_TILE[0]]![DOOR_TILE[1]]).toBe(0);
@@ -62,7 +81,16 @@ describe('protocol', () => {
 
 describe('movement', () => {
   it('interpolates along a path', () => {
-    const p = positionAt([0, 0], [[1, 0], [2, 0]], 0, false, 1000 / 2.4);
+    const p = positionAt(
+      [0, 0],
+      [
+        [1, 0],
+        [2, 0],
+      ],
+      0,
+      false,
+      1000 / 2.4,
+    );
     expect(p.x).toBeCloseTo(1);
     expect(positionAt([0, 0], [[1, 0]], 0, false, 10_000).done).toBe(true);
   });

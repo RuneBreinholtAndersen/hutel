@@ -2,7 +2,10 @@ import { resolve } from 'node:path';
 import { createApp } from './app';
 
 const port = Number(process.env.PORT ?? 2567);
-const origins = (process.env.CLIENT_ORIGIN ?? 'http://localhost:5173').split(',').map((s) => s.trim()).filter(Boolean);
+const origins = (process.env.CLIENT_ORIGIN ?? 'http://localhost:5173')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
 
 const app = createApp({
   clientOrigins: origins,
@@ -15,7 +18,9 @@ const app = createApp({
 });
 
 app.server.listen(port, () => {
-  console.log(`Hutel-server kører på http://localhost:${port}  (ws: /ws, AI-beboere: ${app.hotel.aiEnabled ? 'Anthropic' : 'faste replikker'})`);
+  console.log(
+    `Hutel-server kører på http://localhost:${port}  (ws: /ws, AI-beboere: ${app.hotel.aiEnabled ? 'Anthropic' : 'faste replikker'})`,
+  );
 });
 
 const shutdown = () => {

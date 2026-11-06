@@ -166,7 +166,12 @@ export class JsonFileStore implements Store {
   }
 
   addReport(r: Omit<ReportRecord, 'id' | 'createdAt' | 'status'>) {
-    this.data.reports.push({ ...r, id: newId('rep'), createdAt: new Date().toISOString(), status: 'open' });
+    this.data.reports.push({
+      ...r,
+      id: newId('rep'),
+      createdAt: new Date().toISOString(),
+      status: 'open',
+    });
     this.touch();
   }
 

@@ -5,18 +5,112 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Hutel.dk</title>
     <link
-      href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap"
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏨</text></svg>"
+    />
+    <meta
+      name="description"
+      content="Hutel – et hyggeligt chat-hotel i browseren. Byg din figur, indret dit værelse og mød nye mennesker."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
-    <main class="card">
-      <div class="logo">🏨</div>
-      <h1>Hutel.dk</h1>
-      <p>Milepæl 0 – fundamentet er på plads.</p>
-      <p id="status" class="status">Tjekker forbindelse til serveren…</p>
-    </main>
+    <div id="app"></div>
+    <div id="overlay"></div>
+
+    <!-- sign-up -->
+    <div id="signup" class="screen hidden">
+      <form id="signupForm" class="card signup">
+        <div class="logo">🏨</div>
+        <h1>Velkommen til Hutel</h1>
+        <p class="sub">Lav din figur og tjek ind på hotellet.</p>
+        <label
+          >Dit navn<input
+            id="suName"
+            maxlength="16"
+            required
+            autocomplete="off"
+            placeholder="Fx Rune"
+        /></label>
+        <div id="suLook"></div>
+        <label class="check"><input type="checkbox" id="suAdult" /> Jeg er fyldt 18 år</label>
+        <label class="check"
+          ><input type="checkbox" id="suTerms" /> Jeg accepterer
+          <a href="#vilkaar" id="termsLink">vilkår og privatlivspolitik</a></label
+        >
+        <p id="suError" class="error"></p>
+        <button type="submit" class="primary">Tjek ind 🛎️</button>
+      </form>
+      <div id="terms" class="card terms hidden">
+        <h2>Vilkår og privatliv (kladde)</h2>
+        <p>
+          Hutel er for voksne over 18 år. Vær venlig over for andre – chikane, trusler, hadsk tale
+          og deling af personlige oplysninger er ikke tilladt og kan føre til udelukkelse.
+        </p>
+        <p>
+          Vi gemmer dit navn, din figur, dine mønter, dit værelse og dine venner. Chatbeskeder
+          gemmes i op til 30 dage af hensyn til moderation og slettes derefter automatisk.
+        </p>
+        <p>Nogle beboere er AI-figurer. De er altid markeret med 🤖.</p>
+        <button id="termsClose">Luk</button>
+      </div>
+    </div>
+
+    <div id="top">
+      <div class="brand card">
+        <div class="logo">🏨</div>
+        <div><b>Hutel.dk</b><span id="roomName">…</span></div>
+      </div>
+      <div id="coins" class="card">
+        <span id="coinVal">🪙 0</span><small id="online">⏱ Online 0 min · +1 🪙 pr. minut</small>
+      </div>
+    </div>
+    <div id="conn" class="hidden">Forbinder igen…</div>
+
+    <div id="quests" class="card hidden">
+      <h3 id="qHead"><span>✨ Startopgaver</span><span id="qCount"></span></h3>
+      <ul id="qlist"></ul>
+    </div>
+    <div id="log"></div>
+    <div id="hint">
+      Klik eller brug piletasterne for at gå · Shift = løb · klik på en stol for at sidde · klik på
+      en figur for profil
+    </div>
+
+    <div id="buildbar" class="card hidden">
+      <span id="bbText"></span> <button id="bbRot" class="hidden">↻ Rotér</button
+      ><button id="bbSell" class="hidden">💰 Sælg</button
+      ><button id="bbCancel" class="hidden">✕ Fortryd</button>
+    </div>
+
+    <div id="panel" class="panel hidden"></div>
+
+    <div id="bar" class="card">
+      <button id="bNav" title="Navigator">🧭<span>Rum</span></button>
+      <button id="bFriends" title="Venner">
+        👥<span>Venner</span><i id="reqDot" class="dot hidden"></i>
+      </button>
+      <button id="bFig" title="Min figur">🧍<span>Figur</span></button>
+      <form id="chatForm" autocomplete="off">
+        <input
+          id="chatIn"
+          maxlength="120"
+          placeholder="Skriv noget… (/w navn besked = privat)"
+        /><button type="submit">Send</button>
+      </form>
+      <button id="bWave" title="Vink">👋</button>
+      <button id="bDance" title="Dans">💃</button>
+      <button id="bBuild" title="Byg">🔨<span>Byg</span></button>
+      <button id="bShop" title="Butik">🛒<span>Butik</span></button>
+    </div>
+    <div id="toast"></div>
+    <canvas id="confetti"></canvas>
+    <div id="fade"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

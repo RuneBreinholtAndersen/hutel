@@ -1,4 +1,12 @@
-import { buildGrid, filterChat, furniture, isGreeting, ROOM_SIZE, sanitizeChat, type Look } from '@hutel/shared';
+import {
+  buildGrid,
+  filterChat,
+  furniture,
+  isGreeting,
+  ROOM_SIZE,
+  sanitizeChat,
+  type Look,
+} from '@hutel/shared';
 import type { PlayerState, RoomInstance } from './room';
 
 export interface Persona {
@@ -18,33 +26,117 @@ export interface Persona {
 
 export const PERSONAS: Persona[] = [
   {
-    id: 'bot_ida', name: 'Ida', roomId: 'lobby', post: [3, 1], host: true,
-    look: { skin: 0xc98e66, hair: 0x2a2a35, eyes: 0x2a1a12, shirt: 0x3f7f86, pants: 0x2b3550, hairStyle: 'hestehale', glasses: 'ingen', beard: 'ingen' },
-    personality: 'Ida er hotellets venlige og lidt kvikke receptionist. Hun hjælper nye gæster til rette, kender alle rum og elsker akvariet i lobbyen.',
-    greetings: ['Velkommen til Hutel, {name}! 🛎️', 'Hej {name}, godt at se dig i lobbyen!', 'Goddag {name}! Sig til, hvis du mangler noget.'],
-    idle: ['Fiskene i akvariet hedder Bob og Bent 🐠', 'Caféen har frisk kage i dag – find den i navigatoren.', 'Husk at du kan invitere venner op på dit værelse.'],
-    replies: ['Det lyder rigtig hyggeligt!', 'Godt spørgsmål – prøv navigatoren øverst.', 'Ha, den var god 😄', 'Jeg er her, hvis du har brug for hjælp.'],
+    id: 'bot_ida',
+    name: 'Ida',
+    roomId: 'lobby',
+    post: [3, 1],
+    host: true,
+    look: {
+      skin: 0xc98e66,
+      hair: 0x2a2a35,
+      eyes: 0x2a1a12,
+      shirt: 0x3f7f86,
+      pants: 0x2b3550,
+      hairStyle: 'hestehale',
+      glasses: 'ingen',
+      beard: 'ingen',
+    },
+    personality:
+      'Ida er hotellets venlige og lidt kvikke receptionist. Hun hjælper nye gæster til rette, kender alle rum og elsker akvariet i lobbyen.',
+    greetings: [
+      'Velkommen til Hutel, {name}! 🛎️',
+      'Hej {name}, godt at se dig i lobbyen!',
+      'Goddag {name}! Sig til, hvis du mangler noget.',
+    ],
+    idle: [
+      'Fiskene i akvariet hedder Bob og Bent 🐠',
+      'Caféen har frisk kage i dag – find den i navigatoren.',
+      'Husk at du kan invitere venner op på dit værelse.',
+    ],
+    replies: [
+      'Det lyder rigtig hyggeligt!',
+      'Godt spørgsmål – prøv navigatoren øverst.',
+      'Ha, den var god 😄',
+      'Jeg er her, hvis du har brug for hjælp.',
+    ],
   },
   {
-    id: 'bot_magnus', name: 'Magnus', roomId: 'lobby',
-    look: { skin: 0xe8b896, hair: 0x3b2416, eyes: 0x2f6b8f, shirt: 0x2a2a35, pants: 0x4a4a55, hairStyle: 'krøller', glasses: 'runde', beard: 'stubbe' },
-    personality: 'Magnus er en snakkesalig stamgæst, der elsker at indrette og altid har et tip om møbler og værelser.',
-    greetings: [], idle: ['Har nogen set den nye seng i butikken?', 'Jeg har lige flyttet min sofa for tiende gang 😅', 'Godt at se nye ansigter her!'],
+    id: 'bot_magnus',
+    name: 'Magnus',
+    roomId: 'lobby',
+    look: {
+      skin: 0xe8b896,
+      hair: 0x3b2416,
+      eyes: 0x2f6b8f,
+      shirt: 0x2a2a35,
+      pants: 0x4a4a55,
+      hairStyle: 'krøller',
+      glasses: 'runde',
+      beard: 'stubbe',
+    },
+    personality:
+      'Magnus er en snakkesalig stamgæst, der elsker at indrette og altid har et tip om møbler og værelser.',
+    greetings: [],
+    idle: [
+      'Har nogen set den nye seng i butikken?',
+      'Jeg har lige flyttet min sofa for tiende gang 😅',
+      'Godt at se nye ansigter her!',
+    ],
     replies: ['Enig!', 'Haha 😄', 'Fortæl mere!', 'Det skal jeg prøve.'],
   },
   {
-    id: 'bot_luna', name: 'Luna', roomId: 'cafe', post: [2, 0], host: true,
-    look: { skin: 0xf6d2b5, hair: 0xb33a2a, eyes: 0x3d7a3a, shirt: 0xe0a93b, pants: 0x6b4a33, hairStyle: 'langt', glasses: 'ingen', beard: 'ingen' },
-    personality: 'Luna driver caféen. Hun er varm, drømmende og taler gerne om kaffe, kage og gode historier.',
+    id: 'bot_luna',
+    name: 'Luna',
+    roomId: 'cafe',
+    post: [2, 0],
+    host: true,
+    look: {
+      skin: 0xf6d2b5,
+      hair: 0xb33a2a,
+      eyes: 0x3d7a3a,
+      shirt: 0xe0a93b,
+      pants: 0x6b4a33,
+      hairStyle: 'langt',
+      glasses: 'ingen',
+      beard: 'ingen',
+    },
+    personality:
+      'Luna driver caféen. Hun er varm, drømmende og taler gerne om kaffe, kage og gode historier.',
     greetings: ['Velkommen i caféen, {name}! ☕', 'Hej {name} – kaffen er lige blevet brygget.'],
-    idle: ['Dagens kage er æblekage med kanel 🍎', 'Der er plads i sofaen ved vinduet.', 'Nogen der har en god historie?'],
-    replies: ['Hvor hyggeligt ☕', 'Det må du fortælle mere om.', 'Uh, spændende!', 'Skal du have en kop mere?'],
+    idle: [
+      'Dagens kage er æblekage med kanel 🍎',
+      'Der er plads i sofaen ved vinduet.',
+      'Nogen der har en god historie?',
+    ],
+    replies: [
+      'Hvor hyggeligt ☕',
+      'Det må du fortælle mere om.',
+      'Uh, spændende!',
+      'Skal du have en kop mere?',
+    ],
   },
   {
-    id: 'bot_oskar', name: 'Oskar', roomId: 'cafe',
-    look: { skin: 0x9a6343, hair: 0x2a2a35, eyes: 0x5a3a22, shirt: 0x5b8f4a, pants: 0x2b3550, hairStyle: 'kasket', glasses: 'sol', beard: 'fuld' },
-    personality: 'Oskar er en afslappet gæst, der hænger ud i caféen, laver små jokes og spørger folk, hvordan deres dag går.',
-    greetings: [], idle: ['Hvordan går dagen?', 'Jeg kunne godt trænge til en tur på tagterrassen…', 'Nogen der spiller musik?'],
+    id: 'bot_oskar',
+    name: 'Oskar',
+    roomId: 'cafe',
+    look: {
+      skin: 0x9a6343,
+      hair: 0x2a2a35,
+      eyes: 0x5a3a22,
+      shirt: 0x5b8f4a,
+      pants: 0x2b3550,
+      hairStyle: 'kasket',
+      glasses: 'sol',
+      beard: 'fuld',
+    },
+    personality:
+      'Oskar er en afslappet gæst, der hænger ud i caféen, laver små jokes og spørger folk, hvordan deres dag går.',
+    greetings: [],
+    idle: [
+      'Hvordan går dagen?',
+      'Jeg kunne godt trænge til en tur på tagterrassen…',
+      'Nogen der spiller musik?',
+    ],
     replies: ['Ha, klassiker 😎', 'Det kender jeg godt.', 'Fedt!', 'Hmm, godt spørgsmål.'],
   },
 ];
@@ -68,7 +160,11 @@ class Llm {
     return !!this.cfg.apiKey;
   }
 
-  async reply(persona: Persona, roomName: string, context: { name: string; text: string }[]): Promise<string | null> {
+  async reply(
+    persona: Persona,
+    roomName: string,
+    context: { name: string; text: string }[],
+  ): Promise<string | null> {
     if (!this.cfg.apiKey) return null;
     const today = new Date().toISOString().slice(0, 10);
     if (today !== this.day) {
@@ -88,19 +184,32 @@ class Llm {
     try {
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
-        headers: { 'content-type': 'application/json', 'x-api-key': this.cfg.apiKey, 'anthropic-version': '2023-06-01' },
+        headers: {
+          'content-type': 'application/json',
+          'x-api-key': this.cfg.apiKey,
+          'anthropic-version': '2023-06-01',
+        },
         body: JSON.stringify({
           model: this.cfg.model,
           max_tokens: 80,
           system,
-          messages: [{ role: 'user', content: `Seneste chat i rummet:\n${transcript}\n\nSkriv ${persona.name}s næste korte svar (kun selve teksten).` }],
+          messages: [
+            {
+              role: 'user',
+              content: `Seneste chat i rummet:\n${transcript}\n\nSkriv ${persona.name}s næste korte svar (kun selve teksten).`,
+            },
+          ],
         }),
         signal: AbortSignal.timeout(7000),
       });
       if (!res.ok) return null;
       const data = (await res.json()) as { content?: { type: string; text?: string }[] };
       const text = data.content?.find((c) => c.type === 'text')?.text ?? '';
-      const clean = filterChat(sanitizeChat(text.replace(new RegExp(`^${persona.name}:\\s*`, 'i'), '').replace(/^["“]|["”]$/g, '')));
+      const clean = filterChat(
+        sanitizeChat(
+          text.replace(new RegExp(`^${persona.name}:\\s*`, 'i'), '').replace(/^["“]|["”]$/g, ''),
+        ),
+      );
       return clean || null;
     } catch {
       return null;
@@ -128,8 +237,19 @@ class Bot {
     private readonly llm: Llm,
   ) {
     this.state = {
-      id: persona.id, name: persona.name, look: persona.look, bot: true, from: persona.post ?? [4, 4], path: [],
-      pathStart: Date.now(), run: false, seatId: null, goalSeat: null, action: null, actionUntil: 0, send: null,
+      id: persona.id,
+      name: persona.name,
+      look: persona.look,
+      bot: true,
+      from: persona.post ?? [4, 4],
+      path: [],
+      pathStart: Date.now(),
+      run: false,
+      seatId: null,
+      goalSeat: null,
+      action: null,
+      actionUntil: 0,
+      send: null,
       blocked: () => [],
     };
   }
@@ -152,9 +272,13 @@ class Bot {
     const last = this.greeted.get(human.id) ?? 0;
     if (Date.now() - last < 6 * 3600_000) return;
     this.greeted.set(human.id, Date.now());
-    setTimeout(() => {
-      if (room.players.has(human.id)) this.speak(room, pick(this.persona.greetings).replace('{name}', human.name));
-    }, rnd(1200, 2200));
+    setTimeout(
+      () => {
+        if (room.players.has(human.id))
+          this.speak(room, pick(this.persona.greetings).replace('{name}', human.name));
+      },
+      rnd(1200, 2200),
+    );
   }
 
   onChat(room: RoomInstance, from: PlayerState, text: string) {
@@ -163,11 +287,17 @@ class Bot {
     const addressed = lower.includes(this.persona.name.toLowerCase());
     const humans = room.humans().length;
     const shouldReply =
-      addressed || (this.persona.host && isGreeting(text) && Math.random() < 0.7) || (humans === 1 && Math.random() < 0.35);
+      addressed ||
+      (this.persona.host && isGreeting(text) && Math.random() < 0.7) ||
+      (humans === 1 && Math.random() < 0.35);
     if (!shouldReply) return;
     const delay = rnd(1200, 2600);
     void (async () => {
-      const ai = await this.llm.reply(this.persona, room.meta.name, this.world.recent(room.meta.id));
+      const ai = await this.llm.reply(
+        this.persona,
+        room.meta.name,
+        this.world.recent(room.meta.id),
+      );
       const fallback = isGreeting(text) ? `Hej ${from.name}! 👋` : pick(this.persona.replies);
       setTimeout(() => {
         if (room.players.has(this.state.id)) this.speak(room, ai ?? fallback);

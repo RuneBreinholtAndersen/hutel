@@ -27,7 +27,8 @@ export function buildGrid(size: number, items: readonly PlacedItem[], excludeId?
   const g = createGrid(size, size);
   for (const it of items) {
     if (it.id === excludeId || furniture(it.type).walk) continue;
-    for (const [x, z] of tilesOf(it)) if (x >= 0 && z >= 0 && x < size && z < size) g.cells[x]![z] = it.id;
+    for (const [x, z] of tilesOf(it))
+      if (x >= 0 && z >= 0 && x < size && z < size) g.cells[x]![z] = it.id;
   }
   return g;
 }

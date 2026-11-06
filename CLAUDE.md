@@ -17,8 +17,8 @@ Monorepo med pnpm workspaces:
 
 ```
 apps/
-  client/     Vite + TypeScript + Three.js  (spillet i browseren)
-  server/     Node + TypeScript + Colyseus  (realtid, rum, spillogik, AI-beboere)
+  client/     Vite + TypeScript + Three.js r128  (spillet i browseren)
+  server/     Node + TypeScript + ws  (realtid, rum, spillogik, AI-beboere)
 packages/
   shared/     Fælles typer, møbelkatalog, konstanter, pathfinding, chat-filter
 supabase/
@@ -26,10 +26,12 @@ supabase/
 docs/
 ```
 
-- **Login og database:** Supabase (EU-region af hensyn til GDPR). Login med e-mail (magic link) og Google.
-- **Realtid:** Colyseus. Hvert hotelrum (lobby, café, brugerværelse) er ét Colyseus-rum. Klienten forbinder med Supabase-JWT, som serveren verificerer, før man kan joine.
-- **Hosting:** klient på Vercel (`hutel.dk`), server i Docker på Fly.io eller Hetzner (`wss://play.hutel.dk`), database på Supabase.
-- **AI-beboere:** kører på serveren som "bot-spillere" og bruger Anthropic API (en billig, hurtig model). Se afsnittet om AI-beboere.
+- **Realtid:** egen WebSocket-server (`ws`) i `apps/server`. Hvert hotelrum (lobby, café, brugerværelse) er en `RoomInstance`. Klienten forbinder til `/ws`, sender `{t:'auth', token}` og derefter intentioner. Alle beskeder er defineret i `packages/shared/src/protocol.ts` og valideres med zod.
+- **Login og data (nu):** gæstelogin via `POST /api/guest` (navn, figur, 18+ og vilkår) giver et token, som gemmes i browseren. Data ligger i `JsonFileStore` (`data/hutel-db.json`) bag interfacet `Store` i `apps/server/src/store.ts`.
+- **Login og data (næste skridt):** Supabase (EU-region). Lav en `SupabaseStore`, der implementerer `Store`, og skift gæstetoken ud med Supabase-login (magic link + Google). Resten af serveren skal ikke ændres.
+- **Bevægelse:** serveren beregner stier (`findPath`) og sender `path` med starttid. Klient og server bruger samme `positionAt()` til at regne positionen ud, så de er enige.
+- **Hosting:** klient på Vercel (`hutel.dk`), server i Docker på Fly.io eller Hetzner (`wss://play.hutel.dk`). Alternativt kan serveren selv levere klienten med `SERVE_CLIENT`.
+- **AI-beboere:** `apps/server/src/bots.ts`. Ida og Magnus i lobbyen, Luna og Oskar i caféen. Bruger Anthropic API, hvis `ANTHROPIC_API_KEY` er sat, ellers faste replikker.
 
 ## Gyldne regler
 
@@ -90,5 +92,5 @@ pnpm build
 ## Test
 
 - Fælles logik (pathfinding, placering af møbler, økonomi) har unit tests i `packages/shared`.
-- Serverens rum-logik testes med Colyseus' testværktøjer.
+- Serverens rum-logik testes med rigtige WebSocket-klienter i `apps/server/src/app.test.ts`.
 - Før en milepæl meldes færdig: start klient og server lokalt, åbn to browservinduer med to forskellige brugere, og tjek at de ser hinanden.

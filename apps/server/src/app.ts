@@ -3,7 +3,11 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
 import { WebSocketServer } from 'ws';
 import {
-  DEFAULT_HOME_ITEMS, isValidName, LookSchema, ROOM_SIZE, type PlacedItem,
+  DEFAULT_HOME_ITEMS,
+  isValidName,
+  LookSchema,
+  ROOM_SIZE,
+  type PlacedItem,
 } from '@hutel/shared';
 import { z } from 'zod';
 import { Hotel, type HotelConfig } from './hotel';
@@ -29,8 +33,15 @@ const GuestSchema = z.object({
 });
 
 const MIME: Record<string, string> = {
-  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml',
-  '.png': 'image/png', '.jpg': 'image/jpeg', '.json': 'application/json', '.ico': 'image/x-icon', '.woff2': 'font/woff2',
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript',
+  '.css': 'text/css',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.json': 'application/json',
+  '.ico': 'image/x-icon',
+  '.woff2': 'font/woff2',
 };
 
 function readBody(req: IncomingMessage, max = 4096): Promise<string> {
@@ -58,12 +69,17 @@ export function newHomeItems(): PlacedItem[] {
   return DEFAULT_HOME_ITEMS.map((it, i) => ({ ...it, id: i + 1 }));
 }
 
-export function createApp(cfg: AppConfig, store: Store = new JsonFileStore(cfg.dataFile, newHomeItems)) {
+export function createApp(
+  cfg: AppConfig,
+  store: Store = new JsonFileStore(cfg.dataFile, newHomeItems),
+) {
   const hotel = new Hotel(store, cfg);
   const perHour = cfg.signupsPerHour ?? 5;
   const signupLimiter = new KeyedLimiter(perHour, perHour / 3600);
   const allowed = (origin: string | undefined) =>
-    !origin || cfg.clientOrigins.includes(origin) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+    !origin ||
+    cfg.clientOrigins.includes(origin) ||
+    /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
 
   const server: Server = createServer(async (req, res) => {
     const origin = req.headers.origin;
@@ -81,7 +97,13 @@ export function createApp(cfg: AppConfig, store: Store = new JsonFileStore(cfg.d
       return res.end();
     }
     if (req.method === 'GET' && url.pathname === '/health') {
-      return json(res, 200, { ok: true, service: 'hutel-server', version: VERSION, roomSize: ROOM_SIZE, ai: hotel.aiEnabled });
+      return json(res, 200, {
+        ok: true,
+        service: 'hutel-server',
+        version: VERSION,
+        roomSize: ROOM_SIZE,
+        ai: hotel.aiEnabled,
+      });
     }
     if (req.method === 'POST' && url.pathname === '/api/guest') {
       const ip = (req.headers['fly-client-ip'] as string) ?? req.socket.remoteAddress ?? 'unknown';
@@ -93,10 +115,20 @@ export function createApp(cfg: AppConfig, store: Store = new JsonFileStore(cfg.d
         return json(res, 400, { ok: false, error: 'Ugyldig forespørgsel.' });
       }
       const parsed = GuestSchema.safeParse(body);
-      if (!parsed.success) return json(res, 400, { ok: false, error: 'Udfyld navn, figur og bekræft 18+ og vilkår.' });
+      if (!parsed.success)
+        return json(res, 400, { ok: false, error: 'Udfyld navn, figur og bekræft 18+ og vilkår.' });
       const name = parsed.data.name.trim();
-      if (!isValidName(name)) return json(res, 400, { ok: false, error: 'Navnet må kun have bogstaver, tal, mellemrum, - og _ (2–16 tegn).' });
-      if (store.getUserByName(name) || ['ida', 'magnus', 'luna', 'oskar', 'admin', 'moderator', 'hutel'].includes(name.toLowerCase()))
+      if (!isValidName(name))
+        return json(res, 400, {
+          ok: false,
+          error: 'Navnet må kun have bogstaver, tal, mellemrum, - og _ (2–16 tegn).',
+        });
+      if (
+        store.getUserByName(name) ||
+        ['ida', 'magnus', 'luna', 'oskar', 'admin', 'moderator', 'hutel'].includes(
+          name.toLowerCase(),
+        )
+      )
         return json(res, 409, { ok: false, error: 'Navnet er taget – prøv et andet.' });
       const { user, token } = store.createUser(name, parsed.data.look);
       return json(res, 200, { ok: true, token, userId: user.id });
@@ -104,7 +136,8 @@ export function createApp(cfg: AppConfig, store: Store = new JsonFileStore(cfg.d
     if (cfg.clientDist && req.method === 'GET') {
       const rel = normalize(decodeURIComponent(url.pathname)).replace(/^(\.\.[/\\])+/, '');
       let file = join(cfg.clientDist, rel);
-      if (!file.startsWith(cfg.clientDist) || !existsSync(file) || statSync(file).isDirectory()) file = join(cfg.clientDist, 'index.html');
+      if (!file.startsWith(cfg.clientDist) || !existsSync(file) || statSync(file).isDirectory())
+        file = join(cfg.clientDist, 'index.html');
       if (existsSync(file)) {
         res.writeHead(200, { 'Content-Type': MIME[extname(file)] ?? 'application/octet-stream' });
         return res.end(readFileSync(file));

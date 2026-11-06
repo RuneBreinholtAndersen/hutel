@@ -12,7 +12,11 @@ export const HAIR_STYLES = ['kort', 'krøller', 'hestehale', 'langt', 'kasket', 
 export const GLASSES = ['ingen', 'runde', 'sol'] as const;
 export const BEARDS = ['ingen', 'stubbe', 'fuld'] as const;
 
-const color = (list: readonly number[]) => z.number().int().refine((c) => list.includes(c), 'Ukendt farve');
+const color = (list: readonly number[]) =>
+  z
+    .number()
+    .int()
+    .refine((c) => list.includes(c), 'Ukendt farve');
 
 export const LookSchema = z.object({
   skin: color(PALETTE.skin),

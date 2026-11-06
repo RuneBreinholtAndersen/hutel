@@ -15,6 +15,11 @@ pnpm dev
 - Klient: http://localhost:5173
 - Server: http://localhost:2567/health
 
+Opret en gæst i browseren. Åbn et privat vindue og opret en gæst mere for at se to spillere samtidig.
+Sæt `ONBOARDING_LOCK=false` i `.env`, hvis nye gæster skal kunne gå direkte til lobbyen uden startopgaverne.
+
+Data gemmes i `data/hutel-db.json`. Slet filen for at starte forfra.
+
 ## Kommandoer
 
 | Kommando         | Hvad den gør                      |
@@ -28,9 +33,9 @@ pnpm dev
 ## Struktur
 
 ```
-apps/client      Spillet i browseren (Vite + TypeScript, Three.js fra Milepæl 1)
-apps/server      Realtidsserver (Node, Colyseus fra Milepæl 1)
-packages/shared  Fælles logik: grid, pathfinding, konstanter
+apps/client      Spillet i browseren (Vite + TypeScript + Three.js)
+apps/server      Realtidsserver (Node + ws): rum, chat, økonomi, venner, AI-beboere
+packages/shared  Fælles logik: protokol, møbelkatalog, placering, pathfinding, chatfilter
 prototype/       Den oprindelige enkeltspiller-prototype (facitliste for stilen)
 docs/PLAN.md     Milepæle og tjekliste
 ```

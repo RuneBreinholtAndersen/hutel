@@ -30,7 +30,11 @@ export function positionAt(
 }
 
 /** Total duration in ms of walking a path. */
-export function pathDuration(from: readonly [number, number], path: readonly (readonly [number, number])[], run: boolean): number {
+export function pathDuration(
+  from: readonly [number, number],
+  path: readonly (readonly [number, number])[],
+  run: boolean,
+): number {
   const speed = WALK_SPEED * (run ? RUN_MULTIPLIER : 1);
   let [px, pz] = from;
   let len = 0;
