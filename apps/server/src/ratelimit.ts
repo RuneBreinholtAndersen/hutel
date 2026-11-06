@@ -26,7 +26,7 @@ export type LimitKind = 'any' | 'move' | 'chat' | 'build' | 'social';
 export function createLimits(): Record<LimitKind, Bucket> {
   return {
     any: new Bucket(40, 20),
-    move: new Bucket(12, 8),
+    move: new Bucket(16, 10),
     chat: new Bucket(5, 0.5),
     build: new Bucket(8, 3),
     social: new Bucket(6, 0.5),

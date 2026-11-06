@@ -921,7 +921,7 @@ function keyboardWalk() {
     } else return;
   }
   if (ix && iz && (!free(tx + ix, tz) || !free(tx, tz + iz))) return;
-  nextStep = now + (running ? 110 : 170);
+  nextStep = now + (running ? 80 : 120);
   // Predict: extend the current walk (seamless) or start a new one right away.
   if (a.walking && a.path.length && a.run === running && a.seatId === null) {
     a.path.push([nx, nz]);

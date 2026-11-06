@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  WALK_SPEED,
   buildGrid,
   canPlace,
   ClientMsgSchema,
@@ -89,7 +90,7 @@ describe('movement', () => {
       ],
       0,
       false,
-      1000 / 2.4,
+      1000 / WALK_SPEED,
     );
     expect(p.x).toBeCloseTo(1);
     expect(positionAt([0, 0], [[1, 0]], 0, false, 10_000).done).toBe(true);
