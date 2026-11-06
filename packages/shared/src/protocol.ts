@@ -5,6 +5,7 @@ import { LookSchema, type Look } from './look';
 import type { PlacedItem } from './placement';
 import type { RoomAccess, RoomTheme } from './rooms';
 import type { BadgeId, DailyView, QuestId } from './progress';
+import type { ActiveEvent } from './events';
 
 const tileCoord = z.number().int().min(0).max(31);
 const furnitureType = z.enum(FURNITURE_TYPES as [FurnitureType, ...FurnitureType[]]);
@@ -205,6 +206,7 @@ export interface ProfileView {
 export type ServerMsg =
   | { t: 'welcome'; me: Me; serverTime: number; onboardingLock: boolean; canReset: boolean }
   | { t: 'resetDone' }
+  | { t: 'events'; events: ActiveEvent[] }
   /** A system line in the room (game results etc.); shown over `id` if given. */
   | { t: 'sys'; text: string; id?: string }
   | { t: 'wardrobe'; wardrobe: string[] }

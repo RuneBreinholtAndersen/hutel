@@ -67,6 +67,11 @@ export type QuestId = (typeof QUESTS)[number]['id'] | (typeof HOTEL_QUESTS)[numb
 export const BADGES = {
   welcome: { name: 'Ny gæst', icon: '🔑', text: 'Tjekkede ind på Hutel' },
   onboarded: { name: 'Klar til hotellet', icon: '🎉', text: 'Klarede alle startopgaver' },
+  festabe: { name: 'Festaben', icon: '🎉', text: 'Var med til Fredagsfest' },
+  stjernekigger: { name: 'Stjernekigger', icon: '🔭', text: 'Var med til Stjerneaften' },
+  poolhaj: { name: 'Poolhaj', icon: '🏊', text: 'Var med til Poolparty' },
+  quizhjerne: { name: 'Quizhjerne', icon: '🧠', text: 'Var med til Søndagsquiz' },
+  event: { name: 'Eventgæst', icon: '🎈', text: 'Var med til et særligt event' },
   streak7: { name: 'Trofast gæst', icon: '📅', text: 'Dagens opgaver 7 dage i træk' },
   hotelkender: { name: 'Hotelkender', icon: '🗝️', text: 'Klarede alle hotel-opgaver' },
   online1h: { name: 'Stamgæst', icon: '⏱️', text: '1 time online' },

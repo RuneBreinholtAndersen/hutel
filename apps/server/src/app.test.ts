@@ -451,6 +451,20 @@ describe('multiplayer', () => {
     c.ws.close();
   });
 
+  it('announces events to guests', async () => {
+    app.hotel.manualEvent = {
+      id: 'test',
+      name: 'Testfest',
+      roomId: 'cafe',
+      until: Date.now() + 60_000,
+    };
+    const { c } = await login('Festgæst');
+    const ev = await c.waitFor('events', (m) => m.events.some((e) => e.id === 'test'));
+    expect(ev.events.find((e) => e.id === 'test')!.roomId).toBe('cafe');
+    app.hotel.manualEvent = null;
+    c.ws.close();
+  });
+
   it('handles friends, whispers, password rooms and blocking', async () => {
     const a = await login('Anna');
     const b = await login('Bo');

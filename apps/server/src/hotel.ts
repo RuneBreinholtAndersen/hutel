@@ -1,5 +1,8 @@
 import {
   BADGES,
+  EVENTS,
+  scheduledEvents,
+  type ActiveEvent,
   CLOTHES,
   lookAllowed,
   ClientMsgSchema,
@@ -126,6 +129,9 @@ export class Hotel {
   private sessions = new Set<Session>();
   private byUser = new Map<string, Session>();
   private rooms = new Map<string, RoomInstance>();
+  /** Event started by an admin (in addition to the weekly schedule). */
+  manualEvent: ActiveEvent | null = null;
+  private eventsKey = '';
   /** Open quiz questions per room. */
   private quizzes = new Map<string, RoomQuiz>();
   private quizCooldown = new Map<string, number>();
@@ -270,6 +276,7 @@ export class Hotel {
     this.notifyFriendsOf(user);
     this.join(s, user.homeRoomId);
     this.daily(s, user, 'd_login');
+    this.send(s, { t: 'events', events: this.currentEvents() });
   }
 
   private me(u: UserRecord): Me {
@@ -393,6 +400,9 @@ export class Hotel {
       this.bots.startGuide(room, () => this.nextTip(user));
     this.bots.onHumanJoin(room, player);
     if (room.meta.id === 'lobby') this.quest(s, user, 'lobby');
+    const ev = this.currentEvents().find((e) => e.roomId === room.meta.id);
+    if (ev)
+      this.bots.hostSay(room, `Velkommen til ${ev.name}, ${user.name}! Dobbelt mønter 🎉`, 2500);
     if (room.meta.id === 'cafe') this.daily(s, user, 'd_cafe');
     if (!room.meta.isPublic && room.meta.ownerId && room.meta.ownerId !== user.id)
       this.daily(s, user, 'd_visit');
@@ -487,6 +497,38 @@ export class Hotel {
     if (!left.length) return null;
     const here = left.find((id) => HOTEL_TIPS[id][0] === roomId) ?? left[0]!;
     return HOTEL_TIPS[here][1];
+  }
+
+  /* ---------------- events ---------------- */
+
+  currentEvents(now = Date.now()): ActiveEvent[] {
+    if (this.manualEvent && this.manualEvent.until <= now) this.manualEvent = null;
+    return [...scheduledEvents(now), ...(this.manualEvent ? [this.manualEvent] : [])];
+  }
+
+  /** Tells everyone when an event starts or stops. */
+  private checkEvents() {
+    const events = this.currentEvents();
+    const key = events.map((e) => e.id).join();
+    if (key === this.eventsKey) return;
+    const started = events.filter((e) => !this.eventsKey.split(',').includes(e.id));
+    this.eventsKey = key;
+    for (const s of this.byUser.values()) {
+      this.send(s, { t: 'events', events });
+      for (const e of started) this.toast(s, `🎉 ${e.name} er begyndt – dobbelt mønter!`);
+    }
+  }
+
+  /** Once a minute: double coins and attendance for guests at an event. */
+  private eventMinute(s: Session, u: UserRecord) {
+    const e = this.currentEvents().find((x) => x.roomId === s.room?.meta.id);
+    if (!e) return;
+    this.coins(s, u, COINS_PER_ONLINE_MINUTE, 'event');
+    const key = `${danishDate()}:${e.id}`;
+    if (u.eventMins?.key !== key) u.eventMins = { key, mins: 0 };
+    u.eventMins.mins++;
+    if (u.eventMins.mins >= 5)
+      this.badge(s, u, EVENTS.find((x) => x.id === e.id)?.badge ?? 'event');
   }
 
   /* ---------------- mini games ---------------- */
@@ -1254,6 +1296,7 @@ export class Hotel {
 
   private everySecond() {
     this.expireQuizzes();
+    this.checkEvents();
     for (const s of this.byUser.values()) {
       const u = s.user!;
       u.onlineSec++;
@@ -1261,6 +1304,7 @@ export class Hotel {
         this.coins(s, u, COINS_PER_ONLINE_MINUTE, 'online');
         this.send(s, { t: 'online', onlineSec: u.onlineSec });
         this.daily(s, u, 'd_online');
+        this.eventMinute(s, u);
       }
       if (u.onlineSec === 3600) this.badge(s, u, 'online1h');
       if (u.onlineSec === 36_000) this.badge(s, u, 'online10h');

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  scheduledEvents,
   dailyQuestsFor,
   danishDate,
   WALK_SPEED,
@@ -109,5 +110,15 @@ describe('daily quests', () => {
     );
     expect(days.size).toBeGreaterThan(3);
     expect(danishDate(Date.UTC(2026, 10, 6, 23, 30))).toBe('2026-11-07'); // past midnight in DK
+  });
+});
+
+describe('events', () => {
+  it('finds the Friday party in Danish time', () => {
+    const fri20 = Date.UTC(2026, 10, 6, 19, 0); // 20:00 in Copenhagen
+    const ev = scheduledEvents(fri20);
+    expect(ev.map((e) => e.id)).toEqual(['fredagsfest']);
+    expect(ev[0]!.until).toBe(Date.UTC(2026, 10, 6, 22, 0));
+    expect(scheduledEvents(Date.UTC(2026, 10, 6, 12, 0))).toEqual([]);
   });
 });

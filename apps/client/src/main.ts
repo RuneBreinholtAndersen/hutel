@@ -1,5 +1,8 @@
 import {
   BADGES,
+  EVENTS,
+  WEEKDAYS,
+  type ActiveEvent,
   CLOTHES,
   buildGrid,
   canPlace,
@@ -226,6 +229,7 @@ function updateRoomUi() {
   $<HTMLButtonElement>('bBuild').disabled = !room.canBuild;
   $<HTMLButtonElement>('bShop').disabled = !isOwner();
   roomGfx.setDoorUnlocked(onboarded());
+  renderEventBar();
   const showQuests = questsDone() || room.id === me.homeRoomId;
   $('quests').classList.toggle('hidden', !showQuests);
   $('quests').classList.remove('gone');
@@ -351,6 +355,11 @@ function handle(msg: ServerMsg) {
       if (panelKind === 'fig') renderFigure();
       return;
     }
+    case 'events':
+      events = msg.events;
+      renderEventBar();
+      if (panelKind === 'nav' && lastRooms) renderNavigator(lastRooms);
+      return;
     case 'sys':
       logLine({ text: msg.text, cls: 'game' });
       if (msg.id) bubble(msg.id, '🎮', msg.text);
@@ -497,6 +506,20 @@ const toggle = (kind: string, open: () => void) => () =>
   panelKind === kind ? closePanel() : open();
 
 let lastRooms: NavigatorRoom[] | null = null;
+let events: ActiveEvent[] = [];
+function renderEventBar() {
+  const e = events[0];
+  const bar = $('eventBar');
+  bar.classList.toggle('hidden', !e);
+  if (!e) return;
+  const here = room?.id === e.roomId;
+  bar.innerHTML = `🎉 <b>${esc(e.name)}</b> lige nu · dobbelt mønter ${here ? '– du er med! 🥳' : `<button id="evGo" class="small primary">Gå med</button>`}`;
+  document
+    .getElementById('evGo')
+    ?.addEventListener('click', () =>
+      onboarded() ? goTo(e.roomId) : toast('Klar startopgaverne først – så åbner hotellet sig 🚪'),
+    );
+}
 let navRetry: number | undefined;
 function openNavigator() {
   if (panelKind === 'nav') return;
@@ -515,7 +538,7 @@ function openNavigator() {
 }
 function renderNavigator(rooms: NavigatorRoom[]) {
   const row = (r: NavigatorRoom) =>
-    `<div class="li"><div class="grow"><b>${esc(r.name)}</b>${r.access !== 'open' ? (r.access === 'locked' ? ' 🔒' : ' 🔑') : ''}<small>${esc(r.description || (r.ownerName ? `Af ${r.ownerName}` : ''))}</small></div><span class="users">👤 ${r.users}</span><button class="small" data-go="${esc(r.id)}">${room?.id === r.id ? 'Her' : 'Gå'}</button></div>`;
+    `<div class="li"><div class="grow"><b>${esc(r.name)}</b>${events.some((e) => e.roomId === r.id) ? ' <span class="evtag">🎉 Event</span>' : ''}${r.access !== 'open' ? (r.access === 'locked' ? ' 🔒' : ' 🔑') : ''}<small>${esc(r.description || (r.ownerName ? `Af ${r.ownerName}` : ''))}</small></div><span class="users">👤 ${r.users}</span><button class="small" data-go="${esc(r.id)}">${room?.id === r.id ? 'Her' : 'Gå'}</button></div>`;
   const pub = rooms.filter((r) => r.public);
   const guest = rooms.filter((r) => !r.public);
   const own =
@@ -530,6 +553,7 @@ function renderNavigator(rooms: NavigatorRoom[]) {
     head('🧭 Navigator', 'Gå på opdagelse i hotellet.') +
       `<h3>Offentlige rum</h3><div class="list">${pub.map(row).join('')}</div>` +
       `<h3>Værelser</h3><div class="list">${guest.map(row).join('') || '<p class="sub">Ingen værelser med gæster lige nu.</p>'}</div>` +
+      `<h3>📅 Ugens events</h3><p class="sub">${EVENTS.map((e) => `${e.name}: ${WEEKDAYS[e.weekday]} kl. ${e.start}–${e.end}`).join('<br>')}<br>Dobbelt mønter og et særligt badge, hvis du er med i 5 minutter.</p>` +
       own,
   );
   $('panel')

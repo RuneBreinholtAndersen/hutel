@@ -8,3 +8,4 @@ export * from './chat';
 export * from './progress';
 export * from './protocol';
 export * from './movement';
+export * from './events';

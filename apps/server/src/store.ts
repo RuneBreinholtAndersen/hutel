@@ -25,6 +25,8 @@ export interface UserRecord {
   stats: { chats: number; buys: number; moves: number };
   /** Clothes bought in the shop. */
   wardrobe?: string[];
+  /** Minutes at the current event (key: date:eventId). */
+  eventMins?: { key: string; mins: number };
   /** Furniture not placed in a room. */
   inventory?: { type: PlacedItem['type']; color?: number }[];
   /** Today's daily quests (rolls over at Danish midnight). */
