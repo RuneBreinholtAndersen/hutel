@@ -791,3 +791,8 @@ select {
     grid-template-columns: 1fr;
   }
 }
+
+#log .game {
+  color: #ffd27a;
+  font-weight: 600;
+}

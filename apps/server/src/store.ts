@@ -34,6 +34,8 @@ export interface UserRecord {
     done: DailyId[];
     streak: number;
     lastFull?: string;
+    /** Coins won in mini games today (capped). */
+    gameCoins?: number;
   };
   role: 'user' | 'moderator' | 'admin';
   bannedUntil: number | null;

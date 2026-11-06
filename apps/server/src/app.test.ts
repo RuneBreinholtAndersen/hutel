@@ -3,6 +3,7 @@ import type { AddressInfo } from 'node:net';
 import WebSocket from 'ws';
 import { DEFAULT_LOOK, QUESTS, type ServerMsg } from '@hutel/shared';
 import { createApp } from './app';
+import { QUIZ as QUIZ_FOR_TEST } from './games';
 
 const cfg = {
   allowReset: true,
@@ -432,6 +433,22 @@ describe('multiplayer', () => {
     expect(app.store.getUser(b.g.userId)!.coins).toBe(25); // 30 + 5 (lobby quest) − 10
     a.c.ws.close();
     b.c.ws.close();
+  });
+
+  it('plays dice, rock-paper-scissors and quiz with capped coin rewards', async () => {
+    const { c } = await login('Spiller');
+    c.send({ t: 'join', roomId: 'arcade' });
+    await c.waitFor('room', (m) => m.room.id === 'arcade');
+    c.send({ t: 'chat', text: '/terning' });
+    expect((await c.waitFor('sys')).text).toMatch(/slog en/);
+    c.send({ t: 'chat', text: '/ssp sten' });
+    expect((await c.waitFor('sys')).text).toMatch(/Spiller mod/);
+    c.send({ t: 'chat', text: '/quiz' });
+    const q = await c.waitFor('sys', (m) => m.text.startsWith('❓'));
+    const quiz = QUIZ_FOR_TEST.find((x) => q.text.includes(x.q))!;
+    c.send({ t: 'chat', text: quiz.a[0]! });
+    expect((await c.waitFor('sys', (m) => m.text.startsWith('✅'))).text).toMatch(/Spiller/);
+    c.ws.close();
   });
 
   it('handles friends, whispers, password rooms and blocking', async () => {

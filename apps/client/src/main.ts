@@ -351,6 +351,10 @@ function handle(msg: ServerMsg) {
       if (panelKind === 'fig') renderFigure();
       return;
     }
+    case 'sys':
+      logLine({ text: msg.text, cls: 'game' });
+      if (msg.id) bubble(msg.id, '🎮', msg.text);
+      return;
     case 'inventory':
       if (!me) return;
       me.inventory = msg.items;
@@ -1303,6 +1307,11 @@ $('chatForm').addEventListener('submit', (e) => {
   }
   if (/^\/(dans|dance)$/i.test(text)) return net.send({ t: 'action', kind: 'dance' });
   if (/^\/(vink|wave)$/i.test(text)) return net.send({ t: 'action', kind: 'wave' });
+  if (/^\/(hjælp|help)$/i.test(text))
+    return logLine({
+      text: 'Kommandoer: /terning · /ssp sten|saks|papir · /quiz · /dans · /vink · /w navn besked',
+      cls: 'sys',
+    });
   net.send({ t: 'chat', text });
 });
 

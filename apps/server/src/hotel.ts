@@ -36,6 +36,16 @@ import { Bots } from './bots';
 import { createLimits, type Bucket, type LimitKind } from './ratelimit';
 import { RoomInstance, type PlayerState, type RoomHooks } from './room';
 import { hashSecret, type RoomRecord, type Store, type UserRecord } from './store';
+import {
+  GAME_COINS_PER_DAY,
+  HAND_ICON,
+  HANDS,
+  isAnswer,
+  QUIZ,
+  rps,
+  type Hand,
+  type RoomQuiz,
+} from './games';
 import { checkOffer, executeTrade, Trade, tradeView, type Offer } from './trade';
 
 export interface HotelConfig {
@@ -116,6 +126,9 @@ export class Hotel {
   private sessions = new Set<Session>();
   private byUser = new Map<string, Session>();
   private rooms = new Map<string, RoomInstance>();
+  /** Open quiz questions per room. */
+  private quizzes = new Map<string, RoomQuiz>();
+  private quizCooldown = new Map<string, number>();
   /** Open trades, by both players' ids. */
   private trades = new Map<string, Trade>();
   private bots: Bots;
@@ -476,6 +489,102 @@ export class Hotel {
     return HOTEL_TIPS[here][1];
   }
 
+  /* ---------------- mini games ---------------- */
+
+  private gameReward(s: Session, u: UserRecord, n: number): number {
+    const d = this.ensureDaily(u);
+    const left = Math.max(0, GAME_COINS_PER_DAY - (d.gameCoins ?? 0));
+    const got = Math.min(n, left);
+    if (got > 0) {
+      d.gameCoins = (d.gameCoins ?? 0) + got;
+      this.coins(s, u, got, 'game');
+    }
+    return got;
+  }
+
+  private sys(room: RoomInstance, text: string, id?: string) {
+    room.broadcast({ t: 'sys', text, id });
+  }
+
+  /** Handles /terning, /ssp and /quiz. Returns true if the text was a game command. */
+  private game(
+    s: Session,
+    user: UserRecord,
+    room: RoomInstance,
+    player: PlayerState,
+    text: string,
+  ): boolean {
+    const [cmd, arg] = text.slice(1).toLowerCase().split(/\s+/);
+    if (cmd === 'terning' || cmd === 'dice') {
+      const n = 1 + Math.floor(Math.random() * 6);
+      this.sys(
+        room,
+        `🎲 ${user.name} slog en ${['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'][n - 1]} ${n}`,
+        user.id,
+      );
+      return true;
+    }
+    if (cmd === 'ssp') {
+      const you = arg as Hand;
+      if (!HANDS.includes(you)) {
+        this.toast(s, 'Skriv /ssp sten, /ssp saks eller /ssp papir');
+        return true;
+      }
+      const bot = HANDS[Math.floor(Math.random() * 3)]!;
+      const r = rps(you, bot);
+      let line = `${HAND_ICON[you]} ${user.name} mod ${HAND_ICON[bot]} – `;
+      if (r === 1) {
+        const got = this.gameReward(s, user, 2);
+        line += `${user.name} vinder! 🎉${got ? ` +${got} 🪙` : ''}`;
+      } else line += r === 0 ? 'uafgjort 🤝' : 'huset vinder 😎';
+      this.sys(room, line, user.id);
+      return true;
+    }
+    if (cmd === 'quiz') {
+      if (!room.meta.isPublic) {
+        this.toast(s, 'Quiz kan spilles i lobbyen, caféen og spillehallen 🎮');
+        return true;
+      }
+      if (this.quizzes.has(room.meta.id)) {
+        this.toast(s, 'Der er allerede et spørgsmål i gang – svar i chatten!');
+        return true;
+      }
+      if ((this.quizCooldown.get(room.meta.id) ?? 0) > Date.now()) {
+        this.toast(s, 'Vent et øjeblik før næste spørgsmål ⏳');
+        return true;
+      }
+      const q = QUIZ[Math.floor(Math.random() * QUIZ.length)]!;
+      this.quizzes.set(room.meta.id, { q, until: Date.now() + 40_000 });
+      this.sys(room, `❓ Quiz: ${q.q} (svar i chatten – første rigtige svar vinder)`);
+      return true;
+    }
+    return false;
+  }
+
+  private quizAnswer(s: Session, user: UserRecord, room: RoomInstance, text: string) {
+    const quiz = this.quizzes.get(room.meta.id);
+    if (!quiz || !isAnswer(quiz.q, text)) return;
+    this.quizzes.delete(room.meta.id);
+    this.quizCooldown.set(room.meta.id, Date.now() + 15_000);
+    const got = this.gameReward(s, user, 5);
+    this.sys(
+      room,
+      `✅ ${user.name} svarede rigtigt: ${quiz.q.a[0]}!${got ? ` +${got} 🪙` : ''}`,
+      user.id,
+    );
+  }
+
+  private expireQuizzes() {
+    const now = Date.now();
+    for (const [roomId, quiz] of this.quizzes) {
+      if (quiz.until > now) continue;
+      this.quizzes.delete(roomId);
+      this.quizCooldown.set(roomId, now + 5000);
+      const room = this.rooms.get(roomId);
+      if (room) this.sys(room, `⏰ Tiden er gået! Svaret var: ${quiz.q.a[0]}`);
+    }
+  }
+
   /* ---------------- daily quests ---------------- */
 
   private ensureDaily(u: UserRecord) {
@@ -598,7 +707,9 @@ export class Hotel {
         if (!room || !player) return;
         const text = filterChat(sanitizeChat(msg.text));
         if (!text) return;
+        if (text.startsWith('/') && this.game(s, user, room, player, text)) return;
         this.sayInRoom(room, player, text);
+        this.quizAnswer(s, user, room, text);
         user.stats.chats++;
         if (user.stats.chats >= 100) this.badge(s, user, 'chatty');
         if (isGreeting(text)) this.quest(s, user, 'hello');
@@ -1142,6 +1253,7 @@ export class Hotel {
   }
 
   private everySecond() {
+    this.expireQuizzes();
     for (const s of this.byUser.values()) {
       const u = s.user!;
       u.onlineSec++;

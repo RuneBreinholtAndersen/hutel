@@ -205,6 +205,8 @@ export interface ProfileView {
 export type ServerMsg =
   | { t: 'welcome'; me: Me; serverTime: number; onboardingLock: boolean; canReset: boolean }
   | { t: 'resetDone' }
+  /** A system line in the room (game results etc.); shown over `id` if given. */
+  | { t: 'sys'; text: string; id?: string }
   | { t: 'wardrobe'; wardrobe: string[] }
   | { t: 'inventory'; items: InvItem[] }
   | { t: 'tradeAsk'; from: { id: string; name: string } }
