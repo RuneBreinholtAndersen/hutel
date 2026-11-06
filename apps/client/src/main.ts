@@ -28,9 +28,11 @@ import { createStage } from './gfx/scene';
 import { Net } from './net';
 import { $, confetti, esc, logLine, lookEditor, pop, toast } from './ui';
 
+const envServer = (import.meta.env.VITE_SERVER_URL as string | undefined) || '';
+// Dev (Vite on :5173) talks to the server on :2567; in production the server serves the client itself.
 const SERVER =
-  (import.meta.env.VITE_SERVER_URL as string | undefined) ??
-  `${location.protocol}//${location.hostname}:2567`;
+  envServer ||
+  (location.port === '5173' ? `${location.protocol}//${location.hostname}:2567` : location.origin);
 const WS_URL = SERVER.replace(/^http/, 'ws') + '/ws';
 const TOKEN_KEY = 'hutel-token';
 const store = {

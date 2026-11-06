@@ -2,7 +2,7 @@
 
 Status opdateres løbende. Åbne punkter står øverst, færdige punkter (✅) står nederst.
 
-Sidst opdateret: 6. november 2026.
+Sidst opdateret: 6. november 2026. Rækkefølge: voksen-Hutel i lukket beta først, derefter Hutel Junior.
 
 ---
 
@@ -11,8 +11,7 @@ Sidst opdateret: 6. november 2026.
 - [ ] Opret et privat, tomt GitHub-repo `hutel` (ingen README, .gitignore eller licens), så koden kan skubbes op
 - [ ] Registrér domænet **hutel.dk** (ledigt hos Simply pr. 6. nov. 2026)
 - [ ] Opret et Supabase-projekt i EU-region (bruges når fil-lageret skal skiftes ud)
-- [ ] Opret konto hos Fly.io (eller Hetzner) til realtidsserveren
-- [ ] Forbind repoet til Vercel til klienten
+- [ ] Opret konto hos Fly.io og følg `docs/DEPLOY.md` (Vercel er ikke nødvendigt – serveren leverer også spillet)
 - [ ] Opret en Anthropic API-nøgle til AI-beboerne og læg den i serverens secrets som `ANTHROPIC_API_KEY`
 
 ---
@@ -62,8 +61,7 @@ Samme kodebase og grafik som Hutel, men en helt separat verden for børn. Børn 
 - [ ] `SupabaseStore` der implementerer `Store` (tabeller: users, rooms, room_items, friends, reports, chatlog) med RLS
 - [ ] Supabase-login (magic link + Google) i stedet for gæstetoken. Behold 18+ og vilkår ved oprettelse
 - [ ] Automatisk sletning af chatlog efter 30 dage i databasen (cron)
-- [ ] Dockerfile til serveren og deploy til Fly.io (`wss://play.hutel.dk`)
-- [ ] Deploy af klienten til Vercel (`hutel.dk`) med `VITE_SERVER_URL`
+- [ ] Første deploy til Fly.io og domænet hutel.dk peget på den (se `docs/DEPLOY.md`)
 - [ ] Cloudflare foran klient og server
 
 ---
@@ -71,7 +69,6 @@ Samme kodebase og grafik som Hutel, men en helt separat verden for børn. Børn 
 ## Mobil og iOS-app
 
 - [x] Spillet virker i mobilens browser: tryk for at gå, træk for at panorere, knib for at zoome, chat i fuld bredde
-- [ ] PWA: manifest og ikon, så man kan lægge Hutel på hjemmeskærmen
 - [ ] iOS-app med Capacitor (samme kode pakket som app)
 - [ ] App Store-krav til chat-apps med brugerindhold: filter, rapportér, blokér og kontaktoplysninger er på plads – mangler moderatorværktøj og hurtig reaktion på rapporter
 - [ ] Aldersgrænse i App Store sat til 17+ (chat med fremmede)
@@ -186,6 +183,14 @@ Samme kodebase og grafik som Hutel, men en helt separat verden for børn. Børn 
 - ✅ Tokens og adgangskoder gemmes kun som hash
 - ✅ WebSocket-forbindelser kun fra tilladte domæner, maks. beskedstørrelse 4 KB
 - ✅ Chatlog slettes efter 30 dage
+
+### Klar til deploy
+
+- ✅ Dockerfile: én container der kører serveren og leverer den byggede klient
+- ✅ `fly.toml` med volume til data, health check og HTTPS
+- ✅ Trin-for-trin guide i `docs/DEPLOY.md`
+- ✅ PWA: manifest og ikoner, så Hutel kan lægges på hjemmeskærmen
+- ✅ Testet i produktionstilstand (server leverer klienten, tilmelding og rum virker)
 
 ### Milepæl 0
 

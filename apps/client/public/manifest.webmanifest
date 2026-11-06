@@ -1,0 +1,24 @@
+{
+  "name": "Hutel.dk",
+  "short_name": "Hutel",
+  "description": "Et hyggeligt chat-hotel i browseren.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1c1320",
+  "theme_color": "#2c1d14",
+  "lang": "da",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
