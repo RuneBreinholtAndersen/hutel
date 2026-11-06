@@ -46,7 +46,65 @@ const THEMES: Record<RoomTheme, { wall: T.Texture; wain: number; floor: [number,
     wain: 0x6e3f2a,
     floor: [0x8a5634, 0x7a4a2c],
   },
+  roof: { wall: nightSky(), wain: 0x5a5f66, floor: [0x8f7a66, 0x7d6a58] },
+  arcade: {
+    wall: wallpaper('#241a3a', '#2c2048', 'rgba(255,90,180,.45)', true),
+    wain: 0x16102a,
+    floor: [0x2a2040, 0x3a2a5a],
+  },
+  pool: {
+    wall: wallpaper('#bfe0e4', '#b2d6db', 'rgba(40,120,150,.35)'),
+    wain: 0x3f8aa0,
+    floor: [0x8fb0b5, 0x7fa2a8],
+  },
 };
+
+/** Starry night with a city skyline, used as "walls" on the roof terrace. */
+function nightSky() {
+  const t = canvasTex(256, 128, (g, w, h) => {
+    const gr = g.createLinearGradient(0, 0, 0, h);
+    gr.addColorStop(0, '#141a3a');
+    gr.addColorStop(0.7, '#3a2a5a');
+    gr.addColorStop(1, '#e0687a');
+    g.fillStyle = gr;
+    g.fillRect(0, 0, w, h);
+    g.fillStyle = '#fff6d8';
+    for (let i = 0; i < 70; i++) g.fillRect(Math.random() * w, Math.random() * h * 0.6, 1.4, 1.4);
+    g.fillStyle = '#1c1830';
+    let x = 0;
+    while (x < w) {
+      const bw = 10 + Math.random() * 22;
+      const bh = 18 + Math.random() * 40;
+      g.fillRect(x, h - bh, bw, bh);
+      g.fillStyle = 'rgba(255,210,120,.8)';
+      for (let y = h - bh + 4; y < h - 4; y += 7)
+        for (let wx = x + 3; wx < x + bw - 3; wx += 6)
+          if (Math.random() < 0.35) g.fillRect(wx, y, 2, 3);
+      g.fillStyle = '#1c1830';
+      x += bw + 2;
+    }
+  });
+  t.wrapS = t.wrapT = T.RepeatWrapping;
+  t.repeat.set(2, 1);
+  return t;
+}
+
+/** A garland of glowing bulbs along a wall. */
+function stringLights(group: T.Group, lights: T.Light[], alongLeft: boolean, y = 2.55) {
+  const cols = [0xffd27a, 0xff8a6a, 0x9ad0ff, 0xb8ff9a];
+  for (let i = 0; i < 12; i++) {
+    const t = -N / 2 + 0.4 + i * ((N - 0.8) / 11);
+    const sag = Math.sin((i / 11) * Math.PI) * 0.25;
+    const b = sph(0.05, M(cols[i % 4]!, { emissive: cols[i % 4]!, emissiveIntensity: 2 }), 0, 0, 0);
+    if (alongLeft) b.position.set(-N / 2 + 0.15, y - sag, t);
+    else b.position.set(t, y - sag, -N / 2 + 0.15);
+    group.add(b);
+  }
+  const l = new T.PointLight(0xffc27a, 0.7, 8, 2);
+  l.position.set(alongLeft ? -N / 2 + 1 : 0, y - 0.3, alongLeft ? 0 : -N / 2 + 1);
+  lights.push(l);
+  group.add(l);
+}
 
 const skyTex = canvasTex(128, 128, (g, w, h) => {
   const gr = g.createLinearGradient(0, 0, 0, h);
@@ -220,6 +278,65 @@ function decor(theme: RoomTheme): { group: T.Group; lights: T.Light[]; windowLig
     }
     return { group, lights, windowLight: false };
   }
+  if (theme === 'roof') {
+    stringLights(group, lights, true);
+    stringLights(group, lights, false);
+    const moon = sph(
+      0.25,
+      M(0xfff1c9, { emissive: 0xfff1c9, emissiveIntensity: 1.2 }),
+      2.2,
+      2.4,
+      z + 0.1,
+    );
+    group.add(moon);
+    return { group, lights, windowLight: false };
+  }
+  if (theme === 'arcade') {
+    const neon = (text: string, color: string, px: number, py: number, left = false) => {
+      const sign = new T.Mesh(
+        new T.PlaneGeometry(2.2, 0.55),
+        new T.MeshBasicMaterial({
+          map: textTex(text, 'bold 80px sans-serif', color),
+          transparent: true,
+        }),
+      );
+      if (left) {
+        sign.rotation.y = Math.PI / 2;
+        sign.position.set(x + 0.07, py, px);
+      } else sign.position.set(px, py, z + 0.07);
+      group.add(sign);
+    };
+    neon('SPILLEHAL', '#ff5ab0', -0.8, 2.4);
+    neon('★ QUIZ ★', '#5ae0ff', 1.2, 2.4, true);
+    for (const [px, c] of [
+      [-2, 0xff5ab0],
+      [1.6, 0x5ae0ff],
+    ] as const) {
+      const l = new T.PointLight(c, 0.9, 7, 2);
+      l.position.set(px, 2.2, 0);
+      lights.push(l);
+      group.add(l);
+    }
+    return { group, lights, windowLight: false };
+  }
+  if (theme === 'pool') {
+    windowOnLeftWall(group, -2);
+    windowOnLeftWall(group, 1.2);
+    const sign = new T.Mesh(
+      new T.PlaneGeometry(2.0, 0.5),
+      new T.MeshBasicMaterial({
+        map: textTex('POOL · 28°', 'bold 70px sans-serif', '#2a7f9a'),
+        transparent: true,
+      }),
+    );
+    sign.position.set(-1, 2.4, z + 0.07);
+    group.add(sign);
+    const l = new T.PointLight(0x7ac8ff, 0.5, 6, 2);
+    l.position.set(0.5, 0.8, 0.5);
+    lights.push(l);
+    group.add(l);
+    return { group, lights, windowLight: false };
+  }
   // café
   windowOnLeftWall(group, 1.5);
   const board = new T.Mesh(
@@ -373,7 +490,7 @@ export function createRoom(scene: T.Scene) {
       (t.material as T.MeshStandardMaterial).color.copy(lin(th.floor[t.userData.alt as number]));
     winSpot.visible = current.windowLight;
     dust.visible = current.windowLight;
-    const wz = theme === 'cafe' ? 1.5 : -1.5;
+    const wz = theme === 'cafe' ? 1.5 : theme === 'pool' ? -2 : -1.5;
     winSpot.position.set(-N / 2 + 0.25, 2.5, wz);
     winSpot.target.position.set(1.6, 0, wz + 0.9);
   }

@@ -1,6 +1,6 @@
 import type { PlacedItem } from './placement';
 
-export type RoomTheme = 'home' | 'lobby' | 'cafe';
+export type RoomTheme = 'home' | 'lobby' | 'cafe' | 'roof' | 'arcade' | 'pool';
 export type RoomAccess = 'open' | 'locked' | 'password';
 
 /** The door tile in every room (in front of the door on the back wall). */
@@ -56,6 +56,63 @@ export const PUBLIC_ROOMS: PublicRoomDef[] = [
       { id: 2013, type: 'plant', x: 7, z: 7, rot: 0 },
       { id: 2014, type: 'lamp', x: 7, z: 1, rot: 0 },
       { id: 2015, type: 'shelf', x: 0, z: 3, rot: 1 },
+    ],
+  },
+  {
+    id: 'roof',
+    name: 'Tagterrassen',
+    description: 'Stjerner, lyskæder og udsigt over byen. Viggo kender alle stjernebilleder.',
+    theme: 'roof',
+    items: [
+      { id: 3001, type: 'rug', x: 2, z: 2, rot: 0 },
+      { id: 3002, type: 'sofa', x: 2, z: 1, rot: 0 },
+      { id: 3003, type: 'table', x: 2, z: 3, rot: 0 },
+      { id: 3004, type: 'beanbag', x: 1, z: 3, rot: 1, color: 1 },
+      { id: 3005, type: 'beanbag', x: 4, z: 3, rot: 3, color: 2 },
+      { id: 3006, type: 'plant', x: 0, z: 0, rot: 0 },
+      { id: 3007, type: 'plant', x: 0, z: 7, rot: 0 },
+      { id: 3008, type: 'plant', x: 7, z: 7, rot: 0 },
+      { id: 3009, type: 'cactus', x: 7, z: 3, rot: 0 },
+      { id: 3010, type: 'fireplace', x: 4, z: 7, rot: 2 },
+      { id: 3011, type: 'lounger', x: 6, z: 5, rot: 0 },
+      { id: 3012, type: 'lamp', x: 0, z: 4, rot: 0 },
+    ],
+  },
+  {
+    id: 'arcade',
+    name: 'Spillehallen',
+    description: 'Terninger, sten-saks-papir og quiz. Sofus står for spillene.',
+    theme: 'arcade',
+    items: [
+      { id: 4001, type: 'arcade', x: 0, z: 1, rot: 1 },
+      { id: 4002, type: 'arcade', x: 0, z: 2, rot: 1 },
+      { id: 4003, type: 'arcade', x: 0, z: 3, rot: 1 },
+      { id: 4004, type: 'jukebox', x: 7, z: 2, rot: 3 },
+      { id: 4005, type: 'rug', x: 3, z: 3, rot: 0, color: 3 },
+      { id: 4006, type: 'table', x: 4, z: 4, rot: 0 },
+      { id: 4007, type: 'stool', x: 3, z: 4, rot: 1, color: 3 },
+      { id: 4008, type: 'stool', x: 5, z: 4, rot: 3, color: 1 },
+      { id: 4009, type: 'beanbag', x: 4, z: 6, rot: 2, color: 3 },
+      { id: 4010, type: 'sofa', x: 2, z: 7, rot: 2, color: 7 },
+      { id: 4011, type: 'tv', x: 2, z: 0, rot: 0 },
+    ],
+  },
+  {
+    id: 'pool',
+    name: 'Poolen',
+    description: 'Varmt vand, liggestole og palmer. Freja holder øje fra tårnet.',
+    theme: 'pool',
+    items: [
+      { id: 5001, type: 'pool', x: 2, z: 3, rot: 0 },
+      { id: 5002, type: 'lounger', x: 0, z: 2, rot: 0, color: 1 },
+      { id: 5003, type: 'lounger', x: 0, z: 5, rot: 0, color: 3 },
+      { id: 5004, type: 'lounger', x: 7, z: 3, rot: 0, color: 4 },
+      { id: 5005, type: 'plant', x: 0, z: 0, rot: 0 },
+      { id: 5006, type: 'plant', x: 7, z: 7, rot: 0 },
+      { id: 5007, type: 'plant', x: 0, z: 7, rot: 0 },
+      { id: 5008, type: 'cactus', x: 7, z: 1, rot: 0 },
+      { id: 5009, type: 'chair', x: 4, z: 1, rot: 0, color: 6 },
+      { id: 5010, type: 'table', x: 3, z: 1, rot: 0 },
     ],
   },
 ];

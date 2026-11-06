@@ -90,6 +90,18 @@ export const FURNITURE = {
     colors: [0x2a2a35, 0xf4efe6, 0x8a5634],
   },
   jukebox: { name: 'Jukebox', icon: '🎵', price: 35, w: 1, d: 1, unlock: 'streak7' },
+  lounger: {
+    name: 'Liggestol',
+    icon: '🏖️',
+    price: 16,
+    w: 1,
+    d: 2,
+    seat: true,
+    unlock: 'hotelkender',
+    colors: [0x3f7f86, 0xc94f3d, 0xe0a93b, 0x2f4a7a, 0x5b8f4a],
+  },
+  pool: { name: 'Pool', icon: '🏊', price: 0, w: 3, d: 2, noShop: true },
+  arcade: { name: 'Spilleautomat', icon: '🕹️', price: 0, w: 1, d: 1, noShop: true },
   desk: { name: 'Reception', icon: '🛎️', price: 0, w: 3, d: 1, noShop: true },
   counter: { name: 'Cafédisk', icon: '🧁', price: 0, w: 3, d: 1, noShop: true },
 } as const satisfies Record<string, FurnitureDef>;

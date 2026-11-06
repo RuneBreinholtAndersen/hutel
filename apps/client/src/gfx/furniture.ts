@@ -299,6 +299,90 @@ const BUILD: Record<FurnitureType, (c: number) => T.Group> = {
     g.add(pl);
     return g;
   },
+  lounger(c) {
+    const g = new T.Group();
+    const frame = M(0xe8e2d6, { roughness: 0.5 });
+    g.add(rbox(0.7, 0.08, 1.6, frame, 0, 0.3, 0.1));
+    g.add(rbox(0.62, 0.08, 1.1, M(c), 0, 0.37, 0.32));
+    const back = rbox(0.62, 0.08, 0.6, M(c), 0, 0.55, -0.45);
+    back.rotation.x = 0.7;
+    g.add(back);
+    for (const [x, z] of [
+      [-0.3, -0.55],
+      [0.3, -0.55],
+      [-0.3, 0.75],
+      [0.3, 0.75],
+    ] as const)
+      g.add(cyl(0.025, 0.025, 0.3, frame, x, 0.15, z, 8));
+    g.add(rbox(0.3, 0.05, 0.12, M(0xf6f3ea), 0, 0.42, 0.8));
+    return g;
+  },
+  pool() {
+    const g = new T.Group();
+    const tile = M(0xe8f2f4, { roughness: 0.4 });
+    g.add(
+      rbox(2.96, 0.14, 0.12, tile, 0, 0.07, -0.94),
+      rbox(2.96, 0.14, 0.12, tile, 0, 0.07, 0.94),
+    );
+    g.add(
+      rbox(0.12, 0.14, 1.96, tile, -1.42, 0.07, 0),
+      rbox(0.12, 0.14, 1.96, tile, 1.42, 0.07, 0),
+    );
+    const water = new T.Mesh(
+      new T.BoxGeometry(2.74, 0.06, 1.76),
+      new T.MeshStandardMaterial({
+        color: 0x3fb7e0,
+        emissive: 0x1f8fc0,
+        emissiveIntensity: 0.55,
+        roughness: 0.1,
+        transparent: true,
+        opacity: 0.85,
+      }),
+    );
+    water.position.y = 0.08;
+    g.add(water);
+    const steel = M(0xd0d4d8, { metalness: 0.8, roughness: 0.25 });
+    for (const x of [1.05, 1.25]) {
+      const rail = cyl(0.02, 0.02, 0.5, steel, x, 0.3, -0.92, 8);
+      g.add(rail);
+    }
+    const ring = new T.Mesh(new T.TorusGeometry(0.18, 0.06, 10, 20), M(0xff6a4a));
+    ring.rotation.x = Math.PI / 2;
+    ring.position.set(-0.6, 0.21, 0.3);
+    g.add(ring);
+    g.userData.water = water;
+    return g;
+  },
+  arcade() {
+    const g = new T.Group();
+    const body = M(0x3a2a6a, { roughness: 0.5 });
+    g.add(rbox(0.7, 1.5, 0.6, body, 0, 0.75, -0.05));
+    const screen = new T.Mesh(
+      new T.PlaneGeometry(0.5, 0.42),
+      M(0x52e0a0, { emissive: 0x2acf80, emissiveIntensity: 1.1 }),
+    );
+    screen.position.set(0, 1.12, 0.26);
+    screen.rotation.x = -0.25;
+    g.add(screen);
+    g.add(rbox(0.66, 0.1, 0.3, M(0x22184a), 0, 0.82, 0.32));
+    g.add(
+      cyl(0.02, 0.02, 0.1, M(0x222222), -0.15, 0.92, 0.33, 8),
+      sph(0.04, M(0xe04a4a), -0.15, 0.98, 0.33),
+    );
+    g.add(sph(0.035, M(0xffd24a), 0.08, 0.89, 0.36), sph(0.035, M(0x4ab0ff), 0.18, 0.89, 0.32));
+    g.add(
+      rbox(
+        0.7,
+        0.16,
+        0.06,
+        M(0xff5ab0, { emissive: 0xff2a90, emissiveIntensity: 1.2 }),
+        0,
+        1.45,
+        0.26,
+      ),
+    );
+    return g;
+  },
   desk() {
     const g = new T.Group();
     g.add(rbox(2.8, 1.0, 0.7, wood, 0, 0.5, 0));

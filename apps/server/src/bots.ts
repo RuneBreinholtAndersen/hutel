@@ -139,6 +139,90 @@ export const PERSONAS: Persona[] = [
     ],
     replies: ['Ha, klassiker 😎', 'Det kender jeg godt.', 'Fedt!', 'Hmm, godt spørgsmål.'],
   },
+  {
+    id: 'bot_viggo',
+    name: 'Viggo',
+    roomId: 'roof',
+    host: true,
+    look: {
+      skin: 0xe8b896,
+      hair: 0xe8e2d6,
+      eyes: 0x2f6b8f,
+      shirt: 0x2f4a7a,
+      pants: 0x4a4a55,
+      hairStyle: 'kort',
+      glasses: 'runde',
+      beard: 'fuld',
+    },
+    personality:
+      'Viggo er en rolig, ældre stamgæst, der elsker stjerner og byens lys. Han fortæller gerne om stjernebilleder og nyder stilheden på tagterrassen.',
+    greetings: [
+      'God aften, {name} – se lige stjernerne i aften ✨',
+      'Velkommen op på taget, {name}!',
+    ],
+    idle: [
+      'Kan I se Karlsvognen derovre? ✨',
+      'Lyskæderne giver bare den bedste stemning.',
+      'Herfra kan man se hele byen.',
+    ],
+    replies: ['Det er en god tanke.', 'Hmm, ja.', 'Smukt sagt ✨', 'Fortæl mere.'],
+  },
+  {
+    id: 'bot_sofus',
+    name: 'Sofus',
+    roomId: 'arcade',
+    host: true,
+    look: {
+      skin: 0xf6d2b5,
+      hair: 0xb33a2a,
+      eyes: 0x3d7a3a,
+      shirt: 0x6f4a8f,
+      pants: 0x2b3550,
+      hairStyle: 'kasket',
+      glasses: 'sol',
+      beard: 'ingen',
+    },
+    personality:
+      'Sofus styrer spillehallen. Han er energisk, elsker spil og udfordrer gerne folk til sten-saks-papir og quiz.',
+    greetings: [
+      'Hey {name}! Skriv /ssp sten, /terning eller /quiz 🎮',
+      'Velkommen i spillehallen, {name}! Tør du tage en quiz? Skriv /quiz',
+    ],
+    idle: [
+      'Hvem tør udfordre mig i sten-saks-papir? Skriv /ssp sten 🪨',
+      'Skriv /quiz, så stiller jeg et spørgsmål!',
+      'Rul en terning med /terning 🎲',
+    ],
+    replies: ['Gg! 🎮', 'Haha, klassiker!', 'Én gang til?', 'Den var tæt!'],
+  },
+  {
+    id: 'bot_freja',
+    name: 'Freja',
+    roomId: 'pool',
+    host: true,
+    look: {
+      skin: 0xc98e66,
+      hair: 0xd9a35b,
+      eyes: 0x2f6b8f,
+      shirt: 0xc94f3d,
+      pants: 0x2b3550,
+      hairStyle: 'hestehale',
+      glasses: 'sol',
+      beard: 'ingen',
+    },
+    personality:
+      'Freja er hotellets livredder ved poolen. Glad, solbrun og altid klar med et tip om vandet, solcreme eller den bedste liggestol.',
+    greetings: [
+      'Velkommen ved poolen, {name}! Vandet er 28 grader ☀️',
+      'Hej {name} – find en liggestol 🏖️',
+    ],
+    idle: [
+      'Husk at drikke vand i varmen 💧',
+      'Den røde badering er til fri afbenyttelse 🛟',
+      'Liggestolene ved vinduet er de bedste ☀️',
+    ],
+    replies: ['Dejligt! ☀️', 'Hold da op!', 'Haha 😄', 'Sådan!'],
+  },
 ];
 
 /** Magnus as a personal guide on a new guest's own room, until the start quests are done. */
