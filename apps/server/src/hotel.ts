@@ -618,9 +618,9 @@ export class Hotel {
         this.store.touch();
         return this.toast(s, 'Motto gemt');
       case 'buy':
-        return this.buy(s, user, msg.type, msg.x, msg.z, msg.rot);
+        return this.buy(s, user, msg.type, msg.x, msg.z, msg.rot, msg.color);
       case 'moveItem':
-        return this.moveItem(s, user, msg.id, msg.x, msg.z, msg.rot);
+        return this.moveItem(s, user, msg.id, msg.x, msg.z, msg.rot, msg.color);
       case 'sellItem':
         return this.sellItem(s, user, msg.id);
       case 'roomSettings':
@@ -659,15 +659,19 @@ export class Hotel {
     x: number,
     z: number,
     rot: number,
+    color?: number,
   ) {
     const own = this.ownRoom(s, user);
     if (!own || own.rec.ownerId !== user.id)
       return this.toast(s, 'Du kan kun købe møbler til dit eget værelse.', 'error');
     const def = furniture(type);
     if (def.noShop) return;
+    if (def.unlock && !user.badges.includes(def.unlock))
+      return this.toast(s, `🔒 Kræver badget "${BADGES[def.unlock].name}"`, 'error');
     if (own.rec.items.length >= 120) return this.toast(s, 'Værelset er fyldt helt op.', 'error');
     if (user.coins < def.price) return this.toast(s, 'Du har ikke mønter nok.', 'error');
     const item: PlacedItem = { id: own.rec.nextItemId, type, x, z, rot };
+    if (color && def.colors && color < def.colors.length) item.color = color;
     if (!own.room.placeable(item)) return this.toast(s, 'Det kan ikke stå der 🙃', 'error');
     own.rec.nextItemId++;
     own.rec.items.push(item);
@@ -678,7 +682,15 @@ export class Hotel {
     if (user.stats.buys >= 5) this.badge(s, user, 'shopper');
   }
 
-  private moveItem(s: Session, user: UserRecord, id: number, x: number, z: number, rot: number) {
+  private moveItem(
+    s: Session,
+    user: UserRecord,
+    id: number,
+    x: number,
+    z: number,
+    rot: number,
+    color?: number,
+  ) {
     const own = this.ownRoom(s, user);
     if (!own) return this.toast(s, 'Du har ikke rettigheder her.', 'error');
     const item = own.rec.items.find((i) => i.id === id);
@@ -687,6 +699,8 @@ export class Hotel {
     if (!own.room.placeable(moved)) return this.toast(s, 'Det kan ikke stå der 🙃', 'error');
     own.room.standUpFrom(id);
     Object.assign(item, { x, z, rot });
+    const colors = furniture(item.type).colors;
+    if (color !== undefined && colors && color < colors.length) item.color = color || undefined;
     this.store.touch();
     own.room.broadcast({ t: 'itemPut', item });
     user.stats.moves++;

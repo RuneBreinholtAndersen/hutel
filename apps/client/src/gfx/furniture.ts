@@ -1,4 +1,4 @@
-import type { FurnitureType } from '@hutel/shared';
+import { furniture, type FurnitureType } from '@hutel/shared';
 import { cyl, M, pick, rbox, rnd, shade, sph, T } from './helpers';
 
 const wood = M(0x8a5634, { roughness: 0.6 });
@@ -14,7 +14,16 @@ const legs = (g: T.Group, xs: number, zs: number) => {
     g.add(cyl(0.04, 0.03, 0.15, woodDark, x, 0.075, z));
 };
 
-const BUILD: Record<FurnitureType, () => T.Group> = {
+/** Lighter shade of a colour, for cushions. */
+const lighter = (c: number, k = 0.18) => {
+  const r = (c >> 16) & 255,
+    g = (c >> 8) & 255,
+    b = c & 255;
+  const f = (v: number) => Math.min(255, Math.round(v + (255 - v) * k));
+  return (f(r) << 16) | (f(g) << 8) | f(b);
+};
+
+const BUILD: Record<FurnitureType, (c: number) => T.Group> = {
   plant() {
     const g = new T.Group();
     g.add(cyl(0.2, 0.15, 0.32, M(0xc0643b), 0, 0.16, 0));
@@ -53,12 +62,12 @@ const BUILD: Record<FurnitureType, () => T.Group> = {
     g.add(pl);
     return g;
   },
-  rug() {
+  rug(main) {
     const g = new T.Group();
     for (const [s, c, y] of [
-      [1.8, 0x9e3b3b, 0.01],
+      [1.8, main, 0.01],
       [1.5, 0xd8a35a, 0.012],
-      [1.2, 0x9e3b3b, 0.014],
+      [1.2, main, 0.014],
       [0.5, 0xe9c98a, 0.016],
     ] as const)
       g.add(shade(rbox(s, 0.02 + y, s, M(c, { roughness: 1 }), 0, y, 0), false));
@@ -73,21 +82,21 @@ const BUILD: Record<FurnitureType, () => T.Group> = {
     g.add(rbox(0.24, 0.04, 0.17, M(0x2f6b8f), -0.1, 0.49, -0.05));
     return g;
   },
-  stool() {
+  stool(c) {
     const g = new T.Group();
-    g.add(cyl(0.24, 0.24, 0.08, M(0xc94f3d), 0, 0.55, 0, 24));
+    g.add(cyl(0.24, 0.24, 0.08, M(c), 0, 0.55, 0, 24));
     g.add(cyl(0.04, 0.05, 0.5, gold, 0, 0.27, 0));
     g.add(cyl(0.18, 0.2, 0.04, woodDark, 0, 0.02, 0));
     return g;
   },
-  armchair() {
+  armchair(c) {
     const g = new T.Group();
-    const f = M(0xd29b3a);
+    const f = M(c);
     g.add(rbox(0.9, 0.3, 0.86, f, 0, 0.3, 0));
     g.add(rbox(0.9, 0.58, 0.22, f, 0, 0.62, -0.32));
     g.add(rbox(0.18, 0.44, 0.86, f, -0.36, 0.43, 0));
     g.add(rbox(0.18, 0.44, 0.86, f, 0.36, 0.43, 0));
-    g.add(rbox(0.56, 0.12, 0.62, M(0xe4b456), 0, 0.51, 0.07));
+    g.add(rbox(0.56, 0.12, 0.62, M(lighter(c)), 0, 0.51, 0.07));
     legs(g, 0.38, 0.35);
     return g;
   },
@@ -144,10 +153,10 @@ const BUILD: Record<FurnitureType, () => T.Group> = {
     g.userData.fish = [f1, f2];
     return g;
   },
-  sofa() {
+  sofa(c) {
     const g = new T.Group();
-    const f = M(0x3f7f86);
-    const f2 = M(0x52979d);
+    const f = M(c);
+    const f2 = M(lighter(c, 0.12));
     g.add(rbox(1.9, 0.3, 0.86, f, 0, 0.3, 0));
     g.add(rbox(1.9, 0.58, 0.22, f, 0, 0.62, -0.32));
     g.add(rbox(0.22, 0.46, 0.86, f, -0.84, 0.43, 0));
@@ -160,15 +169,134 @@ const BUILD: Record<FurnitureType, () => T.Group> = {
     legs(g, 0.85, 0.35);
     return g;
   },
-  bed() {
+  bed(c) {
     const g = new T.Group();
     g.add(rbox(1.8, 0.3, 1.9, wood, 0, 0.2, 0));
     g.add(rbox(1.7, 0.18, 1.8, M(0xf3efe6), 0, 0.44, 0.02));
-    g.add(rbox(1.76, 0.09, 1.2, M(0x5a77b0), 0, 0.56, 0.33));
-    g.add(rbox(1.76, 0.1, 0.18, M(0x4a659a), 0, 0.57, -0.26));
+    g.add(rbox(1.76, 0.09, 1.2, M(c), 0, 0.56, 0.33));
+    g.add(rbox(1.76, 0.1, 0.18, M(lighter(c, -0.0)), 0, 0.57, -0.26));
     g.add(rbox(0.62, 0.13, 0.36, M(0xffffff), -0.42, 0.6, -0.62));
     g.add(rbox(0.62, 0.13, 0.36, M(0xffffff), 0.42, 0.6, -0.62));
     g.add(rbox(1.9, 0.95, 0.1, woodDark, 0, 0.55, -0.92));
+    return g;
+  },
+  cactus() {
+    const g = new T.Group();
+    g.add(cyl(0.17, 0.13, 0.26, M(0xd9a066), 0, 0.13, 0));
+    g.add(cyl(0.15, 0.15, 0.02, M(0x8a6a48), 0, 0.26, 0));
+    const green = M(0x4f8f3a, { roughness: 0.9 });
+    const body = cyl(0.09, 0.1, 0.5, green, 0, 0.5, 0, 16);
+    g.add(body, sph(0.09, green, 0, 0.75, 0));
+    const arm = cyl(0.05, 0.05, 0.18, green, 0.13, 0.55, 0, 12);
+    g.add(arm, sph(0.05, green, 0.13, 0.64, 0), cyl(0.04, 0.04, 0.1, green, 0.08, 0.48, 0, 10));
+    g.add(sph(0.035, M(0xff7aa8), 0, 0.85, 0));
+    return g;
+  },
+  chair(c) {
+    const g = new T.Group();
+    g.add(rbox(0.5, 0.06, 0.5, wood, 0, 0.45, 0));
+    g.add(rbox(0.46, 0.06, 0.46, M(c), 0, 0.5, 0));
+    g.add(rbox(0.5, 0.5, 0.06, wood, 0, 0.72, -0.22));
+    for (const [x, z] of [
+      [-0.21, -0.21],
+      [0.21, -0.21],
+      [-0.21, 0.21],
+      [0.21, 0.21],
+    ] as const)
+      g.add(cyl(0.025, 0.025, 0.45, woodDark, x, 0.225, z, 8));
+    return g;
+  },
+  beanbag(c) {
+    const g = new T.Group();
+    const m = M(c, { roughness: 0.95 });
+    const base = sph(0.42, m, 0, 0.26, 0.02);
+    base.scale.set(1, 0.62, 1);
+    const back = sph(0.3, m, 0, 0.5, -0.2);
+    back.scale.set(1.15, 0.9, 0.7);
+    g.add(base, back);
+    return g;
+  },
+  tv() {
+    const g = new T.Group();
+    g.add(rbox(1.7, 0.42, 0.5, woodDark, 0, 0.21, -0.12));
+    g.add(rbox(1.5, 0.86, 0.06, M(0x1c1c22, { roughness: 0.3 }), 0, 0.95, -0.2));
+    const screen = new T.Mesh(
+      new T.PlaneGeometry(1.4, 0.76),
+      M(0x5fb0d8, { emissive: 0x3a8fd0, emissiveIntensity: 0.9, roughness: 0.2 }),
+    );
+    screen.position.set(0, 0.95, -0.165);
+    g.add(screen);
+    g.add(cyl(0.06, 0.08, 0.1, M(0x1c1c22), 0, 0.47, -0.2));
+    return g;
+  },
+  fireplace() {
+    const g = new T.Group();
+    const brick = M(0xa9573a, { roughness: 0.95 });
+    g.add(rbox(1.9, 1.15, 0.5, brick, 0, 0.575, -0.22));
+    g.add(rbox(2.05, 0.1, 0.62, M(0xe8dcc6), 0, 1.2, -0.2));
+    g.add(rbox(1.0, 0.62, 0.3, M(0x2a1a14), 0, 0.38, -0.08));
+    const fire = new T.Mesh(
+      new T.ConeGeometry(0.22, 0.42, 14),
+      new T.MeshBasicMaterial({ color: 0xffa040 }),
+    );
+    fire.position.set(0, 0.3, 0);
+    const fire2 = new T.Mesh(
+      new T.ConeGeometry(0.12, 0.3, 12),
+      new T.MeshBasicMaterial({ color: 0xffe08a }),
+    );
+    fire2.position.set(0.08, 0.26, 0.04);
+    g.add(fire, fire2, rbox(0.6, 0.08, 0.14, woodDark, 0, 0.1, 0));
+    const pl = new T.PointLight(0xff8a3a, 1.2, 4.5, 2);
+    pl.position.set(0, 0.5, 0.3);
+    g.add(pl);
+    g.add(
+      cyl(0.06, 0.06, 0.2, gold, -0.7, 1.35, -0.2),
+      cyl(0.06, 0.06, 0.2, gold, 0.7, 1.35, -0.2),
+    );
+    g.userData.flame = [fire, fire2];
+    return g;
+  },
+  piano(c) {
+    const g = new T.Group();
+    const body = M(c, { roughness: 0.3, metalness: 0.1 });
+    g.add(rbox(1.8, 1.15, 0.5, body, 0, 0.575, -0.2));
+    g.add(rbox(1.8, 0.12, 0.42, body, 0, 0.72, 0.18));
+    g.add(rbox(1.6, 0.04, 0.2, M(0xf6f3ea), 0, 0.79, 0.2));
+    for (let i = 0; i < 11; i++)
+      g.add(rbox(0.05, 0.03, 0.11, M(0x1c1c22), -0.72 + i * 0.145, 0.82, 0.15));
+    g.add(
+      rbox(0.06, 0.66, 0.06, body, -0.82, 0.33, 0.33),
+      rbox(0.06, 0.66, 0.06, body, 0.82, 0.33, 0.33),
+    );
+    g.add(rbox(0.36, 0.26, 0.04, M(0xf6f3ea), 0, 1.0, 0.07));
+    return g;
+  },
+  jukebox() {
+    const g = new T.Group();
+    g.add(rbox(0.8, 1.2, 0.55, M(0x8a3b2a, { roughness: 0.4 }), 0, 0.6, -0.05));
+    const top = cyl(0.4, 0.4, 0.55, M(0x8a3b2a, { roughness: 0.4 }), 0, 1.2, -0.05, 24);
+    top.rotation.x = Math.PI / 2;
+    g.add(top);
+    const glow = M(0xffc35a, { emissive: 0xff9a2a, emissiveIntensity: 1.2 });
+    g.add(rbox(0.62, 0.4, 0.04, glow, 0, 1.05, 0.23));
+    g.add(
+      rbox(
+        0.5,
+        0.3,
+        0.04,
+        M(0x5fb0d8, { emissive: 0x3a8fd0, emissiveIntensity: 0.8 }),
+        0,
+        0.55,
+        0.23,
+      ),
+    );
+    g.add(
+      rbox(0.05, 1.1, 0.05, gold, -0.36, 0.6, 0.23),
+      rbox(0.05, 1.1, 0.05, gold, 0.36, 0.6, 0.23),
+    );
+    const pl = new T.PointLight(0xffb060, 0.7, 3.5, 2);
+    pl.position.set(0, 1.0, 0.5);
+    g.add(pl);
     return g;
   },
   desk() {
@@ -208,8 +336,9 @@ const BUILD: Record<FurnitureType, () => T.Group> = {
   },
 };
 
-export function buildFurniture(type: FurnitureType, itemId: number): T.Group {
-  const g = BUILD[type]();
+export function buildFurniture(type: FurnitureType, itemId: number, color = 0): T.Group {
+  const colors = furniture(type).colors;
+  const g = BUILD[type](colors?.[color] ?? colors?.[0] ?? 0xffffff);
   const walk = type === 'rug';
   g.traverse((m) => {
     m.userData.itemId = itemId;

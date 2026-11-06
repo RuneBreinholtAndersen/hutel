@@ -325,6 +325,12 @@ describe('multiplayer', () => {
     expect((await c.waitFor('itemPut', (m) => m.item.id === put.item.id)).item.x).toBe(7);
     c.send({ t: 'sellItem', id: put.item.id });
     await c.waitFor('itemRemove');
+    c.send({ t: 'buy', type: 'tv', x: 5, z: 5, rot: 0 });
+    expect((await c.waitFor('toast', (m) => /Kræver/.test(m.text))).kind).toBe('error');
+    c.send({ t: 'buy', type: 'sofa', x: 4, z: 6, rot: 0, color: 2 });
+    expect(
+      (await c.waitFor('itemPut', (m) => m.item.type === 'sofa' && m.item.x === 4)).item.color,
+    ).toBe(2);
     c.ws.close();
   });
 

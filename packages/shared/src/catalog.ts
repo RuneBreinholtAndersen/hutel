@@ -1,3 +1,5 @@
+import type { BadgeId } from './progress';
+
 export interface FurnitureDef {
   name: string;
   icon: string;
@@ -11,19 +13,83 @@ export interface FurnitureDef {
   walk?: boolean;
   /** Not sold in the shop (fixtures in public rooms). */
   noShop?: boolean;
+  /** Only for sale once you have this badge. */
+  unlock?: BadgeId;
+  /** Colour choices for the main fabric/paint (first is the default). */
+  colors?: readonly number[];
 }
+
+const FABRIC = [
+  0x3f7f86, 0xc94f3d, 0xd29b3a, 0x5b8f4a, 0x6f4a8f, 0x2f4a7a, 0xe7dcc8, 0x2a2a35,
+] as const;
 
 export const FURNITURE = {
   plant: { name: 'Plante', icon: '🪴', price: 6, w: 1, d: 1 },
+  cactus: { name: 'Kaktus', icon: '🌵', price: 5, w: 1, d: 1 },
   lamp: { name: 'Gulvlampe', icon: '💡', price: 8, w: 1, d: 1 },
-  rug: { name: 'Tæppe', icon: '🟥', price: 8, w: 2, d: 2, walk: true },
+  rug: {
+    name: 'Tæppe',
+    icon: '🟥',
+    price: 8,
+    w: 2,
+    d: 2,
+    walk: true,
+    colors: [0x9e3b3b, 0x2f4a7a, 0x3d7a5a, 0x6f4a8f, 0xb8862e],
+  },
   table: { name: 'Sofabord', icon: '☕', price: 10, w: 1, d: 1 },
-  stool: { name: 'Taburet', icon: '🪑', price: 7, w: 1, d: 1, seat: true },
-  armchair: { name: 'Lænestol', icon: '🪑', price: 12, w: 1, d: 1, seat: true },
+  stool: {
+    name: 'Taburet',
+    icon: '🪑',
+    price: 7,
+    w: 1,
+    d: 1,
+    seat: true,
+    colors: [0xc94f3d, 0x3f7f86, 0xe0a93b, 0x2a2a35],
+  },
+  chair: { name: 'Spisestol', icon: '🪑', price: 9, w: 1, d: 1, seat: true, colors: FABRIC },
+  armchair: {
+    name: 'Lænestol',
+    icon: '🪑',
+    price: 12,
+    w: 1,
+    d: 1,
+    seat: true,
+    colors: [0xd29b3a, ...FABRIC.filter((c) => c !== 0xd29b3a)],
+  },
   shelf: { name: 'Bogreol', icon: '📚', price: 15, w: 2, d: 1 },
   aquarium: { name: 'Akvarie', icon: '🐠', price: 18, w: 1, d: 1 },
-  sofa: { name: 'Sofa', icon: '🛋️', price: 20, w: 2, d: 1, seat: true },
-  bed: { name: 'Seng', icon: '🛏️', price: 25, w: 2, d: 2 },
+  sofa: { name: 'Sofa', icon: '🛋️', price: 20, w: 2, d: 1, seat: true, colors: FABRIC },
+  bed: {
+    name: 'Seng',
+    icon: '🛏️',
+    price: 25,
+    w: 2,
+    d: 2,
+    colors: [0x5a77b0, 0xc94f3d, 0x5b8f4a, 0x6f4a8f, 0xe0a93b],
+  },
+  // Unlocked by badges
+  beanbag: {
+    name: 'Sækkestol',
+    icon: '🫘',
+    price: 14,
+    w: 1,
+    d: 1,
+    seat: true,
+    unlock: 'onboarded',
+    colors: [0xe0a93b, 0xc94f3d, 0x3f7f86, 0x6f4a8f, 0x5b8f4a],
+  },
+  tv: { name: 'Fjernsyn', icon: '📺', price: 22, w: 2, d: 1, unlock: 'onboarded' },
+  fireplace: { name: 'Pejs', icon: '🔥', price: 40, w: 2, d: 1, unlock: 'hotelkender' },
+  piano: {
+    name: 'Klaver',
+    icon: '🎹',
+    price: 45,
+    w: 2,
+    d: 1,
+    unlock: 'hotelkender',
+    colors: [0x2a2a35, 0xf4efe6, 0x8a5634],
+  },
+  jukebox: { name: 'Jukebox', icon: '🎵', price: 35, w: 1, d: 1, unlock: 'streak7' },
   desk: { name: 'Reception', icon: '🛎️', price: 0, w: 3, d: 1, noShop: true },
   counter: { name: 'Cafédisk', icon: '🧁', price: 0, w: 3, d: 1, noShop: true },
 } as const satisfies Record<string, FurnitureDef>;

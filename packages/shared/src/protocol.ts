@@ -44,6 +44,7 @@ export const ClientMsgSchema = z.discriminatedUnion('t', [
     x: tileCoord,
     z: tileCoord,
     rot: z.number().int().min(0).max(3),
+    color: z.number().int().min(0).max(15).optional(),
   }),
   z.object({
     t: z.literal('moveItem'),
@@ -51,6 +52,7 @@ export const ClientMsgSchema = z.discriminatedUnion('t', [
     x: tileCoord,
     z: tileCoord,
     rot: z.number().int().min(0).max(3),
+    color: z.number().int().min(0).max(15).optional(),
   }),
   z.object({ t: z.literal('sellItem'), id: z.number().int() }),
   z.object({

@@ -8,6 +8,8 @@ export interface PlacedItem {
   z: number;
   /** 0..3, quarter turns. */
   rot: number;
+  /** Index into the item's colour choices (0 = default). */
+  color?: number;
 }
 
 export function footprint(it: Pick<PlacedItem, 'type' | 'rot'>): { w: number; d: number } {

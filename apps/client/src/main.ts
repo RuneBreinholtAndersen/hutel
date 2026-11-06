@@ -18,6 +18,7 @@ import {
   sellPrice,
   WALK_SPEED,
   type FriendView,
+  type FurnitureDef,
   type FurnitureType,
   type Look,
   type Me,
@@ -171,10 +172,11 @@ function bubble(id: string, name: string, text: string, whisper = false) {
 /* ---------------- furniture objects ---------------- */
 function placeObj(it: PlacedItem, lift = 0) {
   let g = objs.get(it.id);
-  if (!g || g.userData.type !== it.type) {
+  if (!g || g.userData.type !== it.type || g.userData.color !== (it.color ?? 0)) {
     if (g) furnRoot.remove(g);
-    g = buildFurniture(it.type, it.id);
+    g = buildFurniture(it.type, it.id, it.color ?? 0);
     g.userData.type = it.type;
+    g.userData.color = it.color ?? 0;
     furnRoot.add(g);
     objs.set(it.id, g);
   }
@@ -503,18 +505,30 @@ function renderNavigator(rooms: NavigatorRoom[]) {
 function renderShop() {
   if (!me) return;
   const list = FURNITURE_TYPES.filter((k) => !furniture(k).noShop);
+  const card = (k: FurnitureType) => {
+    const c = FURNITURE[k] as FurnitureDef;
+    const locked = !!c.unlock && !me!.badges.includes(c.unlock);
+    const dots = c.colors
+      ? `<div class="dots">${c.colors
+          .slice(0, 6)
+          .map((col) => `<i style="background:#${col.toString(16).padStart(6, '0')}"></i>`)
+          .join('')}</div>`
+      : '';
+    const btn = locked
+      ? `<button disabled>🔒 ${esc(BADGES[c.unlock!].icon + ' ' + BADGES[c.unlock!].name)}</button>`
+      : `<button data-buy="${k}" ${me!.coins < c.price ? 'disabled' : ''}>Køb</button>`;
+    return `<div class="item${locked ? ' locked' : ''}"><div class="ic">${c.icon}</div><div class="n">${c.name}</div><div class="p">${c.price} ${COIN} · ${c.w}×${c.d}</div>${dots}${btn}</div>`;
+  };
+  const free = list.filter((k) => !(FURNITURE[k] as FurnitureDef).unlock);
+  const special = list.filter((k) => (FURNITURE[k] as FurnitureDef).unlock);
   openPanel(
     'shop',
     head(
       '🛒 Møbelbutikken',
-      'Køb med mønter. Møblet ryger direkte ind på dit værelse, hvor du placerer det.',
+      'Køb med mønter. Møblet ryger direkte ind på dit værelse. Tryk 🎨 (eller F) for at vælge farve.',
     ) +
-      `<div class="grid">${list
-        .map((k) => {
-          const c = FURNITURE[k];
-          return `<div class="item"><div class="ic">${c.icon}</div><div class="n">${c.name}</div><div class="p">${c.price} ${COIN} · ${c.w}×${c.d}</div><button data-buy="${k}" ${me!.coins < c.price ? 'disabled' : ''}>Køb</button></div>`;
-        })
-        .join('')}</div>`,
+      `<div class="grid">${free.map(card).join('')}</div>
+      <h3>✨ Låses op med badges</h3><div class="grid">${special.map(card).join('')}</div>`,
   );
   $('panel')
     .querySelectorAll<HTMLElement>('[data-buy]')
@@ -679,9 +693,10 @@ function updateBuildbar() {
   $('buildbar').classList.toggle('hidden', !build);
   const h = !!held;
   $('bbText').textContent = h
-    ? 'Klik på gulvet for at placere · R roterer'
+    ? 'Klik på gulvet for at placere · R roterer · F skifter farve'
     : 'Byggetilstand: klik på et møbel for at flytte det';
   $('bbRot').classList.toggle('hidden', !h);
+  $('bbColor').classList.toggle('hidden', !h || !furniture(held!.item.type).colors);
   $('bbCancel').classList.toggle('hidden', !h);
   $('bbSell').classList.toggle('hidden', !h || !!held?.isNew || !isOwner());
   if (held && !held.isNew) $('bbSell').textContent = `💰 Sælg (+${sellPrice(held.item.type)})`;
@@ -735,10 +750,17 @@ function tryPlace() {
   if (!heldOk()) return toast('Det kan ikke stå der 🙃', 'error');
   const it = held.item;
   if (held.isNew) {
-    net?.send({ t: 'buy', type: it.type, x: it.x, z: it.z, rot: it.rot });
+    net?.send({ t: 'buy', type: it.type, x: it.x, z: it.z, rot: it.rot, color: it.color });
     removeObj(it.id);
   } else {
-    net?.send({ t: 'moveItem', id: it.id, x: it.x, z: it.z, rot: it.rot });
+    net?.send({
+      t: 'moveItem',
+      id: it.id,
+      x: it.x,
+      z: it.z,
+      rot: it.rot,
+      color: it.color ?? 0,
+    });
     placeObj(held.orig!);
   }
   held = null;
@@ -756,6 +778,13 @@ function cancelHeld() {
 function rotateHeld() {
   if (!held) return;
   held.item.rot = (held.item.rot + 1) % 4;
+  updHeld();
+}
+function recolorHeld() {
+  if (!held) return;
+  const n = furniture(held.item.type).colors?.length ?? 0;
+  if (!n) return;
+  held.item.color = ((held.item.color ?? 0) + 1) % n;
   updHeld();
 }
 function sellHeld() {
@@ -934,6 +963,7 @@ addEventListener('keydown', (e) => {
     return;
   }
   if ((e.key === 'r' || e.key === 'R') && held) rotateHeld();
+  else if ((e.key === 'f' || e.key === 'F') && held) recolorHeld();
   else if (e.key === 'Escape') {
     if (held) cancelHeld();
     else if (build) setBuild(false);
@@ -1051,6 +1081,7 @@ $('bDance').addEventListener('click', () => {
   net?.send({ t: 'action', kind: a?.action === 'dance' ? 'stop' : 'dance' });
 });
 $('bbRot').addEventListener('click', rotateHeld);
+$('bbColor').addEventListener('click', recolorHeld);
 $('bbSell').addEventListener('click', sellHeld);
 $('bbCancel').addEventListener('click', cancelHeld);
 $('qHead').addEventListener('click', () => $('quests').classList.toggle('min'));

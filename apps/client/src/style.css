@@ -746,3 +746,24 @@ select {
 #quests li small {
   opacity: 0.75;
 }
+
+/* shop: colour dots and locked items */
+.panel .item .dots,
+#panel .item .dots {
+  display: flex;
+  gap: 3px;
+  justify-content: center;
+  margin: 2px 0 6px;
+}
+#panel .item .dots i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+}
+#panel .item.locked {
+  opacity: 0.6;
+}
+#panel .item.locked button {
+  font-size: 11px;
+}
