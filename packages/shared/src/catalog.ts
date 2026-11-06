@@ -24,6 +24,11 @@ export interface FurnitureDef {
   /** Clicking switches between this many states (0 = off). `defaultState` when bought. */
   states?: number;
   defaultState?: number;
+  /**
+   * Hangs on a wall instead of standing on the floor. `w` is the width along the wall.
+   * rot 0 = back wall, rot 1 = left wall; `x` is the tile index along that wall.
+   */
+  wall?: boolean;
 }
 
 const FABRIC = [
@@ -190,6 +195,66 @@ export const FURNITURE = {
   },
   pool: { name: 'Pool', icon: '🏊', price: 0, w: 3, d: 2, noShop: true },
   arcade: { name: 'Spilleautomat', icon: '🕹️', price: 0, w: 1, d: 1, noShop: true },
+  // ---- On the wall ----
+  painting: {
+    name: 'Maleri',
+    icon: '🖼️',
+    price: 12,
+    w: 1,
+    d: 1,
+    wall: true,
+    colors: [0xc89a3c, 0x2a2a35, 0xf4efe6, 0x8a5634],
+  },
+  bigpainting: {
+    name: 'Stort maleri',
+    icon: '🏞️',
+    price: 22,
+    w: 2,
+    d: 1,
+    wall: true,
+    colors: [0xc89a3c, 0x2a2a35, 0xf4efe6],
+  },
+  poster: {
+    name: 'Plakat',
+    icon: '📜',
+    price: 6,
+    w: 1,
+    d: 1,
+    wall: true,
+    colors: [0xe0564a, 0x3f7f86, 0xe0a93b, 0x6f4a8f],
+  },
+  window: {
+    name: 'Vindue',
+    icon: '🪟',
+    price: 25,
+    w: 2,
+    d: 1,
+    wall: true,
+    colors: [0x9e2f3a, 0x2f4a7a, 0x3d7a5a, 0xe7dcc8],
+  },
+  wallshelf: {
+    name: 'Væghylde',
+    icon: '🪴',
+    price: 10,
+    w: 1,
+    d: 1,
+    wall: true,
+    colors: [0x8a5634, 0xf4efe6, 0x2a2a35],
+  },
+  clock: { name: 'Vægur', icon: '🕰️', price: 9, w: 1, d: 1, wall: true },
+  mirror: { name: 'Spejl', icon: '🪞', price: 14, w: 1, d: 1, wall: true, minLevel: 2 },
+  neon: {
+    name: 'Neonskilt',
+    icon: '💖',
+    price: 30,
+    w: 2,
+    d: 1,
+    wall: true,
+    minLevel: 4,
+    states: 2,
+    defaultState: 1,
+    colors: [0xff5ab0, 0x5ad8ff, 0xffd04a, 0x7dff8a],
+  },
   desk: { name: 'Reception', icon: '🛎️', price: 0, w: 3, d: 1, noShop: true },
   counter: { name: 'Cafédisk', icon: '🧁', price: 0, w: 3, d: 1, noShop: true },
 } as const satisfies Record<string, FurnitureDef>;

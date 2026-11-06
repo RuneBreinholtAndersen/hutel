@@ -57,6 +57,19 @@ export const APARTMENT_START_ITEMS: Record<ApartmentKind, Omit<PlacedItem, 'id'>
 };
 export type RoomAccess = 'open' | 'locked' | 'password';
 
+/**
+ * Wall tiles taken by a theme's built-in window, so pictures can't hang on top of it.
+ * Index along the wall (back wall = x, left wall = z).
+ */
+export const THEME_WALL_BLOCKS: Partial<
+  Record<RoomTheme, { back?: readonly number[]; left?: readonly number[] }>
+> = {
+  home: { left: [1, 2, 3] },
+  bedroom: { left: [1, 2, 3] },
+  bathroom: { left: [4, 5, 6] },
+  kitchen: { left: [3, 4, 5, 6] },
+};
+
 /** The door tile in every room (in front of the door on the back wall). */
 export const DOOR_TILE = [6, 0] as const;
 

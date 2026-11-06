@@ -41,6 +41,9 @@ import {
   type ServerMsg,
   type Tile,
   ROOM_CAPACITY,
+  decorDef,
+  decorKey,
+  type DecorKind,
   ROOM_SIZE,
 } from '@hutel/shared';
 import { Bots } from './bots';
@@ -110,6 +113,7 @@ const LIMIT_FOR: Partial<Record<ClientMsg['t'], LimitKind>> = {
   glide: 'glide',
   reset: 'build',
   buyRoom: 'build',
+  decor: 'build',
   admin: 'build',
   showBadge: 'social',
   stash: 'build',
@@ -168,6 +172,8 @@ export class Hotel {
         description: def.description,
         theme: def.theme,
         size: def.size ?? ROOM_SIZE,
+        wall: null,
+        floor: null,
         isPublic: true,
         ownerId: null,
         ownerName: null,
@@ -324,6 +330,7 @@ export class Hotel {
       motto: u.motto,
       daily: this.dailyView(u),
       wardrobe: u.wardrobe ?? [],
+      decor: u.decor ?? [],
       inventory: u.inventory ?? [],
       apartment: this.apartment(u),
       role: u.role,
@@ -378,6 +385,8 @@ export class Hotel {
         description: rec.description,
         theme: rec.theme ?? 'home',
         size: ROOM_SIZE,
+        wall: rec.wall ?? null,
+        floor: rec.floor ?? null,
         isPublic: false,
         ownerId: rec.ownerId,
         ownerName: owner?.name ?? null,
@@ -1020,6 +1029,8 @@ export class Hotel {
         return this.endTrade(user.id, `${user.name} afbrød byttehandlen.`);
       case 'buyRoom':
         return this.buyRoom(s, user, msg.kind);
+      case 'decor':
+        return this.setDecor(s, user, msg.kind, msg.id);
       case 'buyClothes': {
         const item = CLOTHES[msg.key];
         const owned = (user.wardrobe ??= []);
@@ -1089,6 +1100,36 @@ export class Hotel {
       case 'profile':
         return this.profile(s, user, msg.userId);
     }
+  }
+
+  /** Buys a wallpaper/floor if needed and uses it in the (own) room you are in. */
+  private setDecor(s: Session, user: UserRecord, kind: DecorKind, id: string | null) {
+    const room = s.room;
+    const rec = room && this.roomRecord(room);
+    if (!room || !rec || rec.ownerId !== user.id)
+      return this.toast(s, 'Du kan kun ændre tapet og gulv i dine egne rum.', 'error');
+    const owned = (user.decor ??= []);
+    if (id !== null) {
+      const def = decorDef(kind, id);
+      if (!def) return;
+      const key = decorKey(kind, id);
+      if (!owned.includes(key)) {
+        if (def.minLevel && levelOf(user).level < def.minLevel)
+          return this.toast(s, `🔒 Kræver level ${def.minLevel}`, 'error');
+        if (user.coins < def.price) return this.toast(s, 'Du har ikke mønter nok.', 'error');
+        owned.push(key);
+        this.coins(s, user, -def.price);
+        this.toast(s, `🎨 Du har købt: ${def.name}`);
+      }
+    }
+    if (kind === 'wall') rec.wall = room.meta.wall = id;
+    else rec.floor = room.meta.floor = id;
+    this.store.touch();
+    room.broadcast(
+      { t: 'decor', wall: room.meta.wall, floor: room.meta.floor },
+      { except: user.id },
+    );
+    this.send(s, { t: 'decor', wall: room.meta.wall, floor: room.meta.floor, owned });
   }
 
   private ownRoom(s: Session, user: UserRecord): { room: RoomInstance; rec: RoomRecord } | null {

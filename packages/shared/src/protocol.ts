@@ -32,6 +32,12 @@ export const ClientMsgSchema = z.discriminatedUnion('t', [
   z.object({ t: z.literal('use'), itemId: z.number().int() }),
   /** Buy a piece of clothing, key like "hat:cowboy". */
   z.object({ t: z.literal('buyClothes'), key: z.string().max(30) }),
+  /** Buy (if needed) and use a wallpaper or floor in the room I am in. null = room default. */
+  z.object({
+    t: z.literal('decor'),
+    kind: z.enum(['wall', 'floor']),
+    id: z.string().max(20).nullable(),
+  }),
   /** Put one of my placed items back into my inventory. */
   z.object({ t: z.literal('stash'), id: z.number().int() }),
   /** Place an item from my inventory in my own room. */
@@ -174,6 +180,9 @@ export interface RoomView {
   theme: RoomTheme;
   /** Floor size in tiles (square). */
   size: number;
+  /** Wallpaper / floor chosen by the owner (null = the theme's own). */
+  wall: string | null;
+  floor: string | null;
   ownerId: string | null;
   ownerName: string | null;
   access: RoomAccess;
@@ -195,6 +204,8 @@ export interface Me {
   daily: DailyView;
   /** Clothes bought in the shop ("slot:value"). */
   wardrobe: string[];
+  /** Wallpapers and floors I own, e.g. "wall:mint". */
+  decor: string[];
   /** Furniture not placed in a room. */
   inventory: InvItem[];
   role: 'user' | 'moderator' | 'admin';
@@ -286,6 +297,7 @@ export type ServerMsg =
   /** A system line in the room (game results etc.); shown over `id` if given. */
   | { t: 'sys'; text: string; id?: string }
   | { t: 'wardrobe'; wardrobe: string[] }
+  | { t: 'decor'; wall: string | null; floor: string | null; owned?: string[] }
   | { t: 'inventory'; items: InvItem[] }
   | { t: 'tradeAsk'; from: { id: string; name: string } }
   | { t: 'trade'; trade: TradeView }

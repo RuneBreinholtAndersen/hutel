@@ -26,6 +26,8 @@ Sidst opdateret: 6. november 2026. Rækkefølge: voksen-Hutel i lukket beta før
 
 ## Færdigt 6. november (eftermiddag)
 
+- ✅ Tapet (8 slags) og gulve (8 slags): købes én gang og bruges i alle egne rum
+- ✅ Vægmøbler: maleri, stort maleri, plakat, vindue, væghylde, vægur, spejl og neonskilt (hænges på bag- eller venstrevæg)
 - ✅ Lobbyen og caféen er nu 12×12 med ny møblering; rumstørrelse kan variere pr. rum
 - ✅ Højst 25 gæster pr. rum; navigatoren viser 3/25 og "Fyldt"
 - ✅ Hvisken i rummet (/h navn eller 🤫 på profilen) og messenger til venner med beskeder, der venter til de logger ind, og ulæst-tæller

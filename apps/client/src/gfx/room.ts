@@ -1,4 +1,4 @@
-import { DOOR_TILE, type RoomTheme } from '@hutel/shared';
+import { DOOR_TILE, type FloorDef, type RoomTheme, type WallpaperDef } from '@hutel/shared';
 import { box, canvasTex, cyl, lin, M, N, rbox, rnd, setRoomSizeN, sph, T, tw } from './helpers';
 
 const H = 3.0;
@@ -27,6 +27,52 @@ function wallpaper(base: string, stripe: string, dot: string, diamond = false) {
   });
   t.wrapS = t.wrapT = T.RepeatWrapping;
   t.repeat.set(5, 1.9);
+  return t;
+}
+
+const wallCache = new Map<string, T.Texture>();
+/** Wallpaper texture for a bought wallpaper (patterns drawn in code). */
+function wallTex(def: WallpaperDef): T.Texture {
+  const key = def.name;
+  const hit = wallCache.get(key);
+  if (hit) return hit;
+  let t: T.Texture;
+  if (def.pattern === 'stripes' || def.pattern === 'diamonds')
+    t = wallpaper(def.base, def.stripe, def.dot, def.pattern === 'diamonds');
+  else {
+    t = canvasTex(128, 128, (g, w, h) => {
+      g.fillStyle = def.base;
+      g.fillRect(0, 0, w, h);
+      if (def.pattern === 'bricks') {
+        g.fillStyle = def.stripe;
+        for (let y = 0; y < h; y += 16)
+          for (let x = (y / 16) % 2 ? -16 : 0; x < w; x += 32) g.fillRect(x + 2, y + 2, 28, 12);
+        g.fillStyle = def.dot;
+        for (let y = 0; y < h; y += 16) g.fillRect(0, y, w, 1);
+      } else if (def.pattern === 'wood') {
+        for (let x = 0; x < w; x += 16) {
+          g.fillStyle = (x / 16) % 2 ? def.stripe : def.base;
+          g.fillRect(x, 0, 16, h);
+          g.fillStyle = def.dot;
+          g.fillRect(x, 0, 1, h);
+          g.fillRect(x + 6, 20 + ((x * 7) % 60), 1, 30);
+        }
+      } else if (def.pattern === 'stars') {
+        g.fillStyle = def.dot;
+        for (let i = 0; i < 26; i++) {
+          g.beginPath();
+          g.arc((i * 53) % w, (i * 37) % h, i % 4 ? 1.4 : 2.6, 0, 7);
+          g.fill();
+        }
+      } else {
+        g.fillStyle = def.stripe;
+        g.fillRect(0, h - 10, w, 10);
+      }
+    });
+    t.wrapS = t.wrapT = T.RepeatWrapping;
+    t.repeat.set(5, 1.9);
+  }
+  wallCache.set(key, t);
   return t;
 }
 
@@ -249,7 +295,6 @@ function decor(theme: RoomTheme): { group: T.Group; lights: T.Light[]; windowLig
   const x = -N / 2;
   if (theme === 'home') {
     windowOnLeftWall(group, -1.5);
-    painting(group, -1.0, 2.0);
     return { group, lights, windowLight: true };
   }
   if (theme === 'lobby') {
@@ -296,7 +341,6 @@ function decor(theme: RoomTheme): { group: T.Group; lights: T.Light[]; windowLig
   }
   if (theme === 'bedroom') {
     windowOnLeftWall(group, -1.5);
-    painting(group, 1.2, 2.0);
     return { group, lights, windowLight: true };
   }
   if (theme === 'bathroom') {
@@ -427,6 +471,8 @@ function decor(theme: RoomTheme): { group: T.Group; lights: T.Light[]; windowLig
 
 export function createRoom(scene: T.Scene) {
   const tiles: T.Mesh[] = [];
+  /** Back and left wall meshes, for hanging pictures and windows. */
+  const walls: T.Mesh[] = [];
   const wallMat = M(0xffffff, { map: THEMES.home.wall, roughness: 0.9 });
   const wain = M(0x9c5f3a, { roughness: 0.7 });
   const shell = new T.Group();
@@ -438,6 +484,7 @@ export function createRoom(scene: T.Scene) {
       if (c instanceof T.Mesh) c.geometry.dispose();
     }
     tiles.length = 0;
+    walls.length = 0;
     shell.add(box(N + 0.5, 0.5, N + 0.5, M(0x4e3121), 0, -0.37, 0));
     for (let x = 0; x < N; x++)
       for (let z = 0; z < N; z++) {
@@ -457,8 +504,12 @@ export function createRoom(scene: T.Scene) {
         shell.add(t);
         tiles.push(t);
       }
-    shell.add(box(N + 0.2, H, 0.2, wallMat, -0.1, H / 2, -N / 2 - 0.1));
-    shell.add(box(0.2, H, N, wallMat, -N / 2 - 0.1, H / 2, 0));
+    const back = box(N + 0.2, H, 0.2, wallMat, -0.1, H / 2, -N / 2 - 0.1);
+    const left = box(0.2, H, N, wallMat, -N / 2 - 0.1, H / 2, 0);
+    back.userData.wall = 0;
+    left.userData.wall = 1;
+    walls.push(back, left);
+    shell.add(back, left);
     shell.add(box(N, 1.0, 0.06, wain, 0, 0.5, -N / 2 + 0.03));
     shell.add(box(0.06, 1.0, N, wain, -N / 2 + 0.03, 0.5, 0));
     shell.add(box(N, 0.08, 0.11, trim, 0, 1.03, -N / 2 + 0.05));
@@ -543,16 +594,25 @@ export function createRoom(scene: T.Scene) {
   scene.add(dust);
 
   let current: ReturnType<typeof decor> | null = null;
+  let currentTheme: RoomTheme = 'home';
+  let customWall: WallpaperDef | null = null;
+  let customFloor: FloorDef | null = null;
+  function paint() {
+    const th = THEMES[currentTheme];
+    wallMat.map = customWall ? wallTex(customWall) : th.wall;
+    wallMat.needsUpdate = true;
+    const fl: readonly [number, number] = customFloor ? [customFloor.a, customFloor.b] : th.floor;
+    for (const t of tiles)
+      (t.material as T.MeshStandardMaterial).color.copy(lin(fl[t.userData.alt as number]!));
+  }
   function setTheme(theme: RoomTheme) {
+    currentTheme = theme;
     if (current) scene.remove(current.group);
     current = decor(theme);
     scene.add(current.group);
     const th = THEMES[theme];
-    wallMat.map = th.wall;
-    wallMat.needsUpdate = true;
     wain.color.copy(lin(th.wain));
-    for (const t of tiles)
-      (t.material as T.MeshStandardMaterial).color.copy(lin(th.floor[t.userData.alt as number]));
+    paint();
     winSpot.visible = current.windowLight;
     dust.visible = current.windowLight;
     const wz = theme === 'cafe' || theme === 'bathroom' ? 1.5 : theme === 'kitchen' ? 1.2 : -1.5;
@@ -562,8 +622,15 @@ export function createRoom(scene: T.Scene) {
 
   return {
     tiles,
+    walls,
     doorGroup,
     setTheme,
+    /** Owner's own wallpaper/floor on top of the theme (null = the theme's). */
+    setDecor(wall: WallpaperDef | null, floor: FloorDef | null) {
+      customWall = wall;
+      customFloor = floor;
+      paint();
+    },
     /** Changes the floor size. Call setTheme afterwards to recolour the new tiles. */
     setSize(n: number) {
       if (n === N && tiles.length) return;

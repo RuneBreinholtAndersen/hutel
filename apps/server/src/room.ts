@@ -8,6 +8,7 @@ import {
   RUN_MULTIPLIER,
   WALK_SPEED,
   tilesOf,
+  THEME_WALL_BLOCKS,
   type Look,
   type PlacedItem,
   type PlayerView,
@@ -49,6 +50,8 @@ export interface RoomMeta {
   theme: RoomTheme;
   /** Floor size in tiles (square). */
   size: number;
+  wall: string | null;
+  floor: string | null;
   isPublic: boolean;
   ownerId: string | null;
   ownerName: string | null;
@@ -111,6 +114,8 @@ export class RoomInstance {
       description: this.meta.description,
       theme: this.meta.theme,
       size: this.meta.size,
+      wall: this.meta.wall,
+      floor: this.meta.floor,
       ownerId: this.meta.ownerId,
       ownerName: this.meta.ownerName,
       access: this.meta.access,
@@ -311,6 +316,6 @@ export class RoomInstance {
     const occupied = [...this.players.values()]
       .filter((p) => p.seatId !== it.id)
       .map((p) => this.tileOf(p));
-    return canPlace(this.meta.size, others, it, occupied);
+    return canPlace(this.meta.size, others, it, occupied, THEME_WALL_BLOCKS[this.meta.theme]);
   }
 }

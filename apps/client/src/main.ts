@@ -13,6 +13,12 @@ import {
   itemState,
   DEFAULT_LOOK,
   footprint,
+  isWallItem,
+  THEME_WALL_BLOCKS,
+  WALLPAPERS,
+  FLOORS,
+  type WallpaperDef,
+  type FloorDef,
   furniture,
   FURNITURE,
   FURNITURE_TYPES,
@@ -208,6 +214,13 @@ function placeObj(it: PlacedItem, lift = 0) {
     furnRoot.add(g);
     objs.set(it.id, g);
   }
+  if (isWallItem(it.type)) {
+    const c = tw(it.x) + (furniture(it.type).w - 1) / 2;
+    if (it.rot % 2) g.position.set(-rs() / 2, lift, c);
+    else g.position.set(c, lift, -rs() / 2);
+    g.rotation.y = it.rot % 2 ? Math.PI / 2 : 0;
+    return g;
+  }
   const f = footprint(it);
   g.position.set(tw(it.x) + (f.w - 1) / 2, lift, tw(it.z) + (f.d - 1) / 2);
   g.rotation.y = (it.rot * Math.PI) / 2;
@@ -238,6 +251,7 @@ function setRoom(view: RoomView) {
   roomGfx.setSize(view.size);
   stage.setRoomSize(view.size);
   roomGfx.setTheme(view.theme);
+  applyDecor();
   for (const it of view.items) {
     items.set(it.id, it);
     placeObj(it);
@@ -248,6 +262,15 @@ function setRoom(view: RoomView) {
   logLine({ text: `*** Du er i ${view.name}`, cls: 'sys' });
   roomGfx.openDoor(false);
   setTimeout(() => $('fade').classList.remove('on'), 120);
+}
+
+const wallDef = (id: string | null) =>
+  id && id in WALLPAPERS ? (WALLPAPERS[id as keyof typeof WALLPAPERS] as WallpaperDef) : null;
+const floorDef = (id: string | null) =>
+  id && id in FLOORS ? (FLOORS[id as keyof typeof FLOORS] as FloorDef) : null;
+function applyDecor() {
+  if (!room) return;
+  roomGfx.setDecor(wallDef(room.wall), floorDef(room.floor));
 }
 
 function updateRoomUi() {
@@ -342,6 +365,15 @@ function handle(msg: ServerMsg) {
       return;
     case 'room':
       return setRoom(msg.room);
+    case 'decor':
+      if (room) {
+        room.wall = msg.wall;
+        room.floor = msg.floor;
+        applyDecor();
+      }
+      if (me && msg.owned) me.decor = msg.owned;
+      if (panelKind === 'shop') renderShop();
+      return;
     case 'playerJoin':
       if (!actors.has(msg.player.id))
         actors.set(msg.player.id, new Actor(msg.player, stage.scene, overlay, false));
@@ -675,11 +707,13 @@ function renderShop() {
       : `<button data-buy="${k}" ${me!.coins < c.price ? 'disabled' : ''}>Køb</button>`;
     return `<div class="item${locked ? ' locked' : ''}"><div class="ic">${c.icon}</div><div class="n">${c.name}</div><div class="p">${c.price} ${COIN} · ${c.w}×${c.d}</div>${dots}${btn}</div>`;
   };
-  const free = list.filter(
+  const onWall = list.filter((k) => (FURNITURE[k] as FurnitureDef).wall);
+  const floorList = list.filter((k) => !(FURNITURE[k] as FurnitureDef).wall);
+  const free = floorList.filter(
     (k) => !(FURNITURE[k] as FurnitureDef).unlock && !(FURNITURE[k] as FurnitureDef).minLevel,
   );
-  const special = list.filter((k) => (FURNITURE[k] as FurnitureDef).unlock);
-  const lev = list
+  const special = floorList.filter((k) => (FURNITURE[k] as FurnitureDef).unlock);
+  const lev = floorList
     .filter((k) => (FURNITURE[k] as FurnitureDef).minLevel)
     .sort(
       (a, b) => (FURNITURE[a] as FurnitureDef).minLevel! - (FURNITURE[b] as FurnitureDef).minLevel!,
@@ -701,6 +735,8 @@ function renderShop() {
     ) +
       invHtml +
       `<h3>🛒 Butikken</h3><div class="grid">${free.map(card).join('')}</div>
+      <h3>🖼️ Til væggen</h3><p class="sub">Peg på væggen (eller gulvet tæt ved den) for at hænge op · R skifter væg</p><div class="grid">${onWall.map(card).join('')}</div>
+      ${decorShop()}
       <h3>🏠 Til lejligheden (låses op med level)</h3><div class="grid">${lev.map(card).join('')}</div>
       <h3>✨ Låses op med badges</h3><div class="grid">${special.map(card).join('')}</div>`,
   );
@@ -708,8 +744,61 @@ function renderShop() {
     .querySelectorAll<HTMLElement>('[data-buy]')
     .forEach((b) => b.addEventListener('click', () => startBuy(b.dataset.buy as FurnitureType)));
   $('panel')
+    .querySelectorAll<HTMLElement>('[data-decor]')
+    .forEach((b) =>
+      b.addEventListener('click', () => {
+        const [kind, id] = b.dataset.decor!.split(':') as ['wall' | 'floor', string];
+        net?.send({ t: 'decor', kind, id: id === '-' ? null : id });
+      }),
+    );
+  $('panel')
     .querySelectorAll<HTMLElement>('[data-inv]')
     .forEach((b) => b.addEventListener('click', () => startPlaceInv(Number(b.dataset.inv))));
+}
+
+const hex = (c: number) => '#' + c.toString(16).padStart(6, '0');
+/** Wallpaper and floor cards; buying one also puts it up in the room you are in. */
+function decorShop() {
+  if (!me || !room) return '';
+  if (room.ownerId !== me.id)
+    return '<h3>🎨 Tapet og gulv</h3><p class="sub">Gå ind i et af dine egne rum for at skifte tapet og gulv.</p>';
+  const lv = levelOf(me).level;
+  const card = (
+    kind: 'wall' | 'floor',
+    id: string,
+    def: { name: string; price: number; minLevel?: number },
+    swatch: string,
+  ) => {
+    const owned = me!.decor.includes(`${kind}:${id}`);
+    const using = (kind === 'wall' ? room!.wall : room!.floor) === id;
+    const locked = !owned && !!def.minLevel && lv < def.minLevel;
+    const btn = using
+      ? '<button disabled>✓ I brug</button>'
+      : locked
+        ? `<button disabled>🔒 Level ${def.minLevel}</button>`
+        : owned
+          ? `<button data-decor="${kind}:${id}">Brug</button>`
+          : `<button data-decor="${kind}:${id}" ${me!.coins < def.price ? 'disabled' : ''}>Køb</button>`;
+    return `<div class="item${locked ? ' locked' : ''}"><div class="swatch" style="${swatch}"></div><div class="n">${esc(def.name)}</div><div class="p">${owned ? 'Ejet' : `${def.price} ${COIN}`}</div>${btn}</div>`;
+  };
+  const walls = Object.entries(WALLPAPERS).map(([id, d]) =>
+    card(
+      'wall',
+      id,
+      d,
+      `background:repeating-linear-gradient(90deg,${d.base} 0 10px,${d.stripe} 10px 18px)`,
+    ),
+  );
+  const floors = Object.entries(FLOORS).map(([id, d]) =>
+    card(
+      'floor',
+      id,
+      d,
+      `background:repeating-conic-gradient(${hex(d.a)} 0 25%,${hex(d.b)} 0 50%) 0 0/24px 24px`,
+    ),
+  );
+  return `<h3>🎨 Tapet</h3><p class="sub">Køb én gang – brug det i alle dine rum. <button class="small" data-decor="wall:-">Standard</button></p><div class="grid">${walls.join('')}</div>
+    <h3>🟫 Gulv</h3><p class="sub"><button class="small" data-decor="floor:-">Standard</button></p><div class="grid">${floors.join('')}</div>`;
 }
 
 function levelBox() {
@@ -1120,22 +1209,40 @@ function heldOk() {
   const occupied = [...actors.values()]
     .filter((a) => a.seatId !== held!.item.id)
     .map((a) => a.tile());
-  return canPlace(rs(), others, held.item, occupied);
+  return canPlace(rs(), others, held.item, occupied, room ? THEME_WALL_BLOCKS[room.theme] : {});
 }
 function updHeld() {
   if (!held) {
     placeM.visible = false;
     return;
   }
-  const g = placeObj(held.item, 0.12);
+  const wallIt = isWallItem(held.item.type);
+  const g = placeObj(held.item, wallIt ? 0.05 : 0.12);
   const f = footprint(held.item);
   placeM.visible = true;
-  placeM.scale.set(f.w, f.d, 1);
-  placeM.position.set(g.position.x, 0.02, g.position.z);
+  if (wallIt) {
+    // Highlight the strip of floor right under the wall item.
+    const w = furniture(held.item.type).w;
+    const side = held.item.rot % 2 === 1;
+    placeM.scale.set(side ? 1 : w, side ? w : 1, 1);
+    placeM.position.set(side ? tw(0) : g.position.x, 0.02, side ? g.position.z : tw(0));
+  } else {
+    placeM.scale.set(f.w, f.d, 1);
+    placeM.position.set(g.position.x, 0.02, g.position.z);
+  }
   (placeM.material as T.MeshBasicMaterial).color.setHex(heldOk() ? 0x6fd36f : 0xe0564a);
 }
-function moveHeldTo(t: { x: number; z: number }) {
+function moveHeldTo(t: { x: number; z: number; wall?: number }) {
   if (!held) return;
+  if (isWallItem(held.item.type)) {
+    // Point at a wall, or at the floor near it: the nearest wall wins.
+    const side = t.wall !== undefined ? t.wall === 1 : t.z > t.x;
+    const w = furniture(held.item.type).w;
+    held.item.rot = side ? 1 : 0;
+    held.item.z = 0;
+    held.item.x = Math.max(0, Math.min(rs() - w, (side ? t.z : t.x) - Math.floor((w - 1) / 2)));
+    return updHeld();
+  }
   const f = footprint(held.item);
   held.item.x = Math.max(0, Math.min(rs() - f.w, t.x - Math.floor((f.w - 1) / 2)));
   held.item.z = Math.max(0, Math.min(rs() - f.d, t.z - Math.floor((f.d - 1) / 2)));
@@ -1154,7 +1261,16 @@ function startBuy(type: FurnitureType) {
   cancelHeld();
   closePanel();
   setBuild(true);
-  held = { item: { id: -Date.now(), type, x: 3, z: 4, rot: 0 }, isNew: true };
+  held = {
+    item: {
+      id: -Date.now(),
+      type,
+      x: isWallItem(type) ? 2 : 3,
+      z: isWallItem(type) ? 0 : 4,
+      rot: 0,
+    },
+    isNew: true,
+  };
   updHeld();
   updateBuildbar();
 }
@@ -1193,7 +1309,7 @@ function cancelHeld() {
 }
 function rotateHeld() {
   if (!held) return;
-  held.item.rot = (held.item.rot + 1) % 4;
+  held.item.rot = isWallItem(held.item.type) ? (held.item.rot + 1) % 2 : (held.item.rot + 1) % 4;
   updHeld();
 }
 function startPlaceInv(index: number) {
@@ -1245,6 +1361,20 @@ function hitTile(): { x: number; z: number } | null {
   const h = ray.intersectObjects(roomGfx.tiles, false)[0];
   return h ? (h.object.userData.tile as { x: number; z: number }) : null;
 }
+/** Where on a wall the pointer is (for hanging things), as a tile index along that wall. */
+function hitWall(): { x: number; z: number; wall: number } | null {
+  const h = ray.intersectObjects(roomGfx.walls, false)[0];
+  if (!h) return null;
+  const wall = h.object.userData.wall as number;
+  const idx = Math.round((wall ? h.point.z : h.point.x) + rs() / 2 - 0.5);
+  const i = Math.max(0, Math.min(rs() - 1, idx));
+  return wall ? { x: 0, z: i, wall } : { x: i, z: 0, wall };
+}
+/** Target for the item in hand: walls first for wall items. */
+function heldTarget() {
+  if (held && isWallItem(held.item.type)) return hitWall() ?? hitTile();
+  return hitTile();
+}
 function hitItem(incWalk: boolean): PlacedItem | null {
   for (const h of ray.intersectObjects(furnRoot.children, true)) {
     const it = items.get(h.object.userData.itemId as number);
@@ -1260,7 +1390,8 @@ function hitActor(): Actor | null {
 function onHover() {
   const t = hitTile();
   if (held) {
-    if (t) moveHeldTo(t);
+    const ht = heldTarget();
+    if (ht) moveHeldTo(ht);
     return;
   }
   const it = hitItem(build);
@@ -1278,7 +1409,7 @@ function onHover() {
 function onClick() {
   if (!net || !room) return;
   if (held) {
-    const t = hitTile();
+    const t = heldTarget();
     if (t) moveHeldTo(t);
     return tryPlace();
   }

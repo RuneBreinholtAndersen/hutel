@@ -72,6 +72,34 @@ describe('placement', () => {
   });
 });
 
+describe('wall items', () => {
+  it('hang on the back or left wall, never over the door or on each other', () => {
+    const pic = (id: number, x: number, rot: number, type: PlacedItem['type'] = 'painting') => ({
+      id,
+      type,
+      x,
+      z: 0,
+      rot,
+    });
+    expect(canPlace(8, [], pic(1, 2, 0))).toBe(true);
+    expect(canPlace(8, [], pic(1, 2, 1))).toBe(true);
+    expect(canPlace(8, [], pic(1, DOOR_TILE[0], 0))).toBe(false); // the door
+    expect(canPlace(8, [], pic(1, DOOR_TILE[0], 1))).toBe(true); // left wall is fine
+    expect(canPlace(8, [], pic(1, 7, 0, 'window'))).toBe(false); // 2 wide, sticks out
+    expect(canPlace(8, [], pic(1, 2, 2))).toBe(false);
+    expect(canPlace(8, [pic(2, 3, 0, 'window')], pic(1, 2, 0, 'window'))).toBe(false);
+    expect(canPlace(8, [pic(2, 3, 1, 'window')], pic(1, 2, 0, 'window'))).toBe(true);
+    // A picture does not block the floor or collide with a sofa below it.
+    const sofa: PlacedItem = { id: 3, type: 'sofa', x: 2, z: 0, rot: 0 };
+    expect(canPlace(8, [sofa], pic(1, 2, 0))).toBe(true);
+    expect(canPlace(8, [pic(1, 2, 0)], sofa)).toBe(true);
+    expect(buildGrid(8, [pic(1, 2, 0)]).cells[2]![0]).toBe(0);
+    // Not over a theme's built-in window.
+    expect(canPlace(8, [], pic(1, 2, 1), [], { left: [1, 2, 3] })).toBe(false);
+    expect(canPlace(8, [], pic(1, 5, 1), [], { left: [1, 2, 3] })).toBe(true);
+  });
+});
+
 describe('chat', () => {
   it('sanitizes and caps', () => {
     expect(sanitizeChat('  hej\n\u0000  med   dig ')).toBe('hej med dig');

@@ -577,6 +577,31 @@ describe('multiplayer', () => {
     late.c.ws.close();
   });
 
+  it('buys wallpaper and floor once, and hangs pictures on the wall', async () => {
+    const { c, g } = await login('Tapetserer');
+    const u = app.store.getUser(g.userId)!;
+    u.coins = 200;
+    c.send({ t: 'decor', kind: 'wall', id: 'mint' });
+    const d = await c.waitFor('decor', (m) => m.wall === 'mint');
+    expect(d.owned).toContain('wall:mint');
+    expect(u.coins).toBe(200 - 15);
+    c.send({ t: 'decor', kind: 'wall', id: null });
+    await c.waitFor('decor', (m) => m.wall === null);
+    c.send({ t: 'decor', kind: 'wall', id: 'mint' }); // already owned: free
+    await c.waitFor('decor', (m) => m.wall === 'mint');
+    expect(u.coins).toBe(185);
+    c.send({ t: 'decor', kind: 'floor', id: 'marmor' }); // needs level 3
+    expect((await c.waitFor('toast', (m) => /level 3/.test(m.text))).kind).toBe('error');
+    expect(app.store.getRoom(u.homeRoomId)!.wall).toBe('mint');
+    c.send({ t: 'buy', type: 'painting', x: 1, z: 0, rot: 0 });
+    expect((await c.waitFor('itemPut', (m) => m.item.type === 'painting')).item.x).toBe(1);
+    c.send({ t: 'join', roomId: 'cafe' });
+    await c.waitFor('room', (m) => m.room.id === 'cafe');
+    c.send({ t: 'decor', kind: 'floor', id: 'skak' });
+    expect((await c.waitFor('toast', (m) => /egne rum/.test(m.text))).kind).toBe('error');
+    c.ws.close();
+  });
+
   it('whispers only to someone in the same room, hidden from others', async () => {
     const a = await login('Hviskeren');
     const b = await login('Lytteren');

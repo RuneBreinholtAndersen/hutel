@@ -902,3 +902,9 @@ button.badge.on {
 .users.full {
   color: #ff8a7a;
 }
+.item .swatch {
+  height: 42px;
+  border-radius: 8px;
+  margin-bottom: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}

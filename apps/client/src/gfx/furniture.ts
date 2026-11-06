@@ -1,5 +1,5 @@
 import { furniture, type FurnitureType } from '@hutel/shared';
-import { cyl, M, pick, rbox, rnd, shade, sph, T } from './helpers';
+import { canvasTex, cyl, M, pick, rbox, rnd, shade, sph, T } from './helpers';
 
 const wood = M(0x8a5634, { roughness: 0.6 });
 const woodDark = M(0x5e3820, { roughness: 0.6 });
@@ -22,6 +22,71 @@ const lighter = (c: number, k = 0.18) => {
   const f = (v: number) => Math.min(255, Math.round(v + (255 - v) * k));
   return (f(r) << 16) | (f(g) << 8) | f(b);
 };
+
+/** Gold/black/white frame with a picture, hanging at eye height. */
+function framed(w: number, h: number, c: number, tex: T.Texture) {
+  const g = new T.Group();
+  g.add(
+    rbox(w + 0.12, h + 0.12, 0.05, M(c, { metalness: 0.3, roughness: 0.45 }), 0, 1.8, 0.025, 0.02),
+  );
+  const p = new T.Mesh(new T.PlaneGeometry(w, h), M(0xffffff, { map: tex, roughness: 0.85 }));
+  p.position.set(0, 1.8, 0.055);
+  g.add(p);
+  return g;
+}
+
+/** Simple generated artworks (never copied images). */
+function art(kind: number) {
+  return canvasTex(160, 100, (g, w, h) => {
+    if (kind === 1) {
+      const sky = g.createLinearGradient(0, 0, 0, h);
+      sky.addColorStop(0, '#ffb35c');
+      sky.addColorStop(1, '#f1d6cf');
+      g.fillStyle = sky;
+      g.fillRect(0, 0, w, h);
+      g.fillStyle = '#ffe08a';
+      g.beginPath();
+      g.arc(w * 0.7, h * 0.45, 12, 0, 7);
+      g.fill();
+      g.fillStyle = '#5b8f4a';
+      g.beginPath();
+      g.moveTo(0, h);
+      for (let x = 0; x <= w; x += 10) g.lineTo(x, h * 0.65 - Math.sin(x * 0.05) * 10);
+      g.lineTo(w, h);
+      g.fill();
+      g.fillStyle = '#3d6a35';
+      g.fillRect(0, h * 0.85, w, h);
+      return;
+    }
+    const cols = ['#e0564a', '#3f7f86', '#e0a93b', '#6f4a8f', '#f4efe6'];
+    g.fillStyle = '#2a2a35';
+    g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 7; i++) {
+      g.fillStyle = pick(cols)!;
+      g.beginPath();
+      g.arc(rnd(10, w - 10), rnd(10, h - 10), rnd(8, 26), 0, 7);
+      g.fill();
+    }
+  });
+}
+
+let skyCache: T.Texture | null = null;
+function sky() {
+  return (skyCache ??= canvasTex(128, 96, (g, w, h) => {
+    const gr = g.createLinearGradient(0, 0, 0, h);
+    gr.addColorStop(0, '#3a2a5a');
+    gr.addColorStop(0.6, '#ff9a5c');
+    gr.addColorStop(1, '#ffd08a');
+    g.fillStyle = gr;
+    g.fillRect(0, 0, w, h);
+    g.fillStyle = '#4a2f3a';
+    g.beginPath();
+    g.moveTo(0, h);
+    for (let x = 0; x <= w; x += 8) g.lineTo(x, h * 0.8 - (x % 24 < 12 ? 10 : 2));
+    g.lineTo(w, h);
+    g.fill();
+  }));
+}
 
 const BUILD: Record<FurnitureType, (c: number, state: number) => T.Group> = {
   plant() {
@@ -540,6 +605,164 @@ const BUILD: Record<FurnitureType, (c: number, state: number) => T.Group> = {
       const pl = new T.PointLight(0xff7a3a, 0.8, 3, 2);
       pl.position.set(0, 1.2, 0);
       g.add(pl);
+    }
+    return g;
+  },
+  // ---- Wall items: built facing +z with their back on the wall (z = 0) ----
+  painting(c) {
+    return framed(0.8, 0.62, c, art(0));
+  },
+  bigpainting(c) {
+    return framed(1.7, 0.95, c, art(1));
+  },
+  poster(c) {
+    const g = new T.Group();
+    const hex = '#' + c.toString(16).padStart(6, '0');
+    const tex = canvasTex(96, 128, (x, w, h) => {
+      x.fillStyle = hex;
+      x.fillRect(0, 0, w, h);
+      x.fillStyle = 'rgba(255,255,255,.85)';
+      x.beginPath();
+      x.arc(w / 2, h * 0.42, w * 0.26, 0, 7);
+      x.fill();
+      x.fillStyle = 'rgba(0,0,0,.25)';
+      x.fillRect(w * 0.15, h * 0.78, w * 0.7, 8);
+      x.fillRect(w * 0.25, h * 0.86, w * 0.5, 6);
+    });
+    const p = new T.Mesh(new T.PlaneGeometry(0.6, 0.82), M(0xffffff, { map: tex, roughness: 0.9 }));
+    p.position.set(0, 1.75, 0.02);
+    g.add(p);
+    for (const [x, y] of [
+      [-0.26, 2.12],
+      [0.26, 2.12],
+    ] as const)
+      g.add(sph(0.025, M(0xd8433a), x, y, 0.03));
+    return g;
+  },
+  window(c) {
+    const g = new T.Group();
+    const wy = 1.8,
+      ww = 1.6,
+      wh = 1.2;
+    const glass = new T.Mesh(new T.PlaneGeometry(ww, wh), new T.MeshBasicMaterial({ map: sky() }));
+    glass.position.set(0, wy, 0.01);
+    g.add(glass);
+    const fr = M(0xf4efe6, { roughness: 0.6 });
+    g.add(rbox(ww + 0.16, 0.08, 0.1, fr, 0, wy + wh / 2 + 0.04, 0.05, 0.02));
+    g.add(rbox(ww + 0.16, 0.08, 0.1, fr, 0, wy - wh / 2 - 0.04, 0.05, 0.02));
+    g.add(rbox(0.08, wh, 0.1, fr, -ww / 2 - 0.04, wy, 0.05, 0.02));
+    g.add(rbox(0.08, wh, 0.1, fr, ww / 2 + 0.04, wy, 0.05, 0.02));
+    g.add(rbox(0.05, wh, 0.05, fr, 0, wy, 0.03, 0.015));
+    g.add(rbox(ww + 0.35, 0.06, 0.26, fr, 0, wy - wh / 2 - 0.11, 0.13, 0.02));
+    const cur = M(c, { roughness: 0.9 });
+    g.add(rbox(0.32, wh + 0.6, 0.1, cur, -ww / 2 - 0.2, wy - 0.05, 0.12, 0.04));
+    g.add(rbox(0.32, wh + 0.6, 0.1, cur, ww / 2 + 0.2, wy - 0.05, 0.12, 0.04));
+    g.add(cyl(0.02, 0.02, ww + 1.0, gold, 0, wy + wh / 2 + 0.3, 0.16).rotateZ(Math.PI / 2));
+    return g;
+  },
+  wallshelf(c) {
+    const g = new T.Group();
+    const m = M(c, { roughness: 0.6 });
+    g.add(rbox(0.86, 0.05, 0.26, m, 0, 1.55, 0.13, 0.015));
+    for (const x of [-0.32, 0.32]) g.add(rbox(0.04, 0.16, 0.2, m, x, 1.47, 0.1, 0.01));
+    g.add(cyl(0.07, 0.055, 0.12, M(0xc0643b), -0.22, 1.64, 0.13));
+    g.add(sph(0.09, M(0x5b9a45), -0.22, 1.76, 0.13));
+    for (const [x, h, col] of [
+      [0.08, 0.22, 0x2f4a7a],
+      [0.15, 0.19, 0xc94f3d],
+      [0.22, 0.24, 0xe0a93b],
+    ] as const)
+      g.add(rbox(0.06, h, 0.16, M(col), x, 1.575 + h / 2, 0.12, 0.01));
+    return g;
+  },
+  clock() {
+    const g = new T.Group();
+    const face = canvasTex(128, 128, (x, w) => {
+      x.fillStyle = '#f7f0e2';
+      x.beginPath();
+      x.arc(w / 2, w / 2, w / 2, 0, 7);
+      x.fill();
+      x.strokeStyle = '#3a2616';
+      x.lineCap = 'round';
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * Math.PI * 2;
+        x.lineWidth = i % 3 ? 3 : 6;
+        x.beginPath();
+        x.moveTo(w / 2 + Math.sin(a) * 50, w / 2 - Math.cos(a) * 50);
+        x.lineTo(w / 2 + Math.sin(a) * 58, w / 2 - Math.cos(a) * 58);
+        x.stroke();
+      }
+      const d = new Date();
+      const hand = (a: number, len: number, lw: number) => {
+        x.lineWidth = lw;
+        x.beginPath();
+        x.moveTo(w / 2, w / 2);
+        x.lineTo(w / 2 + Math.sin(a) * len, w / 2 - Math.cos(a) * len);
+        x.stroke();
+      };
+      hand(((d.getHours() % 12) + d.getMinutes() / 60) * (Math.PI / 6), 30, 7);
+      hand(d.getMinutes() * (Math.PI / 30), 44, 4);
+    });
+    g.add(cyl(0.32, 0.32, 0.06, woodDark, 0, 1.9, 0.03).rotateX(Math.PI / 2));
+    const f = new T.Mesh(
+      new T.CircleGeometry(0.28, 32),
+      M(0xffffff, { map: face, roughness: 0.6 }),
+    );
+    f.position.set(0, 1.9, 0.065);
+    g.add(f);
+    return g;
+  },
+  mirror() {
+    const g = new T.Group();
+    const frame = new T.Mesh(new T.TorusGeometry(0.32, 0.04, 10, 40), gold);
+    frame.scale.set(0.8, 1.15, 1);
+    frame.position.set(0, 1.75, 0.04);
+    g.add(shade(frame));
+    const glass = new T.Mesh(
+      new T.CircleGeometry(0.32, 40),
+      M(0xcfe3ea, { metalness: 0.9, roughness: 0.08, emissive: 0x24333a, emissiveIntensity: 0.4 }),
+    );
+    glass.scale.set(0.8, 1.15, 1);
+    glass.position.set(0, 1.75, 0.03);
+    g.add(glass);
+    return g;
+  },
+  neon(c, on) {
+    const g = new T.Group();
+    const tube = M(c, { emissive: c, emissiveIntensity: on ? 2.2 : 0, roughness: 0.3 });
+    const heart = new T.Shape();
+    heart.moveTo(0, -0.3);
+    heart.bezierCurveTo(-0.55, 0.05, -0.32, 0.42, 0, 0.18);
+    heart.bezierCurveTo(0.32, 0.42, 0.55, 0.05, 0, -0.3);
+    const pts = heart.getSpacedPoints(60).map((p) => new T.Vector3(p.x, p.y, 0));
+    const curve = new T.CatmullRomCurve3(pts, true);
+    const m = new T.Mesh(new T.TubeGeometry(curve, 80, 0.03, 8, true), tube);
+    m.position.set(-0.35, 1.9, 0.08);
+    g.add(m);
+    const bar = new T.Mesh(
+      new T.TubeGeometry(
+        new T.LineCurve3(new T.Vector3(0.1, 1.75, 0.08), new T.Vector3(0.75, 1.75, 0.08)),
+        4,
+        0.03,
+        8,
+      ),
+      tube,
+    );
+    const bar2 = new T.Mesh(
+      new T.TubeGeometry(
+        new T.LineCurve3(new T.Vector3(0.1, 2.05, 0.08), new T.Vector3(0.6, 2.05, 0.08)),
+        4,
+        0.03,
+        8,
+      ),
+      tube,
+    );
+    g.add(bar, bar2);
+    g.add(rbox(1.75, 0.7, 0.03, M(0x1a1a22, { roughness: 0.4 }), 0, 1.9, 0.015, 0.02));
+    if (on) {
+      const l = new T.PointLight(c, 0.5, 3, 2);
+      l.position.set(0, 1.9, 0.5);
+      g.add(l);
     }
     return g;
   },

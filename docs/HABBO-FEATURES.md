@@ -42,8 +42,6 @@ Det her mener jeg giver mest spil for pengene, i den rækkefølge:
 ### Rum og byggeri
 - [ ] **Gulvplan-editor** – tegn selv gulvets form, højde, dørens placering. L
 - [ ] **Stable møbler** (højde/z-akse) – sætte ting oven på hinanden, hylder på væggen. M–L
-- [ ] **Vægmøbler** – billeder, vinduer, hylder, plakater på væggen. M
-- [ ] **Tapet og gulv som varer** – køb tapeter/gulve i butikken (vi har temaer, men ikke frit valg). S
 - [ ] **Rum-indstillinger** – maks. antal gæster, hvem må tale, "kun venner", forbudt-liste. S
 - [ ] **Rum-vurdering** – 👍 til rum, "top-rum" i navigatoren. S
 - [ ] **Rotér/flyt flere ting på én gang**, "fortryd". M
@@ -104,6 +102,8 @@ Det her mener jeg giver mest spil for pengene, i den rækkefølge:
 - ✅ Store offentlige rum (lobby og café 12×12) og loft på 25 gæster pr. rum
 - ✅ Eget værelse + lejlighed med soveværelse, badeværelse, køkken og altan
 - ✅ Byg-tilstand: flyt, rotér, gem væk og placér møbler; farvevarianter
+- ✅ Tapet og gulve man køber og skifter selv
+- ✅ Vægmøbler: malerier, plakater, vinduer, hylder, ur, spejl, neonskilt
 - ✅ Butik med møbler og tøj, låst op med level og badges
 - ✅ Mønter (online-tid, opgaver, events, spil) – beregnet på serveren
 - ✅ Byttehandel med inventar, begge parter skal godkende, alt logges

@@ -28,6 +28,8 @@ export interface UserRecord {
   homeRoomId: string;
   motto: string;
   friends: string[];
+  /** Owned wallpapers and floors ("wall:mint"). */
+  decor?: string[];
   /** Messenger: friend id → timestamp of the last message read. */
   pmRead?: Record<string, number>;
   requests: string[];
@@ -76,6 +78,8 @@ export interface RoomRecord {
   createdAt: string;
   /** Look of the room; home rooms default to 'home'. */
   theme?: RoomTheme;
+  wall?: string | null;
+  floor?: string | null;
 }
 
 export interface ReportRecord {
