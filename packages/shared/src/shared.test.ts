@@ -20,6 +20,8 @@ import {
   sanitizeChat,
   ROOM_SIZE,
   DOOR_TILE,
+  findPath,
+  type PlacedItem,
 } from './index';
 
 describe('placement', () => {
@@ -41,16 +43,31 @@ describe('placement', () => {
     expect(canPlace(8, [], { id: 1, type: 'plant', x: 3, z: 3, rot: 0 }, [[3, 3]])).toBe(false);
   });
   it('keeps every predefined room valid and the door tile free', () => {
-    const rooms = [
-      ...PUBLIC_ROOMS.map((r) => r.items),
-      DEFAULT_HOME_ITEMS.map((it, i) => ({ ...it, id: i + 1 })),
-      ...Object.values(APARTMENT_START_ITEMS).map((list) =>
-        list.map((it, i) => ({ ...it, id: i + 1 })),
-      ),
+    const rooms: { n: number; items: PlacedItem[] }[] = [
+      ...PUBLIC_ROOMS.map((r) => ({ n: r.size ?? ROOM_SIZE, items: r.items })),
+      { n: ROOM_SIZE, items: DEFAULT_HOME_ITEMS.map((it, i) => ({ ...it, id: i + 1 })) },
+      ...Object.values(APARTMENT_START_ITEMS).map((list) => ({
+        n: ROOM_SIZE,
+        items: list.map((it, i) => ({ ...it, id: i + 1 })),
+      })),
     ];
-    for (const items of rooms) {
-      for (const it of items) expect(canPlace(ROOM_SIZE, items, it)).toBe(true);
-      expect(buildGrid(ROOM_SIZE, items).cells[DOOR_TILE[0]]![DOOR_TILE[1]]).toBe(0);
+    for (const { n, items } of rooms) {
+      for (const it of items) expect(canPlace(n, items, it)).toBe(true);
+      expect(buildGrid(n, items).cells[DOOR_TILE[0]]![DOOR_TILE[1]]).toBe(0);
+    }
+  });
+
+  it('lets you reach every free tile of the big public rooms from the door', () => {
+    for (const r of PUBLIC_ROOMS.filter((x) => (x.size ?? ROOM_SIZE) > ROOM_SIZE)) {
+      const n = r.size!;
+      const g = buildGrid(n, r.items);
+      for (let x = 0; x < n; x++)
+        for (let z = 0; z < n; z++)
+          if (g.cells[x]![z] === 0)
+            expect(
+              findPath(g, [DOOR_TILE[0], DOOR_TILE[1]], [x, z]),
+              `${r.id} ${x},${z}`,
+            ).not.toBeNull();
     }
   });
 });

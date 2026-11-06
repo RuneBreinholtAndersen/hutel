@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { FURNITURE_TYPES, type FurnitureType } from './catalog';
-import { CHAT_MAX_LENGTH, ROOM_SIZE } from './constants';
+import { CHAT_MAX_LENGTH, MAX_ROOM_SIZE } from './constants';
 import { LookSchema, type Look } from './look';
 import type { PlacedItem } from './placement';
 import type { RoomAccess, RoomTheme } from './rooms';
@@ -23,8 +23,8 @@ export const ClientMsgSchema = z.discriminatedUnion('t', [
   /** Free (non-tile) walking with the arrow keys: where my figure is now. */
   z.object({
     t: z.literal('glide'),
-    x: z.number().min(-1).max(ROOM_SIZE),
-    z: z.number().min(-1).max(ROOM_SIZE),
+    x: z.number().min(-1).max(MAX_ROOM_SIZE),
+    z: z.number().min(-1).max(MAX_ROOM_SIZE),
     run: z.boolean().optional(),
   }),
   z.object({ t: z.literal('sit'), itemId: z.number().int() }),
@@ -172,6 +172,8 @@ export interface RoomView {
   name: string;
   description: string;
   theme: RoomTheme;
+  /** Floor size in tiles (square). */
+  size: number;
   ownerId: string | null;
   ownerName: string | null;
   access: RoomAccess;
@@ -255,6 +257,8 @@ export interface NavigatorRoom {
   ownerName: string | null;
   access: RoomAccess;
   users: number;
+  /** Max guests; the room is full when users >= max. */
+  max: number;
   public: boolean;
 }
 

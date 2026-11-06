@@ -117,6 +117,10 @@ export function lerpAngle(a: number, b: number, t: number) {
 export const rnd = (a: number, b: number) => a + Math.random() * (b - a);
 export const pick = <V>(a: readonly V[]) => a[Math.floor(Math.random() * a.length)];
 
-export const N = 8;
+/** Current room size in tiles. Changes when you walk into a room of another size. */
+export let N = 8;
+export function setRoomSizeN(n: number) {
+  N = n;
+}
 /** Tile index → world coordinate (tile centre). */
 export const tw = (v: number) => v - N / 2 + 0.5;

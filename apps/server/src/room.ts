@@ -7,7 +7,6 @@ import {
   positionAt,
   RUN_MULTIPLIER,
   WALK_SPEED,
-  ROOM_SIZE,
   tilesOf,
   type Look,
   type PlacedItem,
@@ -48,6 +47,8 @@ export interface RoomMeta {
   name: string;
   description: string;
   theme: RoomTheme;
+  /** Floor size in tiles (square). */
+  size: number;
   isPublic: boolean;
   ownerId: string | null;
   ownerName: string | null;
@@ -109,6 +110,7 @@ export class RoomInstance {
       name: this.meta.name,
       description: this.meta.description,
       theme: this.meta.theme,
+      size: this.meta.size,
       ownerId: this.meta.ownerId,
       ownerName: this.meta.ownerName,
       access: this.meta.access,
@@ -128,14 +130,14 @@ export class RoomInstance {
 
   /** Adds a player at the door (or the nearest free tile). */
   add(p: PlayerState, at: Tile = DOOR_TILE) {
-    const grid = buildGrid(ROOM_SIZE, this.items);
+    const grid = buildGrid(this.meta.size, this.items);
     const taken = new Set(this.occupiedTiles(p.id).map((t) => t.join()));
     const free = (x: number, z: number) => grid.cells[x]![z] === 0 && !taken.has(`${x},${z}`);
     let start: Tile = at;
     if (!free(at[0], at[1])) {
-      outer: for (let r = 1; r < ROOM_SIZE; r++)
-        for (let x = 0; x < ROOM_SIZE; x++)
-          for (let z = 0; z < ROOM_SIZE; z++)
+      outer: for (let r = 1; r < this.meta.size; r++)
+        for (let x = 0; x < this.meta.size; x++)
+          for (let z = 0; z < this.meta.size; z++)
             if (Math.max(Math.abs(x - at[0]), Math.abs(z - at[1])) === r && free(x, z)) {
               start = [x, z];
               break outer;
@@ -183,14 +185,19 @@ export class RoomInstance {
       x = cur.x + (dx / d) * max;
       z = cur.z + (dz / d) * max;
     }
-    x = Math.min(ROOM_SIZE - 0.68, Math.max(-0.32, x));
-    z = Math.min(ROOM_SIZE - 0.68, Math.max(-0.32, z));
+    x = Math.min(this.meta.size - 0.68, Math.max(-0.32, x));
+    z = Math.min(this.meta.size - 0.68, Math.max(-0.32, z));
     const tx = Math.round(x);
     const tz = Math.round(z);
     const here = tx === Math.round(cur.x) && tz === Math.round(cur.z);
-    const grid = buildGrid(ROOM_SIZE, this.items);
+    const grid = buildGrid(this.meta.size, this.items);
     const ok =
-      here || (tx >= 0 && tz >= 0 && tx < ROOM_SIZE && tz < ROOM_SIZE && grid.cells[tx]![tz] === 0);
+      here ||
+      (tx >= 0 &&
+        tz >= 0 &&
+        tx < this.meta.size &&
+        tz < this.meta.size &&
+        grid.cells[tx]![tz] === 0);
     p.seatId = null;
     p.goalSeat = null;
     if (p.action === 'dance') p.action = null;
@@ -215,7 +222,7 @@ export class RoomInstance {
   walk(p: PlayerState, goal: Tile, run = false, seatItem?: PlacedItem): boolean {
     const now = Date.now();
     const start = this.settle(p, now);
-    const grid = buildGrid(ROOM_SIZE, this.items);
+    const grid = buildGrid(this.meta.size, this.items);
     const path = findPath(grid, start, goal, seatItem?.id ?? -1);
     if (!path) return false;
     p.seatId = null;
@@ -304,6 +311,6 @@ export class RoomInstance {
     const occupied = [...this.players.values()]
       .filter((p) => p.seatId !== it.id)
       .map((p) => this.tileOf(p));
-    return canPlace(ROOM_SIZE, others, it, occupied);
+    return canPlace(this.meta.size, others, it, occupied);
   }
 }

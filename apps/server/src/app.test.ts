@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { AddressInfo } from 'node:net';
 import WebSocket from 'ws';
-import { DEFAULT_LOOK, QUESTS, type ServerMsg } from '@hutel/shared';
+import { DEFAULT_LOOK, QUESTS, ROOM_CAPACITY, type ServerMsg } from '@hutel/shared';
 import { createApp } from './app';
 import { QUIZ as QUIZ_FOR_TEST } from './games';
 
@@ -554,6 +554,27 @@ describe('multiplayer', () => {
     c2.send({ t: 'auth', token: g.token });
     expect((await c2.waitFor('room')).room.id).toBe('cafe');
     c2.ws.close();
+  });
+
+  it('keeps public rooms at most ROOM_CAPACITY guests and makes the café 12×12', async () => {
+    const first = await login('Kaffegæst');
+    first.c.send({ t: 'join', roomId: 'cafe' });
+    const r = await first.c.waitFor('room', (m) => m.room.id === 'cafe');
+    expect(r.room.size).toBe(12);
+    const cafe = (
+      app.hotel as unknown as { rooms: Map<string, { humans(): unknown[] }> }
+    ).rooms.get('cafe')!;
+    const realHumans = cafe.humans.bind(cafe);
+    cafe.humans = () => Array.from({ length: ROOM_CAPACITY }, () => ({}));
+    const late = await login('Sentkommer');
+    late.c.send({ t: 'join', roomId: 'cafe' });
+    expect((await late.c.waitFor('toast', (m) => /fyldt/.test(m.text))).text).toMatch(/Caféen/);
+    late.c.send({ t: 'navigator' });
+    const nav = await late.c.waitFor('navigator');
+    expect(nav.rooms.find((x) => x.id === 'cafe')!.max).toBe(ROOM_CAPACITY);
+    cafe.humans = realHumans;
+    first.c.ws.close();
+    late.c.ws.close();
   });
 
   it('whispers only to someone in the same room, hidden from others', async () => {

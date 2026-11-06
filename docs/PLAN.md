@@ -15,7 +15,6 @@ Sidst opdateret: 6. november 2026. Rækkefølge: voksen-Hutel i lukket beta før
 - [ ] Facebook-login (sat på pause): opret Meta-app, indsæt App ID/Secret i Supabase, og sæt `AUTH_PROVIDERS=google,facebook`
 - [ ] Sæt dig selv som admin: `fly secrets set ADMIN_NAMES=rune` (log ind med Google med totrinsbekræftelse)
 - [ ] Større gulv på værelser (kræver at rumstørrelsen ikke længere er fast 8×8)
-- [ ] Loft over antal gæster pr. rum + større offentlige rum (fx 12×12) til mange gæster
 - [ ] Før lancering: slå "Start forfra" fra med `fly secrets set ALLOW_RESET=false`
 - [ ] Udgiv Google-login for alle (kræver hutel.dk og en side med privatlivspolitik) – indtil da: tilføj beta-testere som testbrugere i Google Cloud → Audience
 - ✅ Supabase-projekt `hutel` oprettet (gratis org "Hutel", EU/Irland), redirect-URL'er sat
@@ -27,6 +26,8 @@ Sidst opdateret: 6. november 2026. Rækkefølge: voksen-Hutel i lukket beta før
 
 ## Færdigt 6. november (eftermiddag)
 
+- ✅ Lobbyen og caféen er nu 12×12 med ny møblering; rumstørrelse kan variere pr. rum
+- ✅ Højst 25 gæster pr. rum; navigatoren viser 3/25 og "Fyldt"
 - ✅ Hvisken i rummet (/h navn eller 🤫 på profilen) og messenger til venner med beskeder, der venter til de logger ind, og ulæst-tæller
 - ✅ /penge: snydekode for admins (+100 mønter, logges)
 - ✅ Caféen: bordet midt i rummet er fjernet, så der er fri passage

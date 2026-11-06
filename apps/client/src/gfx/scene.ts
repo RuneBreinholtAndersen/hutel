@@ -52,9 +52,11 @@ export function createStage(container: HTMLElement) {
   composer.addPass(new UnrealBloomPass(new T.Vector2(innerWidth, innerHeight), 0.5, 0.6, 0.8));
   composer.addPass(new ShaderPass(GammaCorrectionShader));
 
+  /** Bigger rooms zoom the camera out (a bit less than linearly, so figures stay readable). */
+  let roomScale = 1;
   function resize() {
     const a = innerWidth / innerHeight;
-    const v = Math.max(5.4, 6.6 / a);
+    const v = Math.max(5.4, 6.6 / a) * roomScale;
     camera.left = -v * a;
     camera.right = v * a;
     camera.top = v;
@@ -77,6 +79,14 @@ export function createStage(container: HTMLElement) {
     { passive: false },
   );
 
-  return { renderer, scene, camera, composer, render: () => composer.render() };
+  function setRoomSize(n: number) {
+    roomScale = 1 + Math.max(0, n - 8) * 0.1;
+    const h = Math.max(8, n * 0.75);
+    Object.assign(sun.shadow.camera, { left: -h, right: h, top: h, bottom: -h });
+    sun.shadow.camera.updateProjectionMatrix();
+    resize();
+  }
+
+  return { renderer, scene, camera, composer, setRoomSize, render: () => composer.render() };
 }
 export type Stage = ReturnType<typeof createStage>;

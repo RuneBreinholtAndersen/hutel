@@ -104,12 +104,19 @@ const placeM = new T.Mesh(
 placeM.rotation.x = -Math.PI / 2;
 placeM.visible = false;
 stage.scene.add(placeM);
-const gridHelper = new T.GridHelper(ROOM_SIZE, ROOM_SIZE, 0xfff0d0, 0xfff0d0);
-gridHelper.position.y = 0.006;
-(gridHelper.material as T.Material).transparent = true;
-(gridHelper.material as T.Material).opacity = 0.28;
-gridHelper.visible = false;
-stage.scene.add(gridHelper);
+let gridHelper = makeGrid(ROOM_SIZE);
+function makeGrid(n: number) {
+  const g = new T.GridHelper(n, n, 0xfff0d0, 0xfff0d0);
+  g.position.y = 0.006;
+  (g.material as T.Material).transparent = true;
+  (g.material as T.Material).opacity = 0.28;
+  g.visible = false;
+  g.userData.size = n;
+  stage.scene.add(g);
+  return g;
+}
+/** Size of the room we are in. */
+const rs = () => room?.size ?? ROOM_SIZE;
 
 /* ---------------- state ---------------- */
 let net: Net | null = null;
@@ -151,7 +158,7 @@ function predictWalk(goal: [number, number], run: boolean) {
   if (!a || !net || a.seatId !== null) return;
   const now = net.now();
   const next = a.heading(now);
-  const grid = buildGrid(ROOM_SIZE, [...items.values()]);
+  const grid = buildGrid(rs(), [...items.values()]);
   const found = findPath(grid, next, goal);
   const rest = found?.map(([x, z]): [number, number] => [x, z]);
   if (!rest) return;
@@ -223,6 +230,13 @@ function setRoom(view: RoomView) {
   bubbles.length = 0;
   for (const id of [...objs.keys()]) removeObj(id);
   items.clear();
+  if (view.size !== gridHelper.userData.size) {
+    stage.scene.remove(gridHelper);
+    gridHelper.geometry.dispose();
+    gridHelper = makeGrid(view.size);
+  }
+  roomGfx.setSize(view.size);
+  stage.setRoomSize(view.size);
   roomGfx.setTheme(view.theme);
   for (const it of view.items) {
     items.set(it.id, it);
@@ -585,7 +599,7 @@ function openNavigator() {
 }
 function renderNavigator(rooms: NavigatorRoom[]) {
   const row = (r: NavigatorRoom) =>
-    `<div class="li"><div class="grow"><b>${esc(r.name)}</b>${events.some((e) => e.roomId === r.id) ? ' <span class="evtag">🎉 Event</span>' : ''}${r.access !== 'open' ? (r.access === 'locked' ? ' 🔒' : ' 🔑') : ''}<small>${esc(r.description || (r.ownerName ? `Af ${r.ownerName}` : ''))}</small></div><span class="users">👤 ${r.users}</span><button class="small" data-go="${esc(r.id)}">${room?.id === r.id ? 'Her' : 'Gå'}</button></div>`;
+    `<div class="li"><div class="grow"><b>${esc(r.name)}</b>${events.some((e) => e.roomId === r.id) ? ' <span class="evtag">🎉 Event</span>' : ''}${r.access !== 'open' ? (r.access === 'locked' ? ' 🔒' : ' 🔑') : ''}<small>${esc(r.description || (r.ownerName ? `Af ${r.ownerName}` : ''))}</small></div><span class="users${r.users >= r.max ? ' full' : ''}">👤 ${r.users}/${r.max}</span>${r.users >= r.max && room?.id !== r.id ? '<button class="small" disabled>Fyldt</button>' : `<button class="small" data-go="${esc(r.id)}">${room?.id === r.id ? 'Her' : 'Gå'}</button>`}</div>`;
   const pub = rooms.filter((r) => r.public);
   const guest = rooms.filter((r) => !r.public && !me?.apartment.some((a) => a.id === r.id));
   const own =
@@ -1106,7 +1120,7 @@ function heldOk() {
   const occupied = [...actors.values()]
     .filter((a) => a.seatId !== held!.item.id)
     .map((a) => a.tile());
-  return canPlace(ROOM_SIZE, others, held.item, occupied);
+  return canPlace(rs(), others, held.item, occupied);
 }
 function updHeld() {
   if (!held) {
@@ -1123,8 +1137,8 @@ function updHeld() {
 function moveHeldTo(t: { x: number; z: number }) {
   if (!held) return;
   const f = footprint(held.item);
-  held.item.x = Math.max(0, Math.min(ROOM_SIZE - f.w, t.x - Math.floor((f.w - 1) / 2)));
-  held.item.z = Math.max(0, Math.min(ROOM_SIZE - f.d, t.z - Math.floor((f.d - 1) / 2)));
+  held.item.x = Math.max(0, Math.min(rs() - f.w, t.x - Math.floor((f.w - 1) / 2)));
+  held.item.z = Math.max(0, Math.min(rs() - f.d, t.z - Math.floor((f.d - 1) / 2)));
   updHeld();
 }
 function pickUp(it: PlacedItem) {
@@ -1446,13 +1460,13 @@ function keyboardWalk(dt: number) {
   const l = Math.hypot(ix, iz);
   ix /= l;
   iz /= l;
-  const grid = buildGrid(ROOM_SIZE, [...items.values()]);
+  const grid = buildGrid(rs(), [...items.values()]);
   const [cx, cz] = a.tile();
   const R = 0.28;
   const free = (x: number, z: number) => {
     const tx = Math.round(x);
     const tz = Math.round(z);
-    if (tx < 0 || tz < 0 || tx >= ROOM_SIZE || tz >= ROOM_SIZE) return false;
+    if (tx < 0 || tz < 0 || tx >= rs() || tz >= rs()) return false;
     if (tx === cx && tz === cz) return true;
     return grid.cells[tx]![tz] === 0;
   };
@@ -1463,8 +1477,8 @@ function keyboardWalk(dt: number) {
   if (free(nx + Math.sign(ix) * R, z)) x = nx;
   const nz = z + iz * st;
   if (free(x, nz + Math.sign(iz) * R)) z = nz;
-  x = Math.min(ROOM_SIZE - 0.68, Math.max(-0.32, x));
-  z = Math.min(ROOM_SIZE - 0.68, Math.max(-0.32, z));
+  x = Math.min(rs() - 0.68, Math.max(-0.32, x));
+  z = Math.min(rs() - 0.68, Math.max(-0.32, z));
   a.glide(x, z, running, Math.atan2(ix, iz));
   gliding = true;
   pending.length = 0;

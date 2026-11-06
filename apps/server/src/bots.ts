@@ -3,7 +3,6 @@ import {
   filterChat,
   furniture,
   isGreeting,
-  ROOM_SIZE,
   sanitizeChat,
   type Look,
 } from '@hutel/shared';
@@ -429,10 +428,10 @@ class Bot {
       const seats = room.items.filter((i) => furniture(i.type).seat);
       if (seats.length && room.sit(this.state, pick(seats).id)) return;
     }
-    const grid = buildGrid(ROOM_SIZE, room.items);
+    const grid = buildGrid(room.meta.size, room.items);
     for (let k = 0; k < 20; k++) {
-      const x = Math.floor(Math.random() * ROOM_SIZE);
-      const z = Math.floor(Math.random() * ROOM_SIZE);
+      const x = Math.floor(Math.random() * room.meta.size);
+      const z = Math.floor(Math.random() * room.meta.size);
       if (grid.cells[x]![z] === 0 && room.walk(this.state, [x, z])) return;
     }
   }

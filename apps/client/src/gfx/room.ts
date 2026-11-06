@@ -1,5 +1,5 @@
-import type { RoomTheme } from '@hutel/shared';
-import { box, canvasTex, cyl, lin, M, N, rbox, rnd, sph, T, tw } from './helpers';
+import { DOOR_TILE, type RoomTheme } from '@hutel/shared';
+import { box, canvasTex, cyl, lin, M, N, rbox, rnd, setRoomSizeN, sph, T, tw } from './helpers';
 
 const H = 3.0;
 
@@ -426,47 +426,68 @@ function decor(theme: RoomTheme): { group: T.Group; lights: T.Light[]; windowLig
 }
 
 export function createRoom(scene: T.Scene) {
-  scene.add(box(N + 0.5, 0.5, N + 0.5, M(0x4e3121), 0, -0.37, 0));
   const tiles: T.Mesh[] = [];
-  for (let x = 0; x < N; x++)
-    for (let z = 0; z < N; z++) {
-      const t = rbox(0.97, 0.12, 0.97, M(0xbd8250, { roughness: 0.55 }), tw(x), -0.06, tw(z), 0.03);
-      t.castShadow = false;
-      t.userData.tile = { x, z };
-      t.userData.alt = (x + z) % 2;
-      scene.add(t);
-      tiles.push(t);
-    }
   const wallMat = M(0xffffff, { map: THEMES.home.wall, roughness: 0.9 });
-  scene.add(box(N + 0.2, H, 0.2, wallMat, -0.1, H / 2, -N / 2 - 0.1));
-  scene.add(box(0.2, H, N, wallMat, -N / 2 - 0.1, H / 2, 0));
   const wain = M(0x9c5f3a, { roughness: 0.7 });
-  scene.add(box(N, 1.0, 0.06, wain, 0, 0.5, -N / 2 + 0.03));
-  scene.add(box(0.06, 1.0, N, wain, -N / 2 + 0.03, 0.5, 0));
-  scene.add(box(N, 0.08, 0.11, trim, 0, 1.03, -N / 2 + 0.05));
-  scene.add(box(0.11, 0.08, N, trim, -N / 2 + 0.05, 1.03, 0));
-  scene.add(box(N + 0.2, 0.14, 0.28, trim, -0.1, H + 0.07, -N / 2 - 0.1));
-  scene.add(box(0.28, 0.14, N, trim, -N / 2 - 0.1, H + 0.07, 0));
+  const shell = new T.Group();
+  scene.add(shell);
+  /** (Re)builds floor and walls for the current room size N. */
+  function buildShell() {
+    for (const c of [...shell.children]) {
+      shell.remove(c);
+      if (c instanceof T.Mesh) c.geometry.dispose();
+    }
+    tiles.length = 0;
+    shell.add(box(N + 0.5, 0.5, N + 0.5, M(0x4e3121), 0, -0.37, 0));
+    for (let x = 0; x < N; x++)
+      for (let z = 0; z < N; z++) {
+        const t = rbox(
+          0.97,
+          0.12,
+          0.97,
+          M(0xbd8250, { roughness: 0.55 }),
+          tw(x),
+          -0.06,
+          tw(z),
+          0.03,
+        );
+        t.castShadow = false;
+        t.userData.tile = { x, z };
+        t.userData.alt = (x + z) % 2;
+        shell.add(t);
+        tiles.push(t);
+      }
+    shell.add(box(N + 0.2, H, 0.2, wallMat, -0.1, H / 2, -N / 2 - 0.1));
+    shell.add(box(0.2, H, N, wallMat, -N / 2 - 0.1, H / 2, 0));
+    shell.add(box(N, 1.0, 0.06, wain, 0, 0.5, -N / 2 + 0.03));
+    shell.add(box(0.06, 1.0, N, wain, -N / 2 + 0.03, 0.5, 0));
+    shell.add(box(N, 0.08, 0.11, trim, 0, 1.03, -N / 2 + 0.05));
+    shell.add(box(0.11, 0.08, N, trim, -N / 2 + 0.05, 1.03, 0));
+    shell.add(box(N + 0.2, 0.14, 0.28, trim, -0.1, H + 0.07, -N / 2 - 0.1));
+    shell.add(box(0.28, 0.14, N, trim, -N / 2 - 0.1, H + 0.07, 0));
+    // The door always sits in front of the door tile on the back wall.
+    doorGroup.position.set(tw(DOOR_TILE[0]) - 0.5, 0, -N / 2);
+  }
 
-  // Door with an opening leaf.
+  // Door with an opening leaf (built around the origin, moved by buildShell).
   const doorGroup = new T.Group();
   scene.add(doorGroup);
-  const dx = 2.5;
-  doorGroup.add(box(1.2, 2.3, 0.06, trim, dx, 1.15, -N / 2 + 0.03));
+  const dx = 0.5;
+  doorGroup.add(box(1.2, 2.3, 0.06, trim, dx, 1.15, 0.03));
   const dark = new T.Mesh(
     new T.PlaneGeometry(1.0, 2.15),
     new T.MeshBasicMaterial({ color: 0x3a2418 }),
   );
-  dark.position.set(dx, 1.075, -N / 2 + 0.065);
+  dark.position.set(dx, 1.075, 0.065);
   doorGroup.add(dark);
   const glow = new T.Mesh(
     new T.PlaneGeometry(0.7, 1.6),
     new T.MeshBasicMaterial({ color: 0xffb766, transparent: true, opacity: 0.35 }),
   );
-  glow.position.set(dx, 1.2, -N / 2 + 0.067);
+  glow.position.set(dx, 1.2, 0.067);
   doorGroup.add(glow);
   const doorPivot = new T.Group();
-  doorPivot.position.set(dx - 0.5, 0, -N / 2 + 0.11);
+  doorPivot.position.set(dx - 0.5, 0, 0.11);
   doorGroup.add(doorPivot);
   const L = (m: T.Object3D) => {
     m.position.x += 0.5;
@@ -481,14 +502,15 @@ export function createRoom(scene: T.Scene) {
   ] as const)
     L(box(0.36, h, 0.03, M(0x84502f), px, py, 0.05));
   L(sph(0.05, gold, 0.38, 1.05, 0.08));
-  doorGroup.add(box(0.5, 0.16, 0.03, gold, dx, 2.4, -N / 2 + 0.04));
+  doorGroup.add(box(0.5, 0.16, 0.03, gold, dx, 2.4, 0.04));
   const exitLamp = new T.Mesh(
     new T.SphereGeometry(0.06, 14, 10),
     new T.MeshBasicMaterial({ color: 0xd8433a }),
   );
-  exitLamp.position.set(dx + 0.42, 2.4, -N / 2 + 0.08);
+  exitLamp.position.set(dx + 0.42, 2.4, 0.08);
   doorGroup.add(exitLamp);
   let doorTarget = 0;
+  buildShell();
 
   const winSpot = new T.SpotLight(0xff9a48, 1.5, 13, 0.75, 0.9, 1);
   winSpot.castShadow = true;
@@ -542,6 +564,12 @@ export function createRoom(scene: T.Scene) {
     tiles,
     doorGroup,
     setTheme,
+    /** Changes the floor size. Call setTheme afterwards to recolour the new tiles. */
+    setSize(n: number) {
+      if (n === N && tiles.length) return;
+      setRoomSizeN(n);
+      buildShell();
+    },
     setDoorUnlocked: (on: boolean) =>
       (exitLamp.material as T.MeshBasicMaterial).color.setHex(on ? 0x4fd16b : 0xd8433a),
     openDoor: (open: boolean) => (doorTarget = open ? -1.35 : 0),

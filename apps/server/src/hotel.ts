@@ -40,6 +40,8 @@ import {
   type QuestId,
   type ServerMsg,
   type Tile,
+  ROOM_CAPACITY,
+  ROOM_SIZE,
 } from '@hutel/shared';
 import { Bots } from './bots';
 import { createLimits, type Bucket, type LimitKind } from './ratelimit';
@@ -165,6 +167,7 @@ export class Hotel {
         name: def.name,
         description: def.description,
         theme: def.theme,
+        size: def.size ?? ROOM_SIZE,
         isPublic: true,
         ownerId: null,
         ownerName: null,
@@ -374,6 +377,7 @@ export class Hotel {
         name: rec.name,
         description: rec.description,
         theme: rec.theme ?? 'home',
+        size: ROOM_SIZE,
         isPublic: false,
         ownerId: rec.ownerId,
         ownerName: owner?.name ?? null,
@@ -408,6 +412,8 @@ export class Hotel {
           return this.toast(s, 'Forkert adgangskode', 'error');
       }
     }
+    if (!mine && user.role === 'user' && room.humans().length >= ROOM_CAPACITY)
+      return this.toast(s, `${room.meta.name} er fyldt lige nu – prøv igen om lidt 🙂`);
     this.leaveRoom(s);
     const player: PlayerState = {
       id: user.id,
@@ -468,6 +474,7 @@ export class Hotel {
       access: 'open',
       public: true,
       users: this.rooms.get(r.id)?.humans().length ?? 0,
+      max: ROOM_CAPACITY,
     }));
     const guest = this.store
       .listRooms()
@@ -485,6 +492,7 @@ export class Hotel {
         ownerName: this.store.getUser(rec.ownerId)?.name ?? null,
         access: rec.access,
         users,
+        max: ROOM_CAPACITY,
         public: false,
       }));
     return [...out, ...guest];
