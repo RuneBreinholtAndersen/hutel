@@ -110,6 +110,7 @@ let running = false;
 const keys = new Set<string>();
 let panelKind: string | null = null;
 let onboardingLock = true;
+let canReset = false;
 
 const myActor = () => (me ? actors.get(me.id) : undefined);
 
@@ -263,6 +264,7 @@ function handle(msg: ServerMsg) {
     case 'welcome':
       me = msg.me;
       onboardingLock = msg.onboardingLock;
+      canReset = msg.canReset;
       setCoins(me.coins);
       setOnline(me.onlineSec);
       $('signup').classList.add('hidden');
@@ -283,6 +285,9 @@ function handle(msg: ServerMsg) {
       }
       return;
     }
+    case 'resetDone':
+      location.reload();
+      return;
     case 'path': {
       if (msg.id === me?.id && msg.glide) return; // our own arrow-key walk
       if (msg.id === me?.id && msg.seatId === null) {
@@ -462,6 +467,7 @@ function renderShop() {
     .forEach((b) => b.addEventListener('click', () => startBuy(b.dataset.buy as FurnitureType)));
 }
 
+let confirmReset = false;
 function renderFigure() {
   if (!me) return;
   openPanel(
@@ -469,7 +475,8 @@ function renderFigure() {
     head('🧍 Min figur') +
       `<div class="row"><label>Motto</label><input id="motto" maxlength="60" value="${esc(me.motto)}" style="width:100%"></div><div id="lookEd"></div>
     <h3>Mine badges</h3><div class="badges">${me.badges.map((b) => `<span class="badge">${BADGES[b].icon} ${BADGES[b].name}</span>`).join('')}</div>
-    <h3>Konto</h3><button id="logout" class="small danger">Log ud på denne enhed</button>`,
+    <h3>Konto</h3><button id="logout" class="small danger">Log ud på denne enhed</button>
+    ${canReset ? `<h3>Test</h3><p class="sub">Nulstil mønter, opgaver, badges og dit værelse, og prøv starten igen. Navn, figur og venner beholdes.</p><button id="resetMe" class="small danger">🔄 Start forfra</button>` : ''}`,
   );
   let lookT: number | undefined;
   lookEditor($('lookEd'), me.look, (look) => {
@@ -481,6 +488,19 @@ function renderFigure() {
   $('motto').addEventListener('change', (e) => {
     me!.motto = (e.target as HTMLInputElement).value;
     net?.send({ t: 'motto', motto: me!.motto });
+  });
+  $('resetMe')?.addEventListener('click', () => {
+    if (confirmReset) {
+      net?.send({ t: 'reset' });
+      return;
+    }
+    confirmReset = true;
+    $('resetMe').textContent = 'Klik igen for at bekræfte';
+    setTimeout(() => {
+      confirmReset = false;
+      const b = document.getElementById('resetMe');
+      if (b) b.textContent = '🔄 Start forfra';
+    }, 4000);
   });
   $('logout').addEventListener('click', () => {
     store.set(TOKEN_KEY, null);

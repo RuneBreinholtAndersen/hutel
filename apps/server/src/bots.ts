@@ -413,6 +413,11 @@ export class Bots {
     setTimeout(() => this.removeGuide(room), 6000);
   }
 
+  /** The room instance is gone (e.g. after "Start forfra"): drop its guide. */
+  forgetGuide(roomId: string) {
+    this.guides.delete(roomId);
+  }
+
   private removeGuide(room: RoomInstance) {
     const g = this.guides.get(room.meta.id);
     if (!g) return;

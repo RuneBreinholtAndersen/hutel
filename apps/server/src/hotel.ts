@@ -31,6 +31,8 @@ export interface HotelConfig {
   anthropicApiKey?: string;
   botModel: string;
   botMaxCallsPerDay: number;
+  /** Test phase: players may reset their own progress ("Start forfra"). */
+  allowReset?: boolean;
 }
 
 export interface Connection {
@@ -59,6 +61,7 @@ const GUIDE_TIPS: Record<QuestId, string> = {
 const LIMIT_FOR: Partial<Record<ClientMsg['t'], LimitKind>> = {
   move: 'move',
   glide: 'glide',
+  reset: 'build',
   sit: 'move',
   chat: 'chat',
   whisper: 'chat',
@@ -216,6 +219,7 @@ export class Hotel {
       me: this.me(user),
       serverTime: Date.now(),
       onboardingLock: this.cfg.onboardingLock,
+      canReset: this.cfg.allowReset ?? false,
     });
     this.sendFriends(user);
     this.notifyFriendsOf(user);
@@ -429,6 +433,20 @@ export class Hotel {
       case 'move':
         if (room && player) room.walk(player, [msg.x, msg.z], msg.run);
         return;
+      case 'reset': {
+        if (!this.cfg.allowReset) return;
+        const home = user.homeRoomId;
+        this.leaveRoom(s);
+        // Anyone visiting the room is sent back to the lobby, then the room is rebuilt.
+        const inst = this.rooms.get(home);
+        if (inst) {
+          for (const other of this.sessions) if (other.room === inst) this.join(other, 'lobby');
+          this.rooms.delete(home);
+        }
+        this.bots.forgetGuide(home);
+        this.store.resetProgress(user);
+        return this.send(s, { t: 'resetDone' });
+      }
       case 'glide':
         if (room && player) room.glide(player, msg.x, msg.z, msg.run);
         return;

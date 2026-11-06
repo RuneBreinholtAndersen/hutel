@@ -85,6 +85,8 @@ export interface Store {
   ): { user: UserRecord; token: string };
   /** Issues a new session token (old ones stop working). */
   rotateToken(user: UserRecord): string;
+  /** Wipes progress (coins, quests, badges, stats, home room) but keeps the account and name. */
+  resetProgress(user: UserRecord): void;
   getRoom(id: string): RoomRecord | undefined;
   listRooms(): RoomRecord[];
   addReport(r: Omit<ReportRecord, 'id' | 'createdAt' | 'status'>): void;
@@ -140,6 +142,25 @@ export class JsonFileStore implements Store {
   getUserByToken(token: string) {
     const h = hashSecret(token);
     return Object.values(this.data.users).find((u) => u.tokenHash === h);
+  }
+
+  resetProgress(user: UserRecord) {
+    user.coins = 30;
+    user.onlineSec = 0;
+    user.quests = [];
+    user.badges = ['welcome'];
+    user.motto = '';
+    user.stats = { chats: 0, buys: 0, moves: 0 };
+    const room = this.data.rooms[user.homeRoomId];
+    if (room) {
+      room.items = this.newRoomItems();
+      room.nextItemId = room.items.length + 1;
+      room.access = 'open';
+      room.passwordHash = null;
+      room.rights = [];
+      room.description = '';
+    }
+    this.touch();
   }
 
   rotateToken(user: UserRecord) {

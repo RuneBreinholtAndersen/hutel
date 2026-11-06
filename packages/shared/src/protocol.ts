@@ -27,6 +27,8 @@ export const ClientMsgSchema = z.discriminatedUnion('t', [
     run: z.boolean().optional(),
   }),
   z.object({ t: z.literal('sit'), itemId: z.number().int() }),
+  /** Test phase: wipe my progress (coins, quests, badges, room) and start over. */
+  z.object({ t: z.literal('reset') }),
   z.object({
     t: z.literal('chat'),
     text: z
@@ -150,7 +152,8 @@ export interface ProfileView {
 }
 
 export type ServerMsg =
-  | { t: 'welcome'; me: Me; serverTime: number; onboardingLock: boolean }
+  | { t: 'welcome'; me: Me; serverTime: number; onboardingLock: boolean; canReset: boolean }
+  | { t: 'resetDone' }
   | { t: 'room'; room: RoomView; serverTime: number }
   | { t: 'playerJoin'; player: PlayerView }
   | { t: 'playerLeave'; id: string }

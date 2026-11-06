@@ -5,6 +5,7 @@ import { DEFAULT_LOOK, type ServerMsg } from '@hutel/shared';
 import { createApp } from './app';
 
 const cfg = {
+  allowReset: true,
   clientOrigins: ['http://localhost:5173'],
   dataFile: null,
   clientDist: null,
@@ -325,6 +326,25 @@ describe('multiplayer', () => {
     c.send({ t: 'sellItem', id: put.item.id });
     await c.waitFor('itemRemove');
     c.ws.close();
+  });
+
+  it('"Start forfra" wipes progress and rebuilds the room', async () => {
+    const { c, g, welcome } = await login('Forfra');
+    expect(welcome.canReset).toBe(true);
+    c.send({ t: 'buy', type: 'plant', x: 6, z: 6, rot: 0 });
+    await c.waitFor('quest', (m) => m.id === 'buy');
+    c.send({ t: 'reset' });
+    await c.waitFor('resetDone');
+    c.ws.close();
+    const c2 = new TestClient();
+    await c2.open();
+    c2.send({ t: 'auth', token: g.token });
+    const w2 = await c2.waitFor('welcome');
+    expect(w2.me.coins).toBe(30);
+    expect(w2.me.quests).toEqual([]);
+    const r2 = await c2.waitFor('room');
+    expect(r2.room.items.some((i) => i.type === 'plant' && i.x === 6 && i.z === 6)).toBe(false);
+    c2.ws.close();
   });
 
   it('handles friends, whispers, password rooms and blocking', async () => {
