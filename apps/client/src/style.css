@@ -869,3 +869,33 @@ button.badge.on {
   height: 100%;
   background: linear-gradient(90deg, #ffb347, #ffd27a);
 }
+
+.pmlines {
+  max-height: 320px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 0;
+}
+.pmline {
+  align-self: flex-start;
+  max-width: 80%;
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow-wrap: anywhere;
+}
+.pmline.me {
+  align-self: flex-end;
+  background: rgba(255, 179, 71, 0.3);
+}
+.unread {
+  display: inline-block;
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--acc);
+  color: #3a2616;
+  font-size: 12px;
+}

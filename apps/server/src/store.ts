@@ -28,6 +28,8 @@ export interface UserRecord {
   homeRoomId: string;
   motto: string;
   friends: string[];
+  /** Messenger: friend id → timestamp of the last message read. */
+  pmRead?: Record<string, number>;
   requests: string[];
   blocked: string[];
   stats: { chats: number; buys: number; moves: number };

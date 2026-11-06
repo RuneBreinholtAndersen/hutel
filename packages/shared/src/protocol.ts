@@ -126,6 +126,12 @@ export const ClientMsgSchema = z.discriminatedUnion('t', [
   z.object({ t: z.literal('friendRespond'), userId, accept: z.boolean() }),
   z.object({ t: z.literal('friendRemove'), userId }),
   z.object({
+    t: z.literal('hush'),
+    to: userId,
+    text: z.string().min(1).max(CHAT_MAX_LENGTH),
+  }),
+  z.object({ t: z.literal('pmHistory'), with: userId }),
+  z.object({
     t: z.literal('whisper'),
     to: userId,
     text: z
@@ -232,6 +238,14 @@ export interface FriendView {
   online: boolean;
   roomId: string | null;
   roomName: string | null;
+  /** Messenger messages from this friend you have not read yet. */
+  unread: number;
+}
+
+export interface PmLine {
+  from: string;
+  text: string;
+  at: number;
 }
 
 export interface NavigatorRoom {
@@ -298,7 +312,9 @@ export type ServerMsg =
   | { t: 'quest'; id: QuestId; reward: number; all: boolean; hotelAll?: boolean }
   | { t: 'badge'; id: BadgeId }
   | { t: 'friends'; friends: FriendView[]; requests: { id: string; name: string }[] }
-  | { t: 'whisper'; from: string; fromName: string; to: string; text: string }
+  | { t: 'whisper'; from: string; fromName: string; to: string; text: string; at: number }
+  | { t: 'hush'; from: string; fromName: string; to: string; toName: string; text: string }
+  | { t: 'pmHistory'; with: string; msgs: PmLine[] }
   | { t: 'profile'; profile: ProfileView }
   | { t: 'navigator'; rooms: NavigatorRoom[] }
   | { t: 'toast'; text: string; kind?: 'info' | 'error' }

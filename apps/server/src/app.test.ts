@@ -556,6 +556,56 @@ describe('multiplayer', () => {
     c2.ws.close();
   });
 
+  it('whispers only to someone in the same room, hidden from others', async () => {
+    const a = await login('Hviskeren');
+    const b = await login('Lytteren');
+    const c = await login('Tilskueren');
+    for (const x of [a, b, c]) {
+      x.c.send({ t: 'join', roomId: 'cafe' });
+      await x.c.waitFor('room', (m) => m.room.id === 'cafe');
+    }
+    a.c.send({ t: 'hush', to: b.g.userId, text: 'psst' });
+    const got = await b.c.waitFor('hush');
+    expect(got.text).toBe('psst');
+    expect(got.fromName).toBe('Hviskeren');
+    await a.c.waitFor('hush');
+    await new Promise((r) => setTimeout(r, 150));
+    expect(c.c.msgs.some((m) => m.t === 'hush')).toBe(false);
+    c.c.send({ t: 'join', roomId: 'lobby' });
+    await c.c.waitFor('room', (m) => m.room.id === 'lobby');
+    a.c.send({ t: 'hush', to: c.g.userId, text: 'hallo?' });
+    expect((await a.c.waitFor('toast', (m) => /samme rum/.test(m.text))).kind).toBe('error');
+    for (const x of [a, b, c]) x.c.ws.close();
+  });
+
+  it('keeps messenger messages for offline friends with an unread count', async () => {
+    const a = await login('Brevskriver');
+    const b = await login('Modtager');
+    a.c.send({ t: 'friendRequest', name: 'modtager' });
+    await b.c.waitFor('friends', (m) => m.requests.length > 0);
+    b.c.send({ t: 'friendRespond', userId: a.g.userId, accept: true });
+    await a.c.waitFor('friends', (m) => m.friends.some((f) => f.id === b.g.userId));
+    b.c.ws.close();
+    await a.c.waitFor('friends', (m) => m.friends.some((f) => f.id === b.g.userId && !f.online));
+    a.c.send({ t: 'whisper', to: b.g.userId, text: 'ses i morgen' });
+    await a.c.waitFor('whisper');
+    // b logs in again and sees one unread message
+    const b2 = new TestClient();
+    await b2.open();
+    b2.send({ t: 'auth', token: b.g.token });
+    const fr = await b2.waitFor('friends');
+    expect(fr.friends.find((f) => f.id === a.g.userId)!.unread).toBe(1);
+    b2.send({ t: 'pmHistory', with: a.g.userId });
+    const h = await b2.waitFor('pmHistory');
+    expect(h.msgs.map((m) => m.text)).toEqual(['ses i morgen']);
+    const after = await b2.waitFor('friends', (m) =>
+      m.friends.some((f) => f.id === a.g.userId && f.unread === 0),
+    );
+    expect(after).toBeTruthy();
+    a.c.ws.close();
+    b2.ws.close();
+  });
+
   it('handles friends, whispers, password rooms and blocking', async () => {
     const a = await login('Anna');
     const b = await login('Bo');

@@ -25,6 +25,7 @@ import {
   sellPrice,
   WALK_SPEED,
   type FriendView,
+  type PmLine,
   type FurnitureDef,
   type FurnitureType,
   type Look,
@@ -118,6 +119,8 @@ const items = new Map<number, PlacedItem>();
 const objs = new Map<number, T.Group>();
 const actors = new Map<string, Actor>();
 let friends: FriendView[] = [];
+const pmLog = new Map<string, PmLine[]>();
+let pmWith: string | null = null;
 let requests: { id: string; name: string }[] = [];
 let build = false;
 let held: { item: PlacedItem; isNew: boolean; orig?: PlacedItem; inv?: number } | null = null;
@@ -425,15 +428,29 @@ function handle(msg: ServerMsg) {
       return;
     case 'whisper': {
       const mine = msg.from === me?.id;
-      const other = mine ? (friends.find((f) => f.id === msg.to)?.name ?? '?') : msg.fromName;
+      const other = mine ? msg.to : msg.from;
+      const line = { from: msg.from, text: msg.text, at: msg.at };
+      pmLog.set(other, [...(pmLog.get(other) ?? []), line].slice(-50));
+      if (panelKind === 'pm' && pmWith === other) {
+        renderPm(other);
+        if (!mine) net?.send({ t: 'pmHistory', with: other });
+      } else if (!mine) toast(`💬 ${msg.fromName}: ${msg.text.slice(0, 60)}`);
+      return;
+    }
+    case 'hush': {
+      const mine = msg.from === me?.id;
       logLine({
-        name: mine ? `Privat til ${other}` : `Privat fra ${other}`,
+        name: mine ? `🤫 Du hvisker til ${msg.toName}` : `🤫 ${msg.fromName} hvisker`,
         text: msg.text,
         cls: 'pm',
       });
-      if (actors.has(msg.from)) bubble(msg.from, msg.fromName + ' (privat)', msg.text, true);
+      if (actors.has(msg.from)) bubble(msg.from, `🤫 ${msg.fromName}`, msg.text, true);
       return;
     }
+    case 'pmHistory':
+      pmLog.set(msg.with, msg.msgs);
+      if (panelKind === 'pm' && pmWith === msg.with) renderPm(msg.with);
+      return;
     case 'action':
       actors.get(msg.id)?.setAction(msg.kind);
       return;
@@ -488,7 +505,10 @@ function handle(msg: ServerMsg) {
     case 'friends':
       friends = msg.friends;
       requests = msg.requests;
-      $('reqDot').classList.toggle('hidden', !requests.length);
+      $('reqDot').classList.toggle(
+        'hidden',
+        !requests.length && !friends.some((f) => f.unread > 0),
+      );
       if (panelKind === 'friends') renderFriends();
       return;
     case 'navigator':
@@ -913,7 +933,7 @@ function renderFriends() {
       (requests.length
         ? `<h3>Venneanmodninger</h3><div class="list">${requests.map((r) => `<div class="li"><div class="grow"><b>${esc(r.name)}</b></div><button class="small primary" data-acc="${r.id}">Ja</button><button class="small" data-dec="${r.id}">Nej</button></div>`).join('')}</div>`
         : '') +
-      `<h3>Dine venner</h3><div class="list">${friends.map((f) => `<div class="li"><div class="grow"><b>${esc(f.name)}</b><small>${f.online ? `<span class="status-on">● Online</span>${f.roomName ? ' · ' + esc(f.roomName) : ''}` : 'Offline'}</small></div>${f.online && f.roomId ? `<button class="small" data-go="${esc(f.roomId)}">Gå til</button>` : ''}<button class="small" data-pm="${esc(f.name)}">Skriv</button></div>`).join('') || '<p class="sub">Ingen venner endnu – klik på en figur for at tilføje.</p>'}</div>`,
+      `<h3>Dine venner</h3><div class="list">${friends.map((f) => `<div class="li"><div class="grow"><b>${esc(f.name)}</b><small>${f.online ? `<span class="status-on">● Online</span>${f.roomName ? ' · ' + esc(f.roomName) : ''}` : 'Offline'}</small></div>${f.online && f.roomId ? `<button class="small" data-go="${esc(f.roomId)}">Gå til</button>` : ''}<button class="small" data-pm="${esc(f.id)}">💬 Skriv${f.unread ? ` <b class="unread">${f.unread}</b>` : ''}</button></div>`).join('') || '<p class="sub">Ingen venner endnu – klik på en figur for at tilføje.</p>'}</div>`,
   );
   const p = $('panel');
   $('frAdd').addEventListener('click', () => {
@@ -934,13 +954,49 @@ function renderFriends() {
     b.addEventListener('click', () => goTo(b.dataset.go!)),
   );
   p.querySelectorAll<HTMLElement>('[data-pm]').forEach((b) =>
-    b.addEventListener('click', () => {
-      closePanel();
-      const inp = $<HTMLInputElement>('chatIn');
-      inp.value = `/w ${b.dataset.pm} `;
-      inp.focus();
-    }),
+    b.addEventListener('click', () => openPm(b.dataset.pm!)),
   );
+}
+
+function openPm(friendId: string) {
+  pmWith = friendId;
+  renderPm(friendId);
+  net?.send({ t: 'pmHistory', with: friendId });
+}
+
+function renderPm(friendId: string) {
+  const f = friends.find((x) => x.id === friendId);
+  const lines = pmLog.get(friendId) ?? [];
+  openPanel(
+    'pm',
+    head(
+      `💬 ${esc(f?.name ?? '?')}`,
+      f?.online ? 'Online nu' : 'Offline – beskeden venter til næste gang, de logger ind',
+    ) +
+      `<div id="pmLines" class="pmlines"></div>` +
+      `<form id="pmForm" style="display:flex;gap:6px;margin-top:8px"><input id="pmIn" maxlength="240" placeholder="Skriv en besked…" style="flex:1" autocomplete="off"><button class="small primary">Send</button></form>` +
+      `<p style="margin-top:8px"><button id="pmBack" class="small">← Venner</button></p>`,
+  );
+  const box = $('pmLines');
+  if (!lines.length) box.innerHTML = '<p class="sub">Ingen beskeder endnu. Sig hej!</p>';
+  for (const l of lines) {
+    const row = document.createElement('div');
+    row.className = 'pmline' + (l.from === me?.id ? ' me' : '');
+    row.textContent = l.text; // never HTML
+    row.title = new Date(l.at).toLocaleString('da-DK');
+    box.appendChild(row);
+  }
+  box.scrollTop = box.scrollHeight;
+  $('pmForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const inp = $<HTMLInputElement>('pmIn');
+    const text = inp.value.trim();
+    if (!text) return;
+    inp.value = '';
+    net?.send({ t: 'whisper', to: friendId, text });
+  });
+  $('pmBack').addEventListener('click', renderFriends);
+  $('pmIn').focus();
 }
 
 function renderProfile(p: ProfileView) {
@@ -962,7 +1018,8 @@ function renderProfile(p: ProfileView) {
         : '') +
       (!self && !p.bot
         ? `<div class="chips" style="margin-top:12px">
-          ${p.friend ? `<button data-a="pm">💬 Skriv privat</button><button data-a="unfriend">Fjern ven</button>` : `<button data-a="friend" class="primary">➕ Tilføj ven</button>`}
+          ${p.here ? `<button data-a="hush">🤫 Hvisk</button>` : ''}
+          ${p.friend ? `<button data-a="pm">💬 Messenger</button><button data-a="unfriend">Fjern ven</button>` : `<button data-a="friend" class="primary">➕ Tilføj ven</button>`}
           ${inMyRoom ? `<button data-a="rights">🔨 Giv byggerettigheder</button><button data-a="norights">Fjern rettigheder</button>` : ''}
           ${p.here && questsDone() ? `<button data-a="trade">🤝 Byt</button>` : ''}
           ${me?.role !== 'user' ? `<button data-a="modmute">🔇 Pause 1 t</button><button data-a="modkick">🚪 Send hjem</button>` : ''}
@@ -986,14 +1043,15 @@ function renderProfile(p: ProfileView) {
           closePanel();
           net?.send({ t: 'tradeStart', userId: p.id });
         }
-        if (a === 'pm') {
+        if (a === 'pm') return openPm(p.id);
+        if (a === 'hush') {
           closePanel();
-          $<HTMLInputElement>('chatIn').value = `/w ${p.name} `;
+          $<HTMLInputElement>('chatIn').value = `/h ${p.name} `;
           $('chatIn').focus();
+          return;
         }
         if (a === 'report') $('repBox').classList.remove('hidden');
-        if (a !== 'report' && a !== 'pm')
-          setTimeout(() => net?.send({ t: 'profile', userId: p.id }), 300);
+        if (a !== 'report') setTimeout(() => net?.send({ t: 'profile', userId: p.id }), 300);
       }),
     );
   $('repSend')?.addEventListener('click', () => {
@@ -1461,17 +1519,27 @@ $('chatForm').addEventListener('submit', (e) => {
   const text = inp.value.trim();
   if (!text || !net) return;
   inp.value = '';
+  const h = /^\/(h|hvisk)\s+(\S+)\s+(.+)$/i.exec(text);
+  if (h) {
+    const a = [...actors.values()].find(
+      (x) => !x.view.bot && x.view.name.toLowerCase() === h[2]!.toLowerCase(),
+    );
+    if (!a) return toast(`Der er ingen ${h[2]} her i rummet`, 'error');
+    net.send({ t: 'hush', to: a.view.id, text: h[3]! });
+    inp.value = `/h ${a.view.name} `; // stay in whisper mode until you clear it
+    return;
+  }
   const w = /^\/w\s+(\S+)\s+(.+)$/i.exec(text);
   if (w) {
     const f = friends.find((x) => x.name.toLowerCase() === w[1]!.toLowerCase());
-    if (!f) return toast('Du kan kun skrive privat til venner', 'error');
+    if (!f) return toast('Messengeren virker kun med venner', 'error');
     return net.send({ t: 'whisper', to: f.id, text: w[2]! });
   }
   if (/^\/(dans|dance)$/i.test(text)) return net.send({ t: 'action', kind: 'dance' });
   if (/^\/(vink|wave)$/i.test(text)) return net.send({ t: 'action', kind: 'wave' });
   if (/^\/(hjælp|help)$/i.test(text))
     return logLine({
-      text: 'Kommandoer: /terning · /ssp sten|saks|papir · /quiz · /dans · /vink · /w navn besked',
+      text: 'Kommandoer: /terning · /ssp sten|saks|papir · /quiz · /dans · /vink · /h navn besked (hvisk) · /w ven besked (messenger)',
       cls: 'sys',
     });
   net.send({ t: 'chat', text });

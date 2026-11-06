@@ -120,6 +120,8 @@ const LIMIT_FOR: Partial<Record<ClientMsg['t'], LimitKind>> = {
   sit: 'move',
   chat: 'chat',
   whisper: 'chat',
+  hush: 'chat',
+  pmHistory: 'social',
   action: 'move',
   buy: 'build',
   moveItem: 'build',
@@ -1057,9 +1059,14 @@ export class Hotel {
       case 'friendRemove':
         return this.friendRemove(user, msg.userId);
       case 'whisper':
+      case 'hush':
         if (user.mutedUntil && user.mutedUntil > Date.now())
           return this.toast(s, 'Du er sat på pause i chatten et stykke tid.', 'error');
-        return this.whisper(s, user, msg.to, msg.text);
+        return msg.t === 'hush'
+          ? this.hush(s, user, msg.to, msg.text)
+          : this.whisper(s, user, msg.to, msg.text);
+      case 'pmHistory':
+        return this.pmHistory(s, user, msg.with);
       case 'admin':
         return this.admin(s, user, msg);
       case 'showBadge':
@@ -1404,6 +1411,7 @@ export class Hotel {
           online: !!fs,
           roomId: fs?.room?.meta.id ?? null,
           roomName: fs?.room?.meta.name ?? null,
+          unread: this.unread(user, f.id),
         };
       })
       .sort((a, b) => Number(b.online) - Number(a.online) || a.name.localeCompare(b.name, 'da'));
@@ -1470,23 +1478,80 @@ export class Hotel {
     this.sendFriends(user);
   }
 
+  private pmRoom(a: string, b: string) {
+    return `pm:${[a, b].sort().join(':')}`;
+  }
+
+  private unread(user: UserRecord, friendId: string) {
+    const since = user.pmRead?.[friendId] ?? 0;
+    return this.store
+      .recentChat(this.pmRoom(user.id, friendId), 50)
+      .filter((c) => c.userId === friendId && c.at > since).length;
+  }
+
+  /** Messenger: private message to a friend anywhere in the hotel. Waits if they are offline. */
   private whisper(s: Session, user: UserRecord, to: string, raw: string) {
     const target = this.store.getUser(to);
     if (!target || !user.friends.includes(to))
-      return this.toast(s, 'Du kan kun skrive privat til venner.', 'error');
+      return this.toast(s, 'Du kan kun skrive i messengeren med venner.', 'error');
     const text = filterChat(sanitizeChat(raw));
     if (!text) return;
-    const ts = this.byUser.get(to);
-    if (!ts) return this.toast(s, `${target.name} er ikke online lige nu.`);
-    const msg: ServerMsg = { t: 'whisper', from: user.id, fromName: user.name, to, text };
-    if (!target.blocked.includes(user.id)) this.send(ts, msg);
-    this.send(s, msg);
+    const at = Date.now();
     this.store.logChat({
-      at: Date.now(),
-      roomId: `pm:${[user.id, to].sort().join(':')}`,
+      at,
+      roomId: this.pmRoom(user.id, to),
       userId: user.id,
       name: user.name,
       text,
+    });
+    (user.pmRead ??= {})[to] = at;
+    const msg: ServerMsg = { t: 'whisper', from: user.id, fromName: user.name, to, text, at };
+    this.send(s, msg);
+    const ts = this.byUser.get(to);
+    if (ts && !target.blocked.includes(user.id)) {
+      this.send(ts, msg);
+      this.sendFriends(target);
+    }
+  }
+
+  private pmHistory(s: Session, user: UserRecord, withId: string) {
+    if (!user.friends.includes(withId)) return;
+    const msgs = this.store
+      .recentChat(this.pmRoom(user.id, withId), 50)
+      .map((c) => ({ from: c.userId, text: c.text, at: c.at }));
+    (user.pmRead ??= {})[withId] = Date.now();
+    this.store.touch();
+    this.send(s, { t: 'pmHistory', with: withId, msgs });
+    this.sendFriends(user);
+  }
+
+  /** Whisper to someone in the same room: only the two of you see it. */
+  private hush(s: Session, user: UserRecord, to: string, raw: string) {
+    const room = s.room;
+    const ts = this.byUser.get(to);
+    const target = this.store.getUser(to);
+    if (!room || !ts || !target || ts.room !== room)
+      return this.toast(s, 'Du kan kun hviske til nogen i samme rum.', 'error');
+    if (to === user.id) return;
+    const text = filterChat(sanitizeChat(raw));
+    if (!text) return;
+    const msg: ServerMsg = {
+      t: 'hush',
+      from: user.id,
+      fromName: user.name,
+      to,
+      toName: target.name,
+      text,
+    };
+    this.send(s, msg);
+    if (!target.blocked.includes(user.id)) this.send(ts, msg);
+    // Logged separately so AI residents never see whispers, but moderators do.
+    this.store.logChat({
+      at: Date.now(),
+      roomId: `hush:${room.meta.id}`,
+      userId: user.id,
+      name: user.name,
+      text: `(hvisker til ${target.name}) ${text}`,
     });
   }
 
@@ -1508,7 +1573,11 @@ export class Hotel {
       targetId,
       reason: sanitizeChat(reason).slice(0, 300),
       roomId,
-      context: roomId ? this.store.recentChat(roomId, 20) : [],
+      context: roomId
+        ? [...this.store.recentChat(roomId, 20), ...this.store.recentChat(`hush:${roomId}`, 10)]
+            .sort((a, b) => a.at - b.at)
+            .slice(-24)
+        : [],
     });
     this.toast(s, 'Tak. En moderator kigger på det.');
   }
