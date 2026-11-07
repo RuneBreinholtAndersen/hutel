@@ -1,4 +1,4 @@
-# Hutel.dk – plan
+# Lobbi.dk (tidligere Hutel) – plan
 
 Status opdateres løbende. Åbne punkter står øverst, færdige punkter (✅) står nederst.
 
