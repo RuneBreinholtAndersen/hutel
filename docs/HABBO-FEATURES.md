@@ -25,7 +25,7 @@ Det her mener jeg giver mest spil for pengene, i den rækkefølge:
 ## 💡 Habbo-funktioner vi mangler (fuld liste)
 
 ### Chat og socialt
-- [ ] **Offline-meddelelser til grupper** – venter på punkt 2 (Grupper/klubber), så der er nogen at sende til. M
+- [ ] **Offline-meddelelser til grupper** – venter på punkt 3 (Grupper/klubber), så der er nogen at sende til. M
 
 ### Rum og byggeri
 - [ ] **Gulvplan-editor** – tegn selv gulvets form, højde, dørens placering. L
