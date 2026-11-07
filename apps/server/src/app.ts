@@ -32,6 +32,8 @@ export interface AppConfig extends HotelConfig {
   supabaseAnonKey?: string;
   /** Social providers shown on the login page (e.g. ['google']). E-mail link is always on. */
   authProviders?: string[];
+  /** The game's real address (e.g. https://spil.lobbi.dk). Old addresses send players there. */
+  canonicalUrl?: string;
   /** Owner-approved claims: old name+password account name → e-mail allowed to take it over. */
   claimNames?: Record<string, string>;
   /** Verifies a Supabase access token. Injectable for tests; defaults to Supabase's /auth/v1/user. */
@@ -237,6 +239,7 @@ export function createApp(
         supabaseAnonKey: cfg.supabaseAnonKey ?? null,
         inviteRequired: invites.length > 0,
         providers: verify ? (cfg.authProviders ?? ['google']) : [],
+        canonicalUrl: cfg.canonicalUrl ?? null,
       });
     }
     if (req.method === 'POST' && url.pathname === '/api/session') {

@@ -7,6 +7,8 @@ export interface AuthConfig {
   supabaseAnonKey: string | null;
   inviteRequired: boolean;
   providers: string[];
+  /** Set when the game has moved to a new address. */
+  canonicalUrl?: string | null;
 }
 
 const FALLBACK: AuthConfig = {

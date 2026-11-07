@@ -3282,8 +3282,26 @@ function loop() {
 
 roomGfx.setTheme('home');
 async function boot() {
+  // Arriving from the old address: keep the login that came along in the link.
+  const moved = /^#move=([^&]+)/.exec(location.hash);
+  if (moved) {
+    store.set(TOKEN_KEY, decodeURIComponent(moved[1]!));
+    history.replaceState(null, '', location.pathname);
+  }
   authCfg = await loadConfig(SERVER);
   const saved = store.get(TOKEN_KEY);
+  // The game has moved (e.g. hutel.fly.dev → spil.lobbi.dk): go there and stay logged in.
+  if (authCfg.canonicalUrl && !envServer) {
+    try {
+      const target = new URL(authCfg.canonicalUrl);
+      if (target.origin !== location.origin && location.hostname !== 'localhost') {
+        location.replace(target.origin + '/' + (saved ? '#move=' + encodeURIComponent(saved) : ''));
+        return;
+      }
+    } catch {
+      /* bad setting – just stay */
+    }
+  }
   if (social() && (isAuthRedirect() || !saved)) {
     try {
       if (await exchange()) return;
