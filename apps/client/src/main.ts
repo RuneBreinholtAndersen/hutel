@@ -3285,10 +3285,25 @@ for (const [id, provider] of [
 ] as const)
   $(id).addEventListener('click', () => {
     $('authError').textContent = '';
+    // Google refuses to log in inside apps' own browsers (Facebook, Messenger, Instagram …).
+    if (inAppBrowser()) return showInAppHelp();
     signInWithProvider(authCfg, provider).catch(
       () => ($('authError').textContent = 'Det login virker ikke lige nu. Prøv e-mail i stedet.'),
     );
   });
+/** Browsers built into other apps, where Google blocks sign-in ("disallowed_useragent"). */
+function inAppBrowser() {
+  const ua = navigator.userAgent;
+  return /FBAN|FBAV|FB_IAB|Instagram|Messenger|Line\/|Snapchat|TikTok|LinkedInApp|\bwv\)/i.test(
+    ua,
+  );
+}
+function showInAppHelp() {
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+  $('authError').textContent =
+    `Google-login virker ikke inde i en anden app. Tryk på ⋯ og vælg "Åbn i ${ios ? 'Safari' : 'Chrome'}" – eller brug e-mail nedenfor.`;
+  void navigator.clipboard?.writeText(location.href).catch(() => {});
+}
 $('emailForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const email = $<HTMLInputElement>('authEmail').value.trim();
@@ -3472,19 +3487,33 @@ async function boot() {
     try {
       const target = new URL(authCfg.canonicalUrl);
       if (target.origin !== location.origin && location.hostname !== 'localhost') {
-        location.replace(target.origin + '/' + (saved ? '#move=' + encodeURIComponent(saved) : ''));
+        // A Google/e-mail login that landed on the old address keeps its token in the hash.
+        const hash = isAuthRedirect()
+          ? location.search + location.hash
+          : saved
+            ? '#move=' + encodeURIComponent(saved)
+            : '';
+        location.replace(target.origin + '/' + hash);
         return;
       }
     } catch {
       /* bad setting – just stay */
     }
   }
+  // Google or the login link said no (cancelled, expired link …): say so instead of a silent reset.
+  const authErr = new URLSearchParams(location.hash.slice(1) || location.search).get(
+    'error_description',
+  );
   if (social() && (isAuthRedirect() || !saved)) {
     try {
       if (await exchange()) return;
     } catch {
       /* fall through to the login screen */
     }
+  }
+  if (authErr) {
+    history.replaceState(null, '', location.pathname);
+    return showSignup(`Login mislykkedes: ${authErr.replace(/\+/g, ' ')}. Prøv igen.`, 'social');
   }
   if (saved) start(saved);
   else showSignup();
