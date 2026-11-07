@@ -2,7 +2,7 @@
 
 Listen sammenligner Lobbi (tidligere Hutel) med de klassiske funktioner fra Habbo Hotel. Navne, grafik og møbler kopieres ikke: vi laver vores egen version af idéen.
 
-_Senest opdateret: 7. november 2026 (slet egen konto og admin-brugerliste)._
+_Senest opdateret: 7. november 2026 (SEO på lobbi.dk)._
 
 **Sådan læses den**
 - **Værdi**: hvor meget det betyder for spillerne (★–★★★)
@@ -115,6 +115,7 @@ Det her mener jeg giver mest spil for pengene, i den rækkefølge:
 - ✅ Biograf: offentligt rum "Biografen" + lærred (stort, 16:9) og biografstole til eget værelse; YouTube-video (officiel indlejring) ligger skråt på lærredet og er synkroniseret for alle; kø med op til 10 videoer, højst 10 min pr. video, skip ved flertal; i Biografen koster en video 5 mønter (refunderes hvis fjernet før visning), i eget rum gratis for ejer og dem med rettigheder; ejer/moderator kan stoppe og fjerne; titlen hentes fra YouTube og ikke-indlejrbare videoer afvises; slået fra i Junior
 - ✅ Lobbi Junior (første del): egen udgave med menu-chat (færdige sætninger i 6 kategorier), sjove navne valgt med terning, venner kun via vennekode, ingen fri tekst nogen steder, AI-beboere med faste replikker – alt tjekkes på serveren. Kører på egen server (lobbi-junior.fly.dev)
 - ✅ Hjemmesiden viser rigtige rum fra spillet med figurer, der går rundt og snakker: Caféen og Spillehallen på forsiden (vokser frem, når man scroller), poolen nederst, et rum øverst på hver underside (spillehal, biograf, café) og børn i poolen på Junior-siden – rummene starter først, når man scroller hen til dem
+- ✅ SEO på lobbi.dk: forsiden målrettet "dansk chat", "hotel spil", "avatar spil" og "chatrum" (titel, tekst og schema.org), artiklerne "Hvad blev der af Jubii chat?" og "Hvad blev der af Habbo Hotel?", landingssiderne /hotel-spil/ (med figur-bygger) og /dansk-chatrum/, artikeloversigt, sitemap.xml og robots.txt
 - ✅ Slet egen konto: under Figur i spillet eller via lobbi.dk/slet-konto (skriv dit navn for at bekræfte) – figur, værelser, møbler, markedsvarer og venskaber slettes med det samme
 - ✅ Admin-knap (🛡️ øverst til venstre, kun for administratorer): antal brugere, nye i dag og på 7 dage, online nu, og de 100 nyeste brugere med oprettelse, sidst set og login-type
 - ✅ Spillet på mobil: intet glider længere ud over kanten, knapperne fylder bredden pænt, plads til iPhones bundlinje, dagens opgaver foldet sammen til en lille knap, rummet zoomet så det passer

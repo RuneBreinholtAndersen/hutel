@@ -28,13 +28,31 @@ const things = [
   { icon: '💬', title: 'Snak, hvisk og råb', text: 'Talebobler, hvisken til én, beskeder til venner og et råb til hele rummet, når det er vigtigt.' },
 ];
 ---
-<Base title="Lobbi" description="Lobbi er et dansk chat-hotel i browseren. Lav din figur, indret dit eget værelse, spil og mød nye mennesker. Gratis og uden download.">
+<Base title="Lobbi" description="Lobbi er en gratis dansk chat og et hotel-spil i browseren. Lav din avatar, indret dit eget værelse, hæng ud i chatrummene og spil med andre – uden download.">
+  <script type="application/ld+json" set:html={JSON.stringify({
+    '@context': 'https://schema.org',
+    '@graph': [
+      { '@type': 'WebSite', name: 'Lobbi', url: 'https://lobbi.dk/', inLanguage: 'da' },
+      {
+        '@type': 'VideoGame',
+        name: 'Lobbi',
+        url: 'https://lobbi.dk/',
+        description: 'Dansk chat og hotel-spil i browseren med avatarer, egne værelser, chatrum og spil.',
+        genre: ['Social', 'Virtuel verden', 'Chat'],
+        gamePlatform: 'Web browser',
+        applicationCategory: 'Game',
+        inLanguage: 'da',
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'DKK' },
+        publisher: { '@type': 'Organization', name: 'Breinholt Digital', email: 'kontakt@lobbi.dk' },
+      },
+    ],
+  })} />
   <section class="hero" aria-labelledby="hero-title">
     <div id="lobby" class="hero-scene" aria-hidden="true"></div>
     <div class="wrap hero-copy">
       <div class="speech">
         <h1 id="hero-title">Tjek ind på Lobbi.</h1>
-        <p>Et hyggeligt chat-hotel lige i browseren. Lav din figur, indret dit eget værelse og mød nye mennesker – gratis og uden at downloade noget.</p>
+        <p>Dansk chat og hotel-spil lige i browseren. Lav din avatar, indret dit eget værelse og mød nye mennesker i chatrummene – gratis og uden at downloade noget.</p>
         <p class="pick">Hvilken dør skal du ind ad?</p>
         <div class="choices">
           <a class="choice adult" href={PLAY_URL}>
@@ -75,7 +93,7 @@ const things = [
   <section class="directory-sec" aria-labelledby="dir-title">
     <div class="wrap">
       <h2 id="dir-title">Rundt i hotellet</h2>
-      <p>Hotellets rum er åbne for alle. Dit eget værelse er dit – du bestemmer, hvem der må komme ind.</p>
+      <p>Hotellets chatrum er åbne for alle – sæt dig i caféen, spil i spillehallen eller se film i biografen. Dit eget værelse er dit, og du bestemmer, hvem der må komme ind.</p>
       <div class="directory">
         <ul>
           {rooms.map((r) => (
@@ -138,6 +156,17 @@ const things = [
         <li><strong>Moderatorer holder øje.</strong> Chikane og hadsk tale fører til pause eller udelukkelse.</li>
         <li><strong>Chatten slettes efter 30 dage.</strong> Vi gemmer kun beskeder, så længe det er nødvendigt for moderation.</li>
       </ul>
+    </div>
+  </section>
+
+  <section class="seo-sec" aria-labelledby="seo-title">
+    <div class="wrap seo-grid">
+      <h2 id="seo-title">Dansk chat, avatar-spil og hotel-spil i ét</h2>
+      <div>
+        <p><strong>En dansk chat med noget at lave.</strong> På Lobbi skriver du ikke bare i et vindue – du går rundt som din egen figur, og snakken står i talebobler over hovedet. Hotellets <a href="/dansk-chatrum/">danske chatrum</a> er altid åbne.</p>
+        <p><strong>Et avatar-spil, hvor du bestemmer.</strong> Vælg hår, tøj, farver og briller, og byg dit eget værelse møbel for møbel. Læs mere om <a href="/hotel-spil/">hotel-spillet og din avatar</a>.</p>
+        <p><strong>Til dig, der savner de gamle chatsider.</strong> Husker du chatrummene fra 00'erne? Læs <a href="/artikler/hvad-blev-der-af-jubii-chat/">hvad der blev af Jubii chat</a> og <a href="/artikler/hvad-blev-der-af-habbo-hotel/">hvad der blev af Habbo Hotel</a>.</p>
+      </div>
     </div>
   </section>
 
@@ -618,6 +647,26 @@ const things = [
     }
   }
 
+  .seo-sec {
+    background: var(--wood);
+  }
+  .seo-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.4fr;
+    gap: 48px;
+  }
+  .seo-grid p {
+    color: var(--cream-dim);
+  }
+  .seo-grid strong {
+    color: var(--cream);
+  }
+  @media (max-width: 860px) {
+    .seo-grid {
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+  }
   .news {
     display: grid;
     grid-template-columns: repeat(2, 1fr);

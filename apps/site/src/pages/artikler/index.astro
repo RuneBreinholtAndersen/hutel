@@ -1,0 +1,40 @@
+---
+import Base from '../../layouts/Base.astro';
+import { ARTICLES } from '../../content/articles';
+---
+<Base page scene="cinema" title="Artikler" description="Artikler om danske chatsider, virtuelle hoteller og online-fællesskaber – fra Jubii chat og Habbo Hotel til i dag.">
+  <article class="prose wrap">
+    <h1>Artikler</h1>
+    <p>Historier om de danske chatsider og virtuelle hoteller, vi voksede op med – og om at mødes online i dag.</p>
+    <ul class="alist">
+      {ARTICLES.map((a) => (
+        <li>
+          <a href={`/artikler/${a.slug}/`}><strong>{a.title}</strong></a>
+          <span>{a.description}</span>
+        </li>
+      ))}
+    </ul>
+  </article>
+</Base>
+<style>
+  .alist {
+    list-style: none;
+    padding: 0;
+    display: grid;
+    gap: 18px;
+    max-width: 760px;
+  }
+  .alist li {
+    display: grid;
+    gap: 4px;
+    padding: 18px 22px;
+    border-radius: 18px;
+    background: rgba(255, 244, 224, 0.06);
+  }
+  .alist strong {
+    font: 600 1.3rem var(--display);
+  }
+  .alist span {
+    color: var(--cream-dim);
+  }
+</style>

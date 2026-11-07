@@ -11,7 +11,7 @@ interface Props {
   scene?: string;
 }
 const { title, description, page = false, junior = false, scene } = Astro.props;
-const full = title === 'Lobbi' ? 'Lobbi – et hyggeligt chat-hotel i browseren' : `${title} – Lobbi`;
+const full = title === 'Lobbi' ? 'Lobbi – dansk chat og hotel-spil i browseren' : `${title} – Lobbi`;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 ---
 <!doctype html>
@@ -39,7 +39,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
         <ul>
           <li><a href="/saadan-spiller-du/">Sådan spiller du</a></li>
           <li><a href="/junior/">Lobbi Junior</a></li>
-          <li><a href="/nyheder/">Nyheder</a></li>
+          <li><a href="/artikler/">Artikler</a></li>
           <li><a href="/spoergsmaal/">Spørgsmål</a></li>
         </ul>
         {junior ? <a class="btn" href={JUNIOR_URL}>Spil Junior</a> : <a class="btn" href={PLAY_URL}>Spil gratis</a>}
@@ -65,6 +65,9 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
         <ul>
           <li><a href="/saadan-spiller-du/">Sådan spiller du</a></li>
           <li><a href="/nyheder/">Nyheder</a></li>
+          <li><a href="/artikler/">Artikler</a></li>
+          <li><a href="/dansk-chatrum/">Dansk chatrum</a></li>
+          <li><a href="/hotel-spil/">Hotel-spil og avatar-spil</a></li>
           <li><a href="/spoergsmaal/">Spørgsmål og tryghed</a></li>
           <li><a href="/vilkaar/">Vilkår</a></li>
           <li><a href="/privatliv/">Privatlivspolitik</a></li>

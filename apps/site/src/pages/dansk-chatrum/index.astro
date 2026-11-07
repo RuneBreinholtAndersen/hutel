@@ -1,0 +1,40 @@
+---
+import Base from '../../layouts/Base.astro';
+import { PLAY_URL } from '../../config';
+import { PUBLIC_ROOMS } from '@hutel/shared';
+---
+<Base page scene="cafe" title="Dansk chatrum – gratis chat i browseren" description="Lobbi er en gratis dansk chat med chatrum i et hotel: snak i talebobler i lobbyen, caféen og poolen, hvisk til én eller skriv til dine venner. Kun for voksne over 18.">
+  <article class="prose wrap">
+    <h1>Dansk chatrum, hvor du kan gå rundt</h1>
+    <p><strong>Lobbi er en gratis dansk chat, hvor chatrummene er rum i et hotel.</strong> Du er din egen figur, beskederne står i talebobler, og du kan gå hen til dem, du vil snakke med. Det kræver kun en browser.</p>
+
+    <h2>Hotellets chatrum</h2>
+    <ul class="rooms">
+      {PUBLIC_ROOMS.map((r) => (
+        <li><strong>{r.name}</strong> – {r.description}</li>
+      ))}
+    </ul>
+    <p>Ud over de offentlige rum kan alle gæster lave deres eget værelse og invitere andre indenfor – eller låse døren.</p>
+
+    <h2>Sådan chatter du</h2>
+    <ul>
+      <li><strong>Snak i rummet:</strong> skriv nederst, så står det i en taleboble over din figur.</li>
+      <li><strong>Hvisk til én:</strong> <code>/h navn besked</code> – kun I to kan se det.</li>
+      <li><strong>Råb til hele rummet:</strong> <code>:shout besked</code>, når det er vigtigt.</li>
+      <li><strong>Messenger:</strong> skriv til dine venner, også når de ikke er online.</li>
+      <li><strong>Emotes og handlinger:</strong> vink, dans, kram og high-five via 😊-knappen.</li>
+    </ul>
+
+    <h2>En tryg dansk chat</h2>
+    <p>Lobbi er kun for voksne over 18. Du kan blokere og rapportere, slå "må ikke følges" til, og moderatorer holder øje. AI-figurerne Ida, Magnus og de andre er altid markeret med 🤖. Chatbeskeder slettes automatisk efter 30 dage. Læs mere under <a href="/spoergsmaal/">spørgsmål og tryghed</a>.</p>
+
+    <h2>Savner du de gamle chatsider?</h2>
+    <p>Mange af os voksede op med chatrum på Jubii, Arto og Habbo. Læs <a href="/artikler/hvad-blev-der-af-jubii-chat/">hvad der blev af Jubii chat</a> – og prøv, hvordan det føles at sidde i en chat igen.</p>
+    <p style="margin-top:1.6em"><a class="btn" href={PLAY_URL}>Gå ind i chatten</a></p>
+  </article>
+</Base>
+<style>
+  .rooms li {
+    margin-bottom: 0.5em;
+  }
+</style>

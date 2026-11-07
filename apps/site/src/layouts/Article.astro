@@ -1,0 +1,67 @@
+---
+import Base from './Base.astro';
+import { PLAY_URL } from '../config';
+interface Props {
+  title: string;
+  description: string;
+  date: string;
+  scene?: string;
+}
+const { title, description, date, scene = 'cafe' } = Astro.props;
+const fmt = new Date(date).toLocaleDateString('da-DK', { day: 'numeric', month: 'long', year: 'numeric' });
+const ld = {
+  '@context': 'https://schema.org',
+  '@type': 'Article',
+  headline: title,
+  description,
+  datePublished: date,
+  inLanguage: 'da',
+  author: { '@type': 'Organization', name: 'Lobbi' },
+  publisher: { '@type': 'Organization', name: 'Lobbi', email: 'kontakt@lobbi.dk' },
+};
+---
+<Base page scene={scene} title={title} description={description}>
+  <script type="application/ld+json" set:html={JSON.stringify(ld)} />
+  <article class="prose wrap article">
+    <p class="crumbs"><a href="/artikler/">Artikler</a> · <time datetime={date}>{fmt}</time></p>
+    <h1>{title}</h1>
+    <slot />
+    <aside class="try">
+      <strong>Savner du chatrummene?</strong>
+      <span>Lobbi er et nyt, dansk chat-hotel i browseren – lav din figur, indret dit værelse og snak med andre i talebobler. Gratis og uden download.</span>
+      <a class="btn" href={PLAY_URL}>Tjek ind på Lobbi</a>
+    </aside>
+    <slot name="sources" />
+  </article>
+</Base>
+<style>
+  .crumbs {
+    color: var(--cream-dim);
+    font-size: 0.9rem;
+  }
+  .article :global(p),
+  .article :global(li) {
+    color: var(--cream-dim);
+  }
+  .article :global(strong) {
+    color: var(--cream);
+  }
+  .try {
+    display: grid;
+    gap: 10px;
+    justify-items: start;
+    max-width: 680px;
+    margin: 2.4em 0;
+    padding: 24px 28px;
+    border-radius: 24px;
+    background: var(--cream);
+    color: var(--wood);
+  }
+  .try strong {
+    font: 600 1.4rem var(--display);
+    color: var(--wood) !important;
+  }
+  .article :global(.sources) {
+    font-size: 0.85rem;
+  }
+</style>

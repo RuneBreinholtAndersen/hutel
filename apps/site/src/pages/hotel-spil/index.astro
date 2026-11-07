@@ -1,0 +1,110 @@
+---
+import Base from '../../layouts/Base.astro';
+import { PLAY_URL } from '../../config';
+---
+<Base page scene="pool" title="Hotel-spil og avatar-spil i browseren" description="Lobbi er et gratis hotel-spil og avatar-spil på dansk: lav din egen avatar, indret dit hotelværelse, få et kæledyr og spil med andre – direkte i browseren.">
+  <article class="prose wrap">
+    <h1>Hotel-spil og avatar-spil på dansk</h1>
+    <p><strong>Lobbi er et gratis hotel-spil i browseren, hvor du er din egen avatar.</strong> Du får et værelse på hotellet, tjener mønter ved at være online og møder andre i lobbyen, caféen, poolen og spillehallen. Intet skal downloades – det virker på computer, tablet og telefon.</p>
+  </article>
+
+  <section class="fig-band wrap">
+    <div class="fig-stage"><div id="figure" class="fig-canvas" aria-hidden="true"></div></div>
+    <div>
+      <h2>Lav din avatar</h2>
+      <p>Prøv selv – sådan ser din figur ud i spillet. Vælg køn, frisure, tøj, hat, briller og farver. I spillet kan du købe mere tøj og gemme dine yndlingsoutfits.</p>
+      <div id="figure-controls" class="fig-controls"></div>
+    </div>
+  </section>
+
+  <article class="prose wrap">
+    <h2>Indret dit eget hotelværelse</h2>
+    <p>Dit værelse er dit. Køb møbler, tapet og gulve for de mønter, du tjener, flyt og drej dem med Byg, og lav rummet større, med trapper eller flere værelser. Du bestemmer, om døren er åben, låst eller kræver kode.</p>
+    <h2>Spil med de andre gæster</h2>
+    <p>Stil en spilkonsol op og start Farvekamp, Kapløb eller Sneboldkamp for alle i rummet – vinderne får mønter. Eller sæt dig i biografen og se YouTube-videoer sammen.</p>
+    <h2>Kæledyr, byttehandel og marked</h2>
+    <p>Få en hund, en kat eller en lille drage, der følger efter dig og lærer tricks. Byt møbler med andre, eller sæt dem til salg på markedet.</p>
+    <h2>Gratis og trygt</h2>
+    <p>Lobbi er gratis og for voksne over 18. AI-figurer er altid markeret med 🤖, og du kan blokere og rapportere. Børn har deres eget hotel, <a href="/junior/">Lobbi Junior</a>.</p>
+    <p style="margin-top:1.6em"><a class="btn" href={PLAY_URL}>Spil gratis</a></p>
+  </article>
+</Base>
+
+<script>
+  import { startFigure } from '../../scripts/figure';
+  try {
+    if (document.createElement('canvas').getContext('webgl'))
+      startFigure(document.getElementById('figure')!, document.getElementById('figure-controls')!);
+  } catch {
+    /* no 3D – the text still works */
+  }
+</script>
+
+<style>
+  .fig-band {
+    display: grid;
+    grid-template-columns: minmax(240px, 380px) 1fr;
+    gap: 48px;
+    align-items: center;
+    padding: 20px 0 40px;
+  }
+  .fig-stage {
+    aspect-ratio: 1 / 1.1;
+    border-radius: 50% 50% 24px 24px / 40% 40% 24px 24px;
+    background: radial-gradient(circle at 50% 35%, #7a4a3a 0%, #4e3121 70%);
+    overflow: hidden;
+  }
+  .fig-canvas {
+    width: 100%;
+    height: 100%;
+  }
+  .fig-controls :global(.fig-row) {
+    display: grid;
+    grid-template-columns: 90px 1fr;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .fig-controls :global(.fig-label) {
+    font-weight: 600;
+    color: var(--cream-dim);
+  }
+  .fig-controls :global(.fig-chips),
+  .fig-controls :global(.fig-swatches) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .fig-controls :global(.fig-chips button) {
+    font: 600 0.9rem var(--display);
+    background: rgba(255, 244, 224, 0.1);
+    color: var(--cream);
+    border: 0;
+    border-radius: 999px;
+    padding: 6px 12px;
+    cursor: pointer;
+  }
+  .fig-controls :global(.fig-chips button[aria-pressed='true']) {
+    background: var(--lamp);
+    color: var(--wood);
+  }
+  .fig-controls :global(.fig-swatches button) {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    box-shadow: inset 0 0 0 1px rgba(255, 244, 224, 0.35);
+    cursor: pointer;
+  }
+  .fig-controls :global(.fig-swatches button[aria-pressed='true']) {
+    border-color: var(--lamp);
+  }
+  @media (max-width: 860px) {
+    .fig-band {
+      grid-template-columns: 1fr;
+    }
+    .fig-stage {
+      max-width: 320px;
+    }
+  }
+</style>

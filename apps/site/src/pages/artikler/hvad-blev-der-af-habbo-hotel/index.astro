@@ -1,0 +1,38 @@
+---
+import Article from '../../../layouts/Article.astro';
+import { ARTICLES } from '../../../content/articles';
+const a = ARTICLES[1];
+---
+<Article title={a.title} description={a.description} date={a.date} scene={a.scene}>
+  <p><strong>Habbo Hotel findes stadig – men det danske hotel lukkede i 2015.</strong> Habbo var 00'ernes store virtuelle hotel, hvor man gik rundt som en lille pixelfigur, indrettede sit værelse og chattede med folk fra hele landet. Her er, hvad der skete.</p>
+
+  <h2>Fra finsk guldfisk til verdens hotel</h2>
+  <p>Habbo startede i Finland i august 2000 under navnet Hotelli Kultakala – Hotel Guldfisk – lavet af det finske firma Sulake. Idéen bredte sig hurtigt: et hotel i Storbritannien, og derefter lokale hoteller i en lang række lande. Over årene er der oprettet flere hundrede millioner figurer.</p>
+
+  <h2>Det danske Habbo-hotel</h2>
+  <p>Danmark fik sit eget hotel i december 2004. Mange danske børn og unge brugte timer i lobbyen, i poolen og på hinandens værelser – og på at bytte møbler. Den 29. april 2015 lukkede det danske hotel, fordi der var for få brugere tilbage.</p>
+
+  <h2>Skandalen i 2012</h2>
+  <p>I juni 2012 afslørede den britiske tv-kanal Channel 4, at voksne brugte chatten til at sende seksuelle beskeder til børn. Sulake slukkede for al chat i en periode, investorer trak sig, og tilliden fik et knæk, som spillet aldrig helt kom sig over. Sagen er en vigtig grund til, at nyere spil for børn bruger færdige sætninger i stedet for fri chat.</p>
+
+  <h2>Findes Habbo i dag?</h2>
+  <p>Ja. Habbo drives stadig af Sulake på færre, internationale hoteller. I juni 2024 kom Habbo Hotel: Origins, en version af spillet, som det så ud i 2005, rettet mod voksne. Der findes dog ikke længere et dansk Habbo-hotel.</p>
+
+  <h2>Spil der minder om Habbo – på dansk</h2>
+  <p>Savner du det danske hotel, er <a href="/">Lobbi</a> bygget til dig. Lobbi er et nyt, dansk <a href="/hotel-spil/">hotel-spil og avatar-spil</a> i browseren med egne værelser, møbler, kæledyr, spil som Sneboldkamp og Farvekamp, en biograf og <a href="/dansk-chatrum/">danske chatrum</a>. Lobbi har intet med Habbo eller Sulake at gøre – grafik, møbler og figurer er vores egne.</p>
+  <p>Vi har også lært af historien: Lobbi er kun for voksne over 18. Børn har deres eget, helt adskilte hotel, <a href="/junior/">Lobbi Junior</a>, hvor man kun chatter med færdige sætninger, og hvor en forælder siger ja først.</p>
+
+  <h2>Kort fortalt</h2>
+  <ul>
+    <li>Habbo startede i Finland i 2000 som Hotelli Kultakala.</li>
+    <li>Det danske hotel åbnede i december 2004 og lukkede 29. april 2015.</li>
+    <li>I 2012 blev chatten lukket midlertidigt efter en afsløring om voksne, der kontaktede børn.</li>
+    <li>Habbo findes stadig internationalt, og siden 2024 også som Habbo Hotel: Origins for voksne.</li>
+  </ul>
+
+  <p slot="sources" class="sources">
+    Kilder: <a href="https://en.wikipedia.org/wiki/Habbo">Wikipedia: Habbo</a> ·
+    <a href="https://techcrunch.com/?p=577472">TechCrunch om Habbo efter 2012</a>.
+    Habbo er et varemærke tilhørende Sulake; Lobbi er ikke tilknyttet Habbo eller Sulake.
+  </p>
+</Article>
