@@ -16,6 +16,8 @@ export interface FurnitureDef {
   noShop?: boolean;
   /** Only found in golden chests – very rare. */
   rare?: boolean;
+  /** Only sold for a short while or in a limited number (see limited.ts). Each copy is numbered. */
+  limited?: boolean;
   /** Only for sale once you have this badge. */
   unlock?: BadgeId;
   /** Colour choices for the main fabric/paint (first is the default). */
@@ -362,6 +364,18 @@ export const FURNITURE = {
     states: 2,
     defaultState: 1,
   },
+  // ---- Limited editions: only sold during a drop (see limited.ts), numbered #1, #2 …
+  nordlyslampe: {
+    name: 'Nordlyslampe',
+    icon: '🌌',
+    price: 250,
+    w: 1,
+    d: 1,
+    noShop: true,
+    limited: true,
+    states: 2,
+    defaultState: 1,
+  },
 } as const satisfies Record<string, FurnitureDef>;
 
 export type FurnitureType = keyof typeof FURNITURE;
@@ -433,3 +447,12 @@ export const SHOP_CATEGORIES = [
   types: readonly FurnitureType[];
 }[];
 export type ShopCategoryId = (typeof SHOP_CATEGORIES)[number]['id'];
+
+/**
+ * Can be stashed, traded and sold on the market. Fixtures (pool, reception …) can't, but rares
+ * and limited editions can – that's the whole point of them.
+ */
+export function canTrade(type: FurnitureType): boolean {
+  const def = furniture(type);
+  return !def.noShop || !!def.rare || !!def.limited;
+}

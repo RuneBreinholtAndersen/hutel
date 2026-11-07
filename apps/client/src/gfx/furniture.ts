@@ -714,6 +714,55 @@ const BUILD: Record<FurnitureType, (c: number, state: number) => T.Group> = {
     }
     return g;
   },
+  nordlyslampe(_c, on) {
+    const g = new T.Group();
+    const wood = M(0x3a2a20, { roughness: 0.55 });
+    const silver = M(0xc9d3e0, { metalness: 0.85, roughness: 0.25 });
+    g.add(cyl(0.2, 0.25, 0.1, wood, 0, 0.05, 0, 24));
+    g.add(cyl(0.035, 0.05, 0.36, silver, 0, 0.28, 0, 12));
+    g.add(cyl(0.1, 0.06, 0.06, silver, 0, 0.48, 0, 16));
+    // A night-sky globe with glowing bands of northern lights wrapped around it.
+    const sky = sph(
+      0.3,
+      M(0x0d2150, { roughness: 0.35, emissive: 0x081840, emissiveIntensity: on ? 0.9 : 0.25 }),
+      0,
+      0.8,
+      0,
+    );
+    g.add(sky);
+    for (let i = 0; i < 3; i++) {
+      const band = new T.Mesh(
+        new T.TorusGeometry(0.31, 0.03, 8, 40, Math.PI * (1.1 + i * 0.25)),
+        new T.MeshStandardMaterial({
+          color: 0x000000,
+          emissive: new T.Color(0x4dffb0),
+          emissiveIntensity: on ? 1.2 : 0.15,
+          roughness: 0.4,
+        }),
+      );
+      band.position.y = 0.8;
+      band.rotation.set(0.5 + i * 0.45, i * 1.2, i * 1.9);
+      band.userData.aurora = i;
+      g.add(band);
+    }
+    // Little stars on the globe.
+    const starM = new T.MeshBasicMaterial({ color: 0xfff6d0 });
+    for (let i = 0; i < 10; i++) {
+      const a = i * 2.39;
+      const y = 0.8 + Math.cos(i * 1.7) * 0.22;
+      const r = Math.sqrt(Math.max(0, 0.3 * 0.3 - (y - 0.8) ** 2)) + 0.002;
+      const st = new T.Mesh(new T.OctahedronGeometry(0.014, 0), starM);
+      st.position.set(Math.sin(a) * r, y, Math.cos(a) * r);
+      g.add(st);
+    }
+    if (on) {
+      const pl = new T.PointLight(0x4dffb0, 1.2, 5, 2);
+      pl.position.y = 0.9;
+      pl.userData.aurora = 0;
+      g.add(pl);
+    }
+    return g;
+  },
   blomstervase() {
     const g = new T.Group();
     g.add(cyl(0.12, 0.16, 0.36, M(0x3f7fd6, { roughness: 0.25 }), 0, 0.18, 0, 20));

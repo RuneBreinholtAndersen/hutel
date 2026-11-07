@@ -16,6 +16,8 @@ export interface PlacedItem {
   state?: number;
   /** Teleporters: both twins share this id. */
   pair?: string;
+  /** Rares and limited editions: copy number (#1, #2 …). */
+  serial?: number;
   /** Jukebox: the tune playing and when it started (ms epoch). */
   song?: string;
   songAt?: number;

@@ -66,7 +66,7 @@ export interface UserRecord {
   /** Minutes at the current event (key: date:eventId). */
   eventMins?: { key: string; mins: number };
   /** Furniture not placed in a room. */
-  inventory?: { type: PlacedItem['type']; color?: number; pair?: string }[];
+  inventory?: { type: PlacedItem['type']; color?: number; pair?: string; serial?: number }[];
   guestbook?: GuestbookEntry[];
   /** Today's daily quests (rolls over at Danish midnight). */
   daily?: {
@@ -190,6 +190,8 @@ interface Data {
   adminLog?: AdminLogRecord[];
   market?: MarketListing[];
   marketLog?: MarketLogRecord[];
+  /** Copies handed out so far per numbered item type (rares and limited editions). */
+  serials?: Record<string, number>;
 }
 
 /**
@@ -235,6 +237,10 @@ export interface Store {
   logMarket(entry: MarketLogRecord): void;
   /** Every moderator action is logged. */
   logAdmin(entry: AdminLogRecord): void;
+  /** Next copy number for a numbered item (1, 2, …). */
+  nextSerial(type: string): number;
+  /** How many numbered copies of this type exist. */
+  serialCount(type: string): number;
   recentChat(roomId: string, limit: number): ChatLogRecord[];
   /** Call after mutating a record returned by the store. */
   touch(): void;
@@ -442,6 +448,15 @@ export class JsonFileStore implements Store {
 
   market() {
     return (this.data.market ??= []);
+  }
+  nextSerial(type: string) {
+    const serials = (this.data.serials ??= {});
+    serials[type] = (serials[type] ?? 0) + 1;
+    this.touch();
+    return serials[type];
+  }
+  serialCount(type: string) {
+    return this.data.serials?.[type] ?? 0;
   }
   logMarket(entry: MarketLogRecord) {
     (this.data.marketLog ??= []).push(entry);

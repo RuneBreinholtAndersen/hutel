@@ -40,6 +40,9 @@ import {
   renovationPrice,
   petLevel,
   type PlacedItem,
+  activeDrop,
+  canTrade,
+  LIMITED_DROPS,
 } from './index';
 
 describe('placement', () => {
@@ -315,5 +318,32 @@ describe('events', () => {
     expect(ev.map((e) => e.id)).toEqual(['fredagsfest']);
     expect(ev[0]!.until).toBe(Date.UTC(2026, 10, 6, 22, 0));
     expect(scheduledEvents(Date.UTC(2026, 10, 6, 12, 0))).toEqual([]);
+  });
+});
+
+describe('limited editions', () => {
+  const drops = [
+    {
+      type: 'nordlyslampe' as const,
+      total: 5,
+      from: '2026-11-07T00:00:00+01:00',
+      to: '2026-11-22T00:00:00+01:00',
+    },
+  ];
+  it('is only on sale inside its window', () => {
+    expect(activeDrop('nordlyslampe', Date.parse('2026-11-10T12:00:00Z'), drops)).toBeTruthy();
+    expect(activeDrop('nordlyslampe', Date.parse('2026-11-06T12:00:00Z'), drops)).toBeUndefined();
+    expect(
+      activeDrop('nordlyslampe', Date.parse('2026-11-22T00:00:00+01:00'), drops),
+    ).toBeUndefined();
+  });
+  it('lets rares and limited editions be traded, but not fixtures', () => {
+    expect(canTrade('nordlyslampe')).toBe(true);
+    expect(canTrade('guldand')).toBe(true);
+    expect(canTrade('pool')).toBe(false);
+    expect(canTrade('sofa')).toBe(true);
+  });
+  it('every drop is for a limited item', () => {
+    for (const d of LIMITED_DROPS) expect(furniture(d.type).limited, d.type).toBe(true);
   });
 });

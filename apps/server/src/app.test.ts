@@ -28,6 +28,14 @@ const cfg = {
   signupsPerHour: 1000,
   videoTitles: false,
   chests: false,
+  limitedDrops: [
+    {
+      type: 'nordlyslampe' as const,
+      total: 2,
+      from: '2000-01-01T00:00:00Z',
+      to: '2999-01-01T00:00:00Z',
+    },
+  ],
 };
 const app = createApp(cfg);
 let base = '';
@@ -1302,4 +1310,40 @@ describe('golden chest', () => {
     boss.ws.close();
     finder.c.ws.close();
   }, 15000);
+});
+
+describe('limited editions', () => {
+  it('sells numbered copies until they run out; numbers follow the item', async () => {
+    const a = await login('Samler1');
+    const b = await login('Samler2');
+    const c3 = await login('Samler3');
+    for (const p of [a, b, c3]) app.store.getUser(p.g.userId)!.coins = 1000;
+    a.c.send({ t: 'buy', type: 'nordlyslampe', x: 6, z: 6, rot: 0 });
+    const putA = await a.c.waitFor('itemPut', (m) => m.item.type === 'nordlyslampe');
+    expect(putA.item.serial).toBe(1);
+    const lim = await b.c.waitFor('limited', (m) => m.drops[0]?.sold === 1);
+    expect(lim.drops[0]!.total).toBe(2);
+    b.c.send({ t: 'buy', type: 'nordlyslampe', x: 6, z: 6, rot: 0 });
+    expect((await b.c.waitFor('itemPut', (m) => m.item.type === 'nordlyslampe')).item.serial).toBe(
+      2,
+    );
+    c3.c.send({ t: 'buy', type: 'nordlyslampe', x: 6, z: 6, rot: 0 });
+    expect((await c3.c.waitFor('toast', (m) => /udsolgt/.test(m.text))).kind).toBe('error');
+    // Stash and sell on the market: the number goes along.
+    a.c.send({ t: 'stash', id: putA.item.id });
+    const inv = await a.c.waitFor('inventory', (m) =>
+      m.items.some((i) => i.type === 'nordlyslampe'),
+    );
+    const idx = inv.items.findIndex((i) => i.type === 'nordlyslampe');
+    expect(inv.items[idx]!.serial).toBe(1);
+    a.c.send({ t: 'marketSell', index: idx, price: 500 });
+    const mk = await a.c.waitFor('market', (m) => m.mine.length > 0);
+    expect(mk.mine[0]!.item.serial).toBe(1);
+    c3.c.send({ t: 'marketBuy', id: mk.mine[0]!.id });
+    const got = await c3.c.waitFor('inventory', (m) =>
+      m.items.some((i) => i.type === 'nordlyslampe'),
+    );
+    expect(got.items.find((i) => i.type === 'nordlyslampe')!.serial).toBe(1);
+    for (const p of [a, b, c3]) p.c.ws.close();
+  });
 });

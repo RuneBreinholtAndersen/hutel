@@ -18,6 +18,7 @@ import { CHAT_MAX_LENGTH, MAX_ROOM_SIZE } from './constants';
 import { LookSchema, type Look } from './look';
 import type { PlacedItem } from './placement';
 import type { ChestView } from './chest';
+import type { LimitedView } from './limited';
 import {
   ROOM_CATEGORY_IDS,
   type AptDoor,
@@ -443,6 +444,8 @@ export interface InvItem {
   color?: number;
   /** Teleporter twin id. */
   pair?: string;
+  /** Rares and limited editions: copy number. */
+  serial?: number;
 }
 
 export interface GuestbookEntry {
@@ -570,6 +573,8 @@ export type ServerMsg =
   | { t: 'petAct'; ownerId: string; act: PetAct; say?: string }
   | { t: 'decor'; wall: string | null; floor: string | null; owned?: string[] }
   | { t: 'inventory'; items: InvItem[] }
+  /** Limited editions on sale right now (sent on login and after every sale). */
+  | { t: 'limited'; drops: LimitedView[] }
   | { t: 'tradeAsk'; from: { id: string; name: string } }
   | { t: 'trade'; trade: TradeView }
   | { t: 'tradeEnd'; text: string; done: boolean }

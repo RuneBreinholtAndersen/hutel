@@ -52,6 +52,7 @@ import {
   MARKET_MAX_LISTINGS,
   MARKET_MAX_PRICE,
   type MarketListing,
+  type LimitedView,
   PET_FEED_PRICE,
   PET_FEED_XP,
   PET_KIND_IDS,
@@ -746,6 +747,10 @@ function handle(msg: ServerMsg) {
       logLine({ text: msg.text, cls: 'game' });
       if (msg.id) bubble(msg.id, '🎮', msg.text);
       return;
+    case 'limited':
+      limited = msg.drops;
+      if (panelKind === 'shop') renderShop();
+      return;
     case 'inventory':
       if (!me) return;
       me.inventory = msg.items;
@@ -1205,6 +1210,37 @@ function renderRenovate() {
   $('renoBack').addEventListener('click', () => openNavigator());
 }
 
+/** Limited editions on sale right now (from the server). */
+let limited: LimitedView[] = [];
+
+/** "#7" after numbered rares and limited editions. */
+function serialTag(it: { type: FurnitureType; serial?: number }) {
+  return it.serial ? ` #${it.serial}` : '';
+}
+/** Icon + name (+ number) for an inventory item, HTML-escaped. */
+function invName(it: { type: FurnitureType; serial?: number }) {
+  return `${FURNITURE[it.type].icon} ${esc(FURNITURE[it.type].name)}${serialTag(it)}`;
+}
+
+function limitedSection() {
+  if (!me || !limited.length) return '';
+  const cards = limited
+    .map((d) => {
+      const c = FURNITURE[d.type] as FurnitureDef;
+      const left = Math.max(0, d.total - d.sold);
+      const until = new Date(d.to - 1).toLocaleDateString('da-DK', {
+        day: 'numeric',
+        month: 'short',
+      });
+      const btn = left
+        ? `<button data-buy="${d.type}" ${me!.coins < c.price ? 'disabled' : ''}>Køb nr. ${d.sold + 1}</button>`
+        : '<button disabled>Udsolgt</button>';
+      return `<div class="item limited"><div class="ic">${c.icon}</div><div class="n">${esc(c.name)}</div><div class="p">${c.price} ${COIN}</div><small class="sub"><b>${left} af ${d.total}</b> tilbage · til ${until}</small>${btn}</div>`;
+    })
+    .join('');
+  return `<h3>✨ Begrænset udgave</h3><p class="sub">Sælges kun i kort tid, og hvert eksemplar har sit eget nummer. Når de er væk, kan de kun fås ved at bytte eller på markedet.</p><div class="grid">${cards}</div>`;
+}
+
 /** Shop: tab (department, 'all', 'decor' or 'inv') and search text. */
 let shopTab = 'all';
 let shopQuery = '';
@@ -1231,7 +1267,7 @@ function renderShop() {
     ? `<div class="grid">${inv
         .map((it, i) => {
           const c = FURNITURE[it.type];
-          return `<div class="item"><div class="ic">${c.icon}</div><div class="n">${c.name}</div><button data-inv="${i}">Placér</button></div>`;
+          return `<div class="item${it.serial ? ' limited' : ''}"><div class="ic">${c.icon}</div><div class="n">${c.name}${serialTag(it)}</div><button data-inv="${i}">Placér</button></div>`;
         })
         .join('')}</div>`
     : '<p class="sub">Dit inventar er tomt. Gem møbler væk med 📦 i byggetilstand.</p>';
@@ -1261,12 +1297,14 @@ function renderShop() {
   else {
     const cats =
       shopTab === 'all' ? SHOP_CATEGORIES : SHOP_CATEGORIES.filter((c) => c.id === shopTab);
-    body = cats
-      .map(
-        (c) =>
-          `<h3>${c.icon} ${c.name}</h3>${c.id === 'wall' ? '<p class="sub">Peg på væggen (eller gulvet tæt ved den) for at hænge op · R skifter væg</p>' : ''}<div class="grid">${sorted(c.types).map(card).join('')}</div>`,
-      )
-      .join('');
+    body =
+      (shopTab === 'all' ? limitedSection() : '') +
+      cats
+        .map(
+          (c) =>
+            `<h3>${c.icon} ${c.name}</h3>${c.id === 'wall' ? '<p class="sub">Peg på væggen (eller gulvet tæt ved den) for at hænge op · R skifter væg</p>' : ''}<div class="grid">${sorted(c.types).map(card).join('')}</div>`,
+        )
+        .join('');
   }
   const tab = (id: string, label: string) =>
     `<button class="${shopTab === id && !q ? 'on' : ''}" data-stab="${id}">${label}</button>`;
@@ -1458,7 +1496,7 @@ function renderMarket() {
   const card = (l: MarketListing, own: boolean) => {
     const c = FURNITURE[l.item.type] as FurnitureDef;
     const col = c.colors?.[l.item.color ?? 0];
-    return `<div class="item mk"><div class="ic">${c.icon}</div><div class="n">${esc(c.name)}</div>
+    return `<div class="item mk${l.item.serial ? ' limited' : ''}"><div class="ic">${c.icon}</div><div class="n">${esc(c.name)}${serialTag(l.item)}</div>
       ${col !== undefined ? `<div class="dots"><i style="background:#${col.toString(16).padStart(6, '0')}"></i></div>` : ''}
       <div class="p">${l.price} ${COIN}</div><small class="sub">${own ? 'Din vare' : `Af ${esc(l.sellerName)}`}</small>
       ${own ? `<button data-mcancel="${esc(l.id)}">Tag tilbage</button>` : `<button data-mbuy="${esc(l.id)}" ${me!.coins < l.price ? 'disabled' : ''}>Køb</button>`}</div>`;
@@ -1466,10 +1504,7 @@ function renderMarket() {
   const inv = me.inventory;
   const sell = inv.length
     ? `<div class="row" style="display:flex;gap:6px;flex-wrap:wrap"><select id="mkItem" style="flex:1">${inv
-        .map(
-          (it, i) =>
-            `<option value="${i}">${FURNITURE[it.type].icon} ${esc(FURNITURE[it.type].name)}</option>`,
-        )
+        .map((it, i) => `<option value="${i}">${invName(it)}</option>`)
         .join(
           '',
         )}</select><input id="mkPrice" type="number" min="1" max="${MARKET_MAX_PRICE}" value="10" style="width:90px"><button id="mkSell" class="small primary">Sæt til salg</button></div>
@@ -2234,7 +2269,7 @@ const clothesName = (k: string) => CLOTHES[k]?.name ?? k;
 function offerHtml(o: TradeOfferView) {
   const parts = [
     ...(o.coins ? [`${o.coins} ${COIN}`] : []),
-    ...o.items.map((it) => `${FURNITURE[it.type].icon} ${esc(FURNITURE[it.type].name)}`),
+    ...o.items.map((it) => invName(it)),
     ...o.clothes.map((k) => `👕 ${esc(clothesName(k))}`),
   ];
   return parts.length
@@ -2264,7 +2299,7 @@ function renderTrade() {
   const invChips = me.inventory
     .map(
       (it, i) =>
-        `<button type="button" data-ti="${i}" class="${mine.inv.includes(i) ? 'on' : ''}">${FURNITURE[it.type].icon} ${esc(FURNITURE[it.type].name)}</button>`,
+        `<button type="button" data-ti="${i}" class="${mine.inv.includes(i) ? 'on' : ''}">${invName(it)}</button>`,
     )
     .join('');
   const clothChips = tradeable
@@ -3568,6 +3603,18 @@ function loop() {
         if (!m.userData.rainbow) return;
         const c = new T.Color().setHSL((time * 0.12) % 1, 0.9, 0.6);
         if (m instanceof T.Mesh) (m.material as T.MeshStandardMaterial).emissive.copy(c);
+        if (m instanceof T.PointLight) m.color.copy(c);
+      });
+    else if (g.userData.type === 'nordlyslampe')
+      g.traverse((m) => {
+        if (m.userData.aurora === undefined) return;
+        // Drift between green and violet, each band a little out of step.
+        const k = (Math.sin(time * 0.5 + (m.userData.aurora as number) * 1.3) + 1) / 2;
+        const c = new T.Color().setHSL(0.42 + k * 0.38, 0.9, 0.55);
+        if (m instanceof T.Mesh) {
+          (m.material as T.MeshStandardMaterial).emissive.copy(c);
+          m.rotation.y += 0.003;
+        }
         if (m instanceof T.PointLight) m.color.copy(c);
       });
   stage.render();

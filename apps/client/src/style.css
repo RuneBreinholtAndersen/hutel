@@ -1584,3 +1584,9 @@ body {
     font-size: 18px;
   }
 }
+
+/* Rares and limited editions: a golden frame and a soft glow. */
+.item.limited {
+  border: 1px solid #f2c14e;
+  box-shadow: 0 0 12px rgba(242, 193, 78, 0.35) inset;
+}

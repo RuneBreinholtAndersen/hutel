@@ -38,6 +38,14 @@ import {
   PUBLIC_ROOMS,
   CHEST,
   pickLoot,
+  activeDrop,
+  activeDrops,
+  canTrade,
+  serialLabel,
+  type InvItem,
+  type LimitedView,
+  type LimitedDrop,
+  LIMITED_DROPS,
   type ChestView,
   DAILY_BONUS,
   DAILY_POOL,
@@ -155,6 +163,8 @@ export interface HotelConfig {
   videoTitles?: boolean;
   /** Golden chests appear by themselves (off in tests). */
   chests?: boolean;
+  /** Override the limited-edition drops (tests). */
+  limitedDrops?: LimitedDrop[];
 }
 
 export interface Connection {
@@ -453,6 +463,7 @@ export class Hotel {
       protocol: PROTOCOL_VERSION,
       notes: RELEASE_NOTES[0],
     });
+    this.send(s, { t: 'limited', drops: this.limitedViews() });
     this.sendFriends(user);
     this.notifyFriendsOf(user);
     // Back to the room you were in if you were only gone a little while (reconnect, update).
@@ -2067,7 +2078,15 @@ export class Hotel {
     if (!own || own.rec.ownerId !== user.id)
       return this.toast(s, 'Du kan kun købe møbler til dit eget værelse.', 'error');
     const def = furniture(type);
-    if (def.noShop) return;
+    const drop = def.limited
+      ? activeDrop(type, Date.now(), this.cfg.limitedDrops ?? LIMITED_DROPS)
+      : undefined;
+    if (def.noShop && !drop) {
+      if (def.limited) this.toast(s, 'Den er ikke til salg lige nu.', 'error');
+      return;
+    }
+    if (drop && this.store.serialCount(type) >= drop.total)
+      return this.toast(s, `${def.name} er udsolgt 😮`, 'error');
     if (def.unlock && !user.badges.includes(def.unlock))
       return this.toast(s, `🔒 Kræver badget "${BADGES[def.unlock].name}"`, 'error');
     if (def.minLevel && levelOf(user).level < def.minLevel)
@@ -2078,9 +2097,22 @@ export class Hotel {
     if (color && def.colors && color < def.colors.length) item.color = color;
     if (!own.room.placeable(item)) return this.toast(s, 'Det kan ikke stå der 🙃', 'error');
     own.rec.nextItemId++;
+    if (drop) item.serial = this.store.nextSerial(type);
     own.rec.items.push(item);
     user.stats.buys++;
     this.coins(s, user, -def.price);
+    if (drop) {
+      this.toast(s, `✨ Du har nr. ${serialLabel(item.serial!, drop.total)} af ${def.name}!`);
+      this.store.logMarket({
+        at: new Date().toISOString(),
+        listingId: `limited:${type}#${item.serial}`,
+        sellerId: 'shop',
+        buyerId: user.id,
+        item: type,
+        price: def.price,
+      });
+      this.broadcastLimited();
+    }
     if (def.pair) {
       // Teleporters come in pairs: the twin goes to your inventory.
       item.pair = newId('tp');
@@ -2215,10 +2247,27 @@ export class Hotel {
 
   /** Inventory entry for a placed item (keeps colour and teleporter twin). */
   private invOf(it: PlacedItem) {
-    const e: { type: PlacedItem['type']; color?: number; pair?: string } = { type: it.type };
+    const e: InvItem = { type: it.type };
     if (it.color) e.color = it.color;
     if (it.pair) e.pair = it.pair;
+    if (it.serial) e.serial = it.serial;
     return e;
+  }
+
+  /* ---------------- limited editions ---------------- */
+
+  private limitedViews(): LimitedView[] {
+    return activeDrops(Date.now(), this.cfg.limitedDrops ?? LIMITED_DROPS).map((d) => ({
+      type: d.type,
+      total: d.total,
+      sold: this.store.serialCount(d.type),
+      to: Date.parse(d.to),
+    }));
+  }
+
+  private broadcastLimited() {
+    const msg = { t: 'limited', drops: this.limitedViews() } as const;
+    for (const ss of this.byUser.values()) this.send(ss, msg);
   }
 
   /* ---------------- market ---------------- */
@@ -2245,7 +2294,7 @@ export class Hotel {
     const inv = user.inventory ?? [];
     const entry = inv[index];
     if (!entry) return;
-    if (furniture(entry.type).noShop) return;
+    if (!canTrade(entry.type)) return;
     if (price < 1 || price > MARKET_MAX_PRICE) return;
     if (this.store.market().filter((l) => l.sellerId === user.id).length >= MARKET_MAX_LISTINGS)
       return this.toast(s, `Du kan højst have ${MARKET_MAX_LISTINGS} ting til salg.`, 'error');
@@ -2810,7 +2859,7 @@ export class Hotel {
       return this.toast(s, 'Kun ejeren kan gemme møbler væk.', 'error');
     const idx = own.rec.items.findIndex((i) => i.id === id);
     const it = own.rec.items[idx];
-    if (!it || furniture(it.type).noShop) return;
+    if (!it || !canTrade(it.type)) return;
     if ((user.inventory ??= []).length >= 200)
       return this.toast(s, 'Dit inventar er fyldt.', 'error');
     own.rec.items.splice(idx, 1);
@@ -2832,6 +2881,7 @@ export class Hotel {
     const item: PlacedItem = { id: own.rec.nextItemId, type: entry.type, x, z, rot };
     if (entry.color) item.color = entry.color;
     if (entry.pair) item.pair = entry.pair;
+    if (entry.serial) item.serial = entry.serial;
     if (!own.room.placeable(item)) return this.toast(s, 'Det kan ikke stå der 🙃', 'error');
     own.rec.nextItemId++;
     own.rec.items.push(item);
@@ -3000,11 +3050,15 @@ export class Hotel {
       return;
     }
     const type = pickLoot();
-    (user.inventory ??= []).push({ type });
+    const serial = this.store.nextSerial(type);
+    (user.inventory ??= []).push({ type, serial });
     this.store.touch();
     this.sendInventory(s, user);
     const def = furniture(type);
-    this.toast(s, `🎉 Du fandt ${def.icon} ${def.name} i guldkisten! Den ligger i din taske.`);
+    this.toast(
+      s,
+      `🎉 Du fandt ${def.icon} ${def.name} nr. ${serialLabel(serial)} i guldkisten! Den ligger i dit inventar.`,
+    );
     this.clearChest(`🎉 ${user.name} fandt guldkisten og fik ${def.icon} ${def.name}!`);
   }
 
