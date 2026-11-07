@@ -2,7 +2,7 @@
 
 Listen sammenligner Lobbi (tidligere Hutel) med de klassiske funktioner fra Habbo Hotel. Navne, grafik og møbler kopieres ikke: vi laver vores egen version af idéen.
 
-_Senest opdateret: 7. november 2026 (Lobbi Junior, første del)._
+_Senest opdateret: 7. november 2026 (Lobbi Junior: forældre-mail og vilkår)._
 
 **Sådan læses den**
 - **Værdi**: hvor meget det betyder for spillerne (★–★★★)
@@ -20,7 +20,7 @@ Det her mener jeg giver mest spil for pengene, i den rækkefølge:
 - [ ] **3. Grupper/klubber** – navn, logo-generator (vores egen), medlemsliste, gruppe-rum, gruppe-badge ved navnet. ★★ · M
 - [ ] **4. Sjældne møbler ("rares")** – begrænsede møbler, der kun sælges en uge eller i et bestemt antal, med serienummer. Driver byttehandel. ★★★ · S (vi har allerede bytte + inventar)
 - [ ] **5. Mobil-kontroller** – tryk-for-at-gå er der, men knapper og paneler skal tilpasses små skærme. ★★★ · M
-- [ ] **6. Lobbi Junior, resten** – bekræftelses-mail til forælderen, forældreoverblik, ordliste-chat og spilletid; egen server skal oprettes (se PLAN.md). ★★★ · M
+- [ ] **6. Lobbi Junior, resten** – forældreoverblik, ordliste-chat og spilletid; vælg mail-tjeneste og få vilkårene læst juridisk igennem (se PLAN.md). ★★★ · M
 
 ## 💡 Habbo-funktioner vi mangler (fuld liste)
 
@@ -113,7 +113,8 @@ Det her mener jeg giver mest spil for pengene, i den rækkefølge:
 - ✅ Bære ting i hånden: kaffe, is, sodavand, blomst og cupcake fra cafédisken, kaffemaskine, isboks, køleskab og blomstervase – og give dem til andre
 - ✅ Badekar: man sidder nu nede i vandet i stedet for at ligge oven på
 - ✅ Biograf: offentligt rum "Biografen" + lærred (stort, 16:9) og biografstole til eget værelse; YouTube-video (officiel indlejring) ligger skråt på lærredet og er synkroniseret for alle; kø med op til 10 videoer, højst 10 min pr. video, skip ved flertal; i Biografen koster en video 5 mønter (refunderes hvis fjernet før visning), i eget rum gratis for ejer og dem med rettigheder; ejer/moderator kan stoppe og fjerne; titlen hentes fra YouTube og ikke-indlejrbare videoer afvises; slået fra i Junior
-- ✅ Lobbi Junior (første del): egen udgave med menu-chat (færdige sætninger i 6 kategorier), sjove navne valgt med terning, venner kun via vennekode, ingen fri tekst nogen steder, AI-beboere med faste replikker, forælders e-mail og samtykke ved oprettelse – alt tjekkes på serveren
+- ✅ Lobbi Junior (første del): egen udgave med menu-chat (færdige sætninger i 6 kategorier), sjove navne valgt med terning, venner kun via vennekode, ingen fri tekst nogen steder, AI-beboere med faste replikker – alt tjekkes på serveren. Kører på egen server (lobbi-junior.fly.dev)
+- ✅ Lobbi Junior: forælderen får en mail og siger ja eller nej, før barnet kan spille (nej sletter kontoen, ubesvarede slettes efter 7 dage) + udkast til vilkår og privatlivspolitik for børn og forældre
 - ✅ Sneboldkamp: to hold, klik for at kaste (højst 5 felter), 5 snebolde der fyldes op ved snedriven, ramte fryses 1,5 sek, flest træffere vinder
 - ✅ Butik med møbler og tøj, låst op med level og badges
 - ✅ Mønter (online-tid, opgaver, events, spil) – beregnet på serveren

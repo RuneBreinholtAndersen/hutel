@@ -103,7 +103,8 @@ Samme kodebase og grafik som Hutel, men en helt separat verden for børn. Børn 
 
 **Forældre**
 
-- [ ] Forældrekonto med e-mail-bekræftelse og samtykke (krav for børn under 13 år i Danmark) – forælderens e-mail og samtykke gemmes nu ved oprettelse; bekræftelses-mail mangler (kræver en mail-tjeneste)
+- [ ] Mail-tjeneste valgt og `SMTP_*` sat på `lobbi-junior` (indtil da skrives mailen kun i loggen)
+- [x] ✅ Forælder siger ja/nej via link i en e-mail; barnet kan først spille efter ja, nej sletter kontoen, ubesvarede konti slettes efter 7 dage
 - [ ] Forælderen opretter barnets figur og vælger chatniveau
 - [ ] Forældreoverblik: venner, tid online, rapporter, og mulighed for at slette barnets data
 - [ ] Barnet logger ind med en kode/QR fra forælderens konto – intet barns e-mail eller fulde navn
@@ -119,7 +120,7 @@ Samme kodebase og grafik som Hutel, men en helt separat verden for børn. Børn 
 
 - [ ] Rapportér-knap overalt og moderatorer med hurtig reaktion
 - [ ] Spilletid: forælderen kan sætte en daglig grænse og et sengetidspunkt
-- [ ] Privatlivspolitik skrevet til både forældre og børn
+- [ ] Privatlivspolitik skrevet til både forældre og børn – udkast i `docs/JUNIOR-VILKAAR.md` og kort version i spillet, mangler juridisk gennemlæsning
 - [ ] Gennemgå regler for børneapps i App Store (Kids-kategorien) og Google Play (Families) før iOS/Android
 - [ ] Ingen reklamer og ingen sporing af børn
 

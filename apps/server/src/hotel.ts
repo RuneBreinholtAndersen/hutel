@@ -423,6 +423,8 @@ export class Hotel {
       return s.conn.close(4001, 'invalid token');
     }
     if (user.bannedUntil && user.bannedUntil > Date.now()) return s.conn.close(4003, 'banned');
+    // Junior: nobody plays before a parent has said yes in the e-mail.
+    if (this.cfg.junior && !user.parentConsentAt) return s.conn.close(4005, 'waiting for parent');
     const shouldBeAdmin = (this.cfg.adminNames ?? []).includes(user.name.toLowerCase());
     if (shouldBeAdmin && user.role === 'user') user.role = 'admin';
     if (!shouldBeAdmin && user.role === 'admin') user.role = 'user';

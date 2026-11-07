@@ -3139,6 +3139,30 @@ function togglePhrases(show = $('phrases').classList.contains('hidden')) {
   box.append(tabs, lines);
 }
 
+/** Junior: the account exists, but a parent must click "Ja" in the e-mail first. */
+function showParentWait(msg = '') {
+  $('signup').classList.remove('hidden');
+  for (const id of ['authCard', 'signupForm', 'loginForm']) $(id).classList.add('hidden');
+  $('parentWait').classList.remove('hidden');
+  $('pwMsg').textContent = msg;
+}
+$('pwRetry').addEventListener('click', () => {
+  const t = store.get(TOKEN_KEY);
+  if (!t) return showSignup();
+  $('parentWait').classList.add('hidden');
+  $('signup').classList.add('hidden');
+  start(t);
+});
+$('pwResend').addEventListener('click', async () => {
+  const r = await fetch(`${SERVER}/api/parent/resend`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ token: store.get(TOKEN_KEY) }),
+  }).catch(() => null);
+  const d = r ? ((await r.json()) as { ok: boolean; error?: string }) : null;
+  $('pwMsg').textContent = d?.ok ? 'Mailen er sendt igen 📬' : (d?.error ?? 'Prøv igen om lidt.');
+});
+
 function setupJunior() {
   document.body.classList.add('junior');
   document.title = 'Lobbi Junior';
@@ -3159,6 +3183,7 @@ function setupJunior() {
 function showSignup(error = '', mode: AuthMode = social() ? 'social' : 'signup') {
   authMode = mode;
   $('signup').classList.remove('hidden');
+  $('parentWait').classList.add('hidden');
   $('authCard').classList.toggle('hidden', mode !== 'social');
   $('authGoogle').classList.toggle('hidden', !authCfg.providers.includes('google'));
   $('authFacebook').classList.toggle('hidden', !authCfg.providers.includes('facebook'));
@@ -3313,10 +3338,16 @@ $('signupForm').addEventListener('submit', async (e) => {
         terms,
       }),
     });
-    const data = (await res.json()) as { ok: boolean; token?: string; error?: string };
+    const data = (await res.json()) as {
+      ok: boolean;
+      token?: string;
+      error?: string;
+      waitingForParent?: boolean;
+    };
     if (!data.ok || !data.token)
       return ($('suError').textContent = data.error ?? 'Noget gik galt.');
     store.set(TOKEN_KEY, data.token);
+    if (data.waitingForParent) return showParentWait();
     start(data.token);
   } catch {
     $('suError').textContent = 'Kan ikke nå hotellet lige nu. Prøv igen om lidt.';
@@ -3340,6 +3371,9 @@ function start(token: string) {
     if (code === 4001) {
       store.set(TOKEN_KEY, null);
       showSignup('Du er blevet logget ud – log ind igen.', social() ? 'social' : 'login');
+    } else if (code === 4005) {
+      net?.close();
+      showParentWait('Den voksne har ikke sagt ja endnu.');
     } else if (code === 4003) toast('Din konto er midlertidigt udelukket.', 'error');
     else if (code === 4000) toast('Du er logget ind et andet sted.', 'error');
   };

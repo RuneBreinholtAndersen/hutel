@@ -15,7 +15,9 @@ import {
 import { z } from 'zod';
 import { Hotel, type HotelConfig } from './hotel';
 import { KeyedLimiter } from './ratelimit';
-import { JsonFileStore, verifyPassword, type Store } from './store';
+import { randomBytes } from 'node:crypto';
+import { smtpMailer, type SendMail } from './mailer';
+import { hashSecret, JsonFileStore, verifyPassword, type Store, type UserRecord } from './store';
 
 export const VERSION = '0.1.0';
 
@@ -39,6 +41,18 @@ export interface AppConfig extends HotelConfig {
   claimNames?: Record<string, string>;
   /** Verifies a Supabase access token. Injectable for tests; defaults to Supabase's /auth/v1/user. */
   verifyAuthToken?: (accessToken: string) => Promise<AuthIdentity | null>;
+  /** Sends e-mail (Junior parent confirmation). Defaults to SMTP from the environment. */
+  sendMail?: SendMail;
+}
+
+/** Junior accounts a parent never confirmed are deleted after this long. */
+const PARENT_WAIT_MS = 7 * 24 * 3600_000;
+const PARENT_RESEND_MS = 10 * 60_000;
+
+const escHtml = (t: string) => t.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+
+function parentPage(title: string, body: string) {
+  return `<!doctype html><html lang="da"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escHtml(title)} · Lobbi Junior</title><style>body{font-family:system-ui,sans-serif;background:#2a1a10;color:#3a2210;display:grid;place-items:center;min-height:100vh;margin:0;padding:16px}main{background:#fff6e6;border-radius:18px;max-width:520px;padding:28px;line-height:1.5}h1{margin-top:0}button{font:inherit;border:0;border-radius:10px;padding:10px 16px;margin:6px 6px 0 0;cursor:pointer}.yes{background:#ffb347;font-weight:700}.no{background:#e9dccb}small{color:#7a5a40}</style></head><body><main>${body}</main></body></html>`;
 }
 
 export interface AuthIdentity {
@@ -180,6 +194,44 @@ export function createApp(
       : null);
   const clientIp = (req: IncomingMessage) =>
     (req.headers['fly-client-ip'] as string) ?? req.socket.remoteAddress ?? 'unknown';
+  const sendMail = cfg.sendMail ?? smtpMailer();
+  /** Where links in e-mails point: the configured address, else the host the request came to. */
+  const publicBase = (req: IncomingMessage) =>
+    cfg.canonicalUrl?.replace(/\/$/, '') ??
+    `${(req.headers['x-forwarded-proto'] as string) ?? (req.headers.host?.startsWith('localhost') ? 'http' : 'https')}://${req.headers.host ?? 'localhost'}`;
+  const sendParentMail = async (user: UserRecord, base: string) => {
+    if (!user.parentEmail) return;
+    const secret = randomBytes(24).toString('base64url');
+    user.parentTokenHash = hashSecret(secret);
+    user.parentSentAt = Date.now();
+    store.touch();
+    const link = `${base}/foraelder?t=${secret}`;
+    const name = user.name;
+    try {
+      await sendMail({
+        to: user.parentEmail,
+        subject: `${name} vil gerne spille Lobbi Junior`,
+        text: `Hej!\n\nEt barn har lige oprettet figuren "${name}" i Lobbi Junior og skrevet din e-mail som forælder.\n\nLobbi Junior er et hotel-spil for børn på 8–12 år. Man chatter kun med færdige sætninger, man kan ikke skrive egen tekst, og man bliver kun venner med nogen, man giver sin vennekode.\n\nSig ja eller nej her:\n${link}\n\nHvis du ikke svarer, slettes kontoen automatisk efter 7 dage.\n\nVenlig hilsen\nLobbi Junior (Breinholt Digital)`,
+        html: `<p>Hej!</p><p>Et barn har lige oprettet figuren <b>${escHtml(name)}</b> i Lobbi Junior og skrevet din e-mail som forælder.</p><p>Lobbi Junior er et hotel-spil for børn på 8–12 år. Man chatter kun med færdige sætninger, man kan ikke skrive egen tekst, og man bliver kun venner med nogen, man giver sin vennekode.</p><p><a href="${link}" style="background:#ffb347;color:#3a2210;padding:10px 16px;border-radius:10px;text-decoration:none;font-weight:bold">Sig ja eller nej</a></p><p style="color:#7a5a40">Hvis du ikke svarer, slettes kontoen automatisk efter 7 dage.</p><p>Venlig hilsen<br>Lobbi Junior (Breinholt Digital)</p>`,
+      });
+    } catch (e) {
+      console.error('Kunne ikke sende forældre-mail', e);
+    }
+  };
+  const userByParentSecret = (secret: string) => {
+    if (!secret || secret.length > 100) return undefined;
+    const h = hashSecret(secret);
+    return store.listUsers().find((u) => u.parentTokenHash === h);
+  };
+  // Junior: delete accounts no parent confirmed within 7 days.
+  const sweep = cfg.junior
+    ? setInterval(() => {
+        const old = Date.now() - PARENT_WAIT_MS;
+        for (const u of store.listUsers())
+          if (!u.parentConsentAt && Date.parse(u.createdAt) < old) store.deleteUser(u.id);
+      }, 3600_000)
+    : null;
+  sweep?.unref();
   /** Returns [status, message] if the profile can't be used, otherwise null. */
   const checkProfile = (p: { name: string; invite?: string }): [number, string] | null => {
     if (invites.length && !invites.includes((p.invite ?? '').trim().toLowerCase()))
@@ -249,9 +301,8 @@ export function createApp(
           password: jp.data.password,
         });
         user.parentEmail = jp.data.parentEmail.trim().toLowerCase();
-        user.parentConsentAt = Date.now();
-        store.touch();
-        return json(res, 200, { ok: true, token, userId: user.id });
+        await sendParentMail(user, publicBase(req));
+        return json(res, 200, { ok: true, token, userId: user.id, waitingForParent: true });
       }
       const parsed = GuestSchema.safeParse(body);
       if (!parsed.success)
@@ -266,6 +317,78 @@ export function createApp(
         password: parsed.data.password,
       });
       return json(res, 200, { ok: true, token, userId: user.id });
+    }
+    if (cfg.junior && url.pathname === '/foraelder') {
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('Cache-Control', 'no-store');
+      res.setHeader('Referrer-Policy', 'no-referrer');
+      let secret = url.searchParams.get('t') ?? '';
+      let answer = '';
+      if (req.method === 'POST') {
+        const form = new URLSearchParams(await readBody(req, 2048).catch(() => ''));
+        secret = form.get('t') ?? '';
+        answer = form.get('svar') ?? '';
+      }
+      const child = userByParentSecret(secret);
+      if (!child) {
+        res.writeHead(404);
+        return res.end(
+          parentPage(
+            'Linket virker ikke',
+            '<h1>Linket virker ikke</h1><p>Det er brugt, for gammelt, eller kontoen er slettet. Har barnet lavet en ny figur, kommer der en ny mail.</p>',
+          ),
+        );
+      }
+      if (req.method === 'POST' && answer === 'ja') {
+        child.parentConsentAt = Date.now();
+        delete child.parentTokenHash;
+        store.touch();
+        res.writeHead(200);
+        return res.end(
+          parentPage(
+            'Tak',
+            `<h1>Tak! 🎉</h1><p><b>${escHtml(child.name)}</b> kan nu spille Lobbi Junior. Barnet skal bare logge ind igen.</p><p><small>Vil du senere have kontoen slettet, så skriv til rune@breinholtdigital.dk.</small></p>`,
+          ),
+        );
+      }
+      if (req.method === 'POST' && answer === 'nej') {
+        const name = child.name;
+        store.deleteUser(child.id);
+        res.writeHead(200);
+        return res.end(
+          parentPage(
+            'Slettet',
+            `<h1>Kontoen er slettet</h1><p>Figuren <b>${escHtml(name)}</b> og alt, der hørte til, er slettet. Vi gemmer ikke din e-mail.</p>`,
+          ),
+        );
+      }
+      res.writeHead(200);
+      return res.end(
+        parentPage(
+          'Sig ja eller nej',
+          `<h1>Må ${escHtml(child.name)} spille Lobbi Junior?</h1>
+<p>Lobbi Junior er et hotel-spil for børn på 8–12 år. Børnene laver en figur, indretter et værelse og leger med andre.</p>
+<ul><li>Man chatter kun med færdige sætninger – ingen kan skrive egen tekst.</li><li>Man bliver kun venner med nogen, man giver sin vennekode.</li><li>Ingen reklamer, ingen køb med rigtige penge, og vi beder aldrig om barnets rigtige navn.</li><li>Vi gemmer kun figuren, værelset, din e-mail og chatten i 30 dage (til moderation).</li></ul>
+<form method="post"><input type="hidden" name="t" value="${escHtml(secret)}"><button class="yes" name="svar" value="ja">Ja, mit barn må spille</button><button class="no" name="svar" value="nej">Nej, slet kontoen</button></form>
+<p><small>Læs <a href="/#vilkaar">vilkår og privatlivspolitik</a>.</small></p>`,
+        ),
+      );
+    }
+    if (req.method === 'POST' && url.pathname === '/api/parent/resend') {
+      if (!cfg.junior) return json(res, 404, { ok: false, error: 'not_found' });
+      let token = '';
+      try {
+        token = (JSON.parse(await readBody(req, 1024)) as { token?: string }).token ?? '';
+      } catch {
+        /* handled below */
+      }
+      const user = token ? store.getUserByToken(token) : undefined;
+      if (!user || user.parentConsentAt)
+        return json(res, 400, { ok: false, error: 'Ingen konto venter.' });
+      if (user.parentSentAt && Date.now() - user.parentSentAt < PARENT_RESEND_MS)
+        return json(res, 429, { ok: false, error: 'Vent 10 minutter, før du sender igen.' });
+      await sendParentMail(user, publicBase(req));
+      return json(res, 200, { ok: true });
     }
     if (req.method === 'GET' && url.pathname === '/api/config') {
       return json(res, 200, {
@@ -422,6 +545,7 @@ export function createApp(
     store,
     close: () =>
       new Promise<void>((r) => {
+        if (sweep) clearInterval(sweep);
         hotel.stop();
         for (const c of wss.clients) c.terminate();
         wss.close();

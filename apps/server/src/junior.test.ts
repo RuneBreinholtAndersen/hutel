@@ -12,7 +12,11 @@ import {
 } from '@hutel/shared';
 import { createApp } from './app';
 
+const mails: { to: string; text: string }[] = [];
 const app = createApp({
+  sendMail: async (m) => {
+    mails.push(m);
+  },
   allowReset: false,
   adminNames: [],
   clientOrigins: ['http://localhost:5173'],
@@ -90,10 +94,22 @@ class Client {
   }
 }
 
+/** The secret from the newest mail to the parent. */
+const lastSecret = () => /[?&]t=([\w-]+)/.exec(mails.at(-1)!.text)![1]!;
+async function parentAnswers(secret: string, svar: 'ja' | 'nej') {
+  const res = await fetch(`http://${base}/foraelder`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ t: secret, svar }).toString(),
+  });
+  return { status: res.status, html: await res.text() };
+}
+
 async function child() {
   const name = freshName();
   const g = await signup({ name });
   expect(g.ok).toBe(true);
+  expect((await parentAnswers(lastSecret(), 'ja')).status).toBe(200);
   const c = new Client();
   await c.open();
   c.send({ t: 'auth', token: g.token });
@@ -129,6 +145,46 @@ describe('Lobbi Junior server', () => {
     expect((await signup({ name: freshName(), parentConsent: false })).ok).toBe(false);
     expect((await signup({ name: freshName(), parentEmail: 'ikke-en-mail' })).ok).toBe(false);
     expect((await signup({ name: freshName(), adult: true })).ok).toBe(true);
+  });
+
+  it('waits for the parent before the child can play', async () => {
+    const name = freshName();
+    const g = await signup({ name, parentEmail: 'far@example.com' });
+    expect(g.ok).toBe(true);
+    const mail = mails.at(-1)!;
+    expect(mail.to).toBe('far@example.com');
+    expect(mail.text).toContain(name);
+    const secret = lastSecret();
+    // Before the parent answers, the game connection is refused.
+    const c = new Client();
+    await c.open();
+    const closed = new Promise<number>((r) => c.ws.once('close', (code) => r(code)));
+    c.send({ t: 'auth', token: g.token });
+    expect(await closed).toBe(4005);
+    // The page shows the child's name; resending too soon is refused.
+    const page = await (await fetch(`http://${base}/foraelder?t=${secret}`)).text();
+    expect(page).toContain(name);
+    const again = await fetch(`http://${base}/api/parent/resend`, {
+      method: 'POST',
+      body: JSON.stringify({ token: g.token }),
+    });
+    expect(again.status).toBe(429);
+    expect((await parentAnswers(secret, 'ja')).html).toContain('Tak');
+    // The link only works once.
+    expect((await parentAnswers(secret, 'ja')).status).toBe(404);
+    const c2 = new Client();
+    await c2.open();
+    c2.send({ t: 'auth', token: g.token });
+    await c2.waitFor('welcome');
+    c2.ws.close();
+  });
+
+  it('deletes the account when the parent says no', async () => {
+    const name = freshName();
+    const g = await signup({ name });
+    expect((await parentAnswers(lastSecret(), 'nej')).html).toContain('slettet');
+    expect(app.store.getUserByName(name)).toBeUndefined();
+    expect(app.store.getUserByToken(g.token)).toBeUndefined();
   });
 
   it('only lets ready-made sentences through', async () => {

@@ -164,17 +164,51 @@
           <a href="#social" id="toSocial">Tilbage til Google, Facebook og e-mail</a>
         </p>
       </form>
+      <div id="parentWait" class="card signup hidden">
+        <div class="logo" aria-hidden="true"><span>Lobbi Junior</span></div>
+        <h1>📬 Nu skal en voksen sige ja</h1>
+        <p class="sub">
+          Vi har sendt en mail til din forælder. Når de har trykket <b>Ja</b> i mailen, kan du
+          spille.
+        </p>
+        <p class="sub">Kan de ikke finde den? Bed dem kigge i spam-mappen.</p>
+        <p id="pwMsg" class="sub"></p>
+        <button type="button" id="pwRetry" class="primary">Den voksne har sagt ja – start!</button>
+        <button type="button" id="pwResend" class="social">Send mailen igen</button>
+      </div>
       <div id="terms" class="card terms hidden">
         <h2>Vilkår og privatliv (kladde)</h2>
-        <p>
+        <div class="jr-only">
+          <p><b>Til dig, der spiller:</b></p>
+          <ul>
+            <li>Brug aldrig dit rigtige navn, din adresse, din skole eller dit telefonnummer.</li>
+            <li>
+              Vær sød ved de andre. Er nogen ubehagelige, så tryk på dem og vælg ⚠️ Rapportér.
+            </li>
+            <li>Giv kun din vennekode til nogen, du kender i virkeligheden.</li>
+            <li>Figurer med 🤖 er ikke rigtige mennesker, men computer-figurer.</li>
+            <li>Sker der noget, du ikke kan lide, så sig det til en voksen.</li>
+          </ul>
+          <p><b>Til forældre:</b></p>
+          <p>
+            Lobbi Junior drives af Breinholt Digital (CVR 29040656), Skalhøjvej 20, 8581 Nimtofte,
+            rune@breinholtdigital.dk. Spillet er for børn på 8–12 år og kræver dit samtykke via
+            e-mail. Vi gemmer figurens opdigtede navn, adgangskoden (krypteret), figur, værelse,
+            mønter, venner og din e-mail. Chatten består kun af færdige sætninger og gemmes i 30
+            dage til moderation. Ingen reklamer, ingen sporing og ingen køb med rigtige penge.
+            Svarer du ikke på mailen, slettes kontoen efter 7 dage. Du kan altid få kontoen slettet
+            eller få en kopi af dataene ved at skrive til os.
+          </p>
+        </div>
+        <p class="adult-only">
           Lobbi er for voksne over 18 år. Vær venlig over for andre – chikane, trusler, hadsk tale
           og deling af personlige oplysninger er ikke tilladt og kan føre til udelukkelse.
         </p>
-        <p>
+        <p class="adult-only">
           Vi gemmer dit navn, din figur, dine mønter, dit værelse og dine venner. Chatbeskeder
           gemmes i op til 30 dage af hensyn til moderation og slettes derefter automatisk.
         </p>
-        <p>Nogle beboere er AI-figurer. De er altid markeret med 🤖.</p>
+        <p class="adult-only">Nogle beboere er AI-figurer. De er altid markeret med 🤖.</p>
         <button id="termsClose">Luk</button>
       </div>
     </div>

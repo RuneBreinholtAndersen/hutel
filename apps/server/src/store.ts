@@ -40,7 +40,11 @@ export interface UserRecord {
   friendCode?: string;
   /** Lobbi Junior: the parent's e-mail and when they gave consent. */
   parentEmail?: string;
+  /** Set when the parent clicked "Ja" in the e-mail. Until then a Junior account can't play. */
   parentConsentAt?: number;
+  /** Hash of the secret in the parent's confirmation link, and when it was last sent. */
+  parentTokenHash?: string;
+  parentSentAt?: number;
   /** Room ids on my favourites list. */
   favorites?: string[];
   pets?: PetRecord[];
@@ -207,6 +211,9 @@ export interface Store {
   rotateToken(user: UserRecord): string;
   /** Wipes progress (coins, quests, badges, stats, home room) but keeps the account and name. */
   resetProgress(user: UserRecord): void;
+  /** Removes the account and the rooms it owns (a parent saying no, or never answering). */
+  deleteUser(id: string): void;
+  listUsers(): UserRecord[];
   getRoom(id: string): RoomRecord | undefined;
   /** Creates an extra room owned by a user. */
   createRoom(
@@ -391,6 +398,19 @@ export class JsonFileStore implements Store {
   deleteRoom(id: string) {
     delete this.data.rooms[id];
     this.touch();
+  }
+  deleteUser(id: string) {
+    for (const r of Object.values(this.data.rooms))
+      if (r.ownerId === id) delete this.data.rooms[r.id];
+    for (const u of Object.values(this.data.users)) {
+      u.friends = u.friends.filter((f) => f !== id);
+      u.requests = u.requests.filter((f) => f !== id);
+    }
+    delete this.data.users[id];
+    this.touch();
+  }
+  listUsers() {
+    return Object.values(this.data.users);
   }
   listRooms() {
     return Object.values(this.data.rooms);
