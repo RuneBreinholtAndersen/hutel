@@ -139,6 +139,8 @@ interface Session {
   strikes: number;
   /** Last time this player went through an apartment door (prevents bouncing back). */
   doorAt?: number;
+  /** Bumped by every new walk order, so an old "go through the door" plan is dropped. */
+  doorTicket?: number;
 }
 
 const GUIDE_TIPS: Record<(typeof QUESTS)[number]['id'], string> = {
@@ -175,6 +177,7 @@ const LIMIT_FOR: Partial<Record<ClientMsg['t'], LimitKind>> = {
   teleport: 'move',
   aptDoor: 'move',
   gameStart: 'build',
+  jukebox: 'build',
   market: 'nav',
   marketSell: 'build',
   marketBuy: 'build',
@@ -438,8 +441,8 @@ export class Hotel {
       const user = this.store.getUser(p.id);
       const s = this.byUser.get(p.id);
       if (!user || !s) return;
-      const door = !seated && room.meta.doors.find((d) => doorSpot(d).join() === tile.join());
-      if (door) return this.throughDoor(s, room, door);
+      // Doors are only used when you click them (aptDoor) or walk into the wall with the
+      // arrow keys – just stopping in front of one by accident must not move you.
       if (seated) this.quest(s, user, 'sit');
       if (seated && room.meta.id === 'cafe') this.quest(s, user, 'cafeSit');
       if (seated && room.meta.id !== user.homeRoomId) this.daily(s, user, 'd_sit');
@@ -1232,6 +1235,7 @@ export class Hotel {
         return this.send(s, { t: 'navigator', rooms: this.navigator(user) });
       }
       case 'move':
+        s.doorTicket = (s.doorTicket ?? 0) + 1;
         if (room && player) room.walk(player, [msg.x, msg.z], msg.run);
         return;
       case 'reset': {
@@ -1348,6 +1352,31 @@ export class Hotel {
         return this.guestbookDelete(s, user, msg.userId, msg.id);
       case 'teleport':
         return this.teleport(s, user, msg.itemId);
+      case 'jukebox': {
+        if (!room) return;
+        const it = room.items.find((i) => i.id === msg.itemId && i.type === 'jukebox');
+        if (!it) return;
+        const rec = this.roomRecord(room);
+        const allowed =
+          user.role !== 'user' ||
+          (rec && (rec.ownerId === user.id || rec.rights.includes(user.id)));
+        if (!allowed) return this.toast(s, 'Kun ejeren kan vælge musik her 🎵', 'error');
+        if (msg.song) {
+          it.state = 1;
+          it.song = msg.song;
+          it.songAt = Date.now();
+        } else {
+          it.state = 0;
+          delete it.song;
+          delete it.songAt;
+        }
+        const saved = rec?.items.find((i) => i.id === it.id);
+        if (saved && saved !== it)
+          Object.assign(saved, { state: it.state, song: it.song, songAt: it.songAt });
+        this.store.touch();
+        room.broadcast({ t: 'itemPut', item: it });
+        return;
+      }
       case 'gameStart':
         return this.gameStart(s, user, msg.itemId, msg.kind as RoomGameKind);
       case 'aptDoor': {
@@ -1362,8 +1391,9 @@ export class Hotel {
         if (goal && !room.walk(player, goal)) return;
         if (!player.path.length) return;
         const ms = (player.path.length / WALK_SPEED) * 1000 + 250;
+        const ticket = (s.doorTicket = (s.doorTicket ?? 0) + 1);
         setTimeout(() => {
-          if (s.room !== room || s.player !== player) return;
+          if (s.room !== room || s.player !== player || s.doorTicket !== ticket) return;
           const t = room.tileOf(player);
           if (Math.max(Math.abs(t[0] - dx), Math.abs(t[1] - dz)) <= 1) this.throughDoor(s, room, d);
         }, ms);

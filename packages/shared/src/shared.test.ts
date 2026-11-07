@@ -21,6 +21,10 @@ import {
   ROOM_SIZE,
   DOOR_TILE,
   findPath,
+  MELODIES,
+  MELODY_STEPS,
+  noteFreq,
+  steps,
   SHOP_CATEGORIES,
   FURNITURE_TYPES,
   furniture,
@@ -187,6 +191,20 @@ describe('shop categories', () => {
       ).toBe(1);
     for (const c of SHOP_CATEGORIES)
       for (const t of c.types) expect(furniture(t).noShop ?? false, t).toBe(false);
+  });
+});
+
+describe('music', () => {
+  it('has tunes of exactly 32 steps with valid notes', () => {
+    for (const [id, m] of Object.entries(MELODIES)) {
+      for (const part of [m.lead, m.bass, m.drums])
+        expect(steps(part).length, id).toBe(MELODY_STEPS);
+      for (const t of [...steps(m.lead), ...steps(m.bass)])
+        if (t !== '-') expect(noteFreq(t), `${id} ${t}`).not.toBeNull();
+      for (const t of steps(m.drums)) expect('kshx-'.includes(t), `${id} ${t}`).toBe(true);
+    }
+    expect(noteFreq('A4')).toBeCloseTo(440);
+    expect(noteFreq('C4')).toBeCloseTo(261.63, 1);
   });
 });
 

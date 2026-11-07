@@ -20,6 +20,8 @@ import {
   SHOP_CATEGORIES,
   ROOM_GAMES,
   ROOM_GAME_IDS,
+  MELODIES,
+  MELODY_IDS,
   TEAM_NAMES,
   type RoomGameKind,
   MARKET_FEE,
@@ -103,6 +105,8 @@ import { T, tw } from './gfx/helpers';
 import { createRoom } from './gfx/room';
 import { createStage } from './gfx/scene';
 import { Net } from './net';
+import * as audio from './audio';
+import { playTutorial } from './tutorial';
 import { $, COIN, confetti, setCoinText, esc, logLine, lookEditor, pop, toast } from './ui';
 
 const envServer = (import.meta.env.VITE_SERVER_URL as string | undefined) || '';
@@ -374,9 +378,11 @@ function setRoom(view: RoomView) {
   roomGfx.setAptDoors(view.doors);
   setTimeout(updateGameBar, 0);
   applyDecor();
+  audio.stopAllJukeboxes();
   for (const it of view.items) {
     items.set(it.id, it);
     placeObj(it);
+    if (it.type === 'jukebox') audio.setJukebox(it.id, it.song, it.songAt);
   }
   for (const p of view.players) {
     actors.set(p.id, new Actor(p, stage.scene, overlay, p.id === me?.id));
@@ -483,6 +489,7 @@ function handle(msg: ServerMsg) {
       if (msg.protocol && msg.protocol !== PROTOCOL_VERSION) offerUpdate(msg.notes, true);
       else if (msg.build && msg.build !== __BUILD_ID__) offerUpdate(msg.notes, false);
       else if (!updateShown) maybeShowNews();
+      net?.send({ t: 'ping' }); // sync the clock right away (jukebox, games)
       me = msg.me;
       onboardingLock = msg.onboardingLock;
       canReset = msg.canReset;
@@ -491,6 +498,7 @@ function handle(msg: ServerMsg) {
       $('signup').classList.add('hidden');
       return;
     case 'room':
+      audio.sfx('door');
       return setRoom(msg.room);
     case 'market':
       market = { listings: msg.listings, mine: msg.mine };
@@ -509,15 +517,21 @@ function handle(msg: ServerMsg) {
       const p = pets.get(msg.ownerId);
       if (!p) return;
       p.play(msg.act);
+      audio.sfx(({ hund: 'woof', kat: 'meow', drage: 'roar' } as const)[p.view.kind] ?? 'woof');
       if (msg.say)
         bubble(`pet:${msg.ownerId}`, `${PET_KINDS[p.view.kind].icon} ${p.view.name}`, msg.say);
       return;
     }
-    case 'roomGame':
+    case 'roomGame': {
+      const prev = room?.game?.phase;
+      if (msg.game?.phase === 'countdown' && prev !== 'countdown') audio.sfx('tick');
+      if (msg.game?.phase === 'play' && prev !== 'play') audio.sfx('go');
+      if (!msg.game && prev === 'play') audio.sfx('win');
       if (room) room.game = msg.game;
       updateGameBar();
       if (msg.game?.phase === 'play' && panelKind === 'game') closePanel();
       return;
+    }
     case 'heights':
       if (!room) return;
       room.heights = msg.heights;
@@ -632,11 +646,13 @@ function handle(msg: ServerMsg) {
       return;
     }
     case 'chat':
+      if (msg.id !== me?.id) audio.sfx('chat');
       bubble(msg.id, (msg.bot ? '🤖 ' : '') + msg.name, msg.text);
       logLine({ name: (msg.bot ? '🤖 ' : '') + msg.name, text: msg.text });
       return;
     case 'whisper': {
       const mine = msg.from === me?.id;
+      if (!mine) audio.sfx('whisper');
       const other = mine ? msg.to : msg.from;
       const line = { from: msg.from, text: msg.text, at: msg.at };
       pmLog.set(other, [...(pmLog.get(other) ?? []), line].slice(-50));
@@ -669,9 +685,14 @@ function handle(msg: ServerMsg) {
       return;
     case 'itemPut':
       items.set(msg.item.id, msg.item);
+      if (msg.item.type === 'jukebox') {
+        audio.setJukebox(msg.item.id, msg.item.song, msg.item.songAt);
+        if (panelKind === 'jukebox') renderJukebox(msg.item.id);
+      }
       if (held?.item.id !== msg.item.id) placeObj(msg.item);
       return;
     case 'itemRemove':
+      audio.setJukebox(msg.id, undefined, undefined);
       items.delete(msg.id);
       removeObj(msg.id);
       return;
@@ -688,6 +709,8 @@ function handle(msg: ServerMsg) {
       const diff = me ? msg.coins - me.coins : 0;
       setCoins(msg.coins);
       if (diff > 0) pop(`+${diff} 🪙`);
+      if (diff > 0) audio.sfx('coin');
+      else if (diff < 0) audio.sfx('spend');
       return;
     }
     case 'online':
@@ -695,6 +718,7 @@ function handle(msg: ServerMsg) {
     case 'quest': {
       if (!me) return;
       if (!me.quests.includes(msg.id)) me.quests.push(msg.id);
+      audio.sfx('quest');
       const q = [...QUESTS, ...HOTEL_QUESTS].find((x) => x.id === msg.id)!;
       toast(`✅ ${q.text} · +${msg.reward} 🪙`);
       renderQuests();
@@ -715,6 +739,7 @@ function handle(msg: ServerMsg) {
     }
     case 'badge':
       me?.badges.push(msg.id);
+      audio.sfx('badge');
       return toast(`${BADGES[msg.id].icon} Nyt badge: ${BADGES[msg.id].name}`);
     case 'friends':
       friends = msg.friends;
@@ -737,6 +762,7 @@ function handle(msg: ServerMsg) {
     case 'toast':
       $('fade').classList.remove('on');
       roomGfx.openDoor(false);
+      if (msg.kind === 'error') audio.sfx('error');
       return toast(msg.text, msg.kind);
     case 'needPassword':
       $('fade').classList.remove('on');
@@ -748,7 +774,11 @@ function handle(msg: ServerMsg) {
 }
 
 /* ---------------- panels ---------------- */
+let stopTutorial: (() => void) | null = null;
 function openPanel(kind: string, html: string) {
+  if (panelKind !== kind) audio.sfx('open');
+  stopTutorial?.();
+  stopTutorial = null;
   panelKind = kind;
   const p = $('panel');
   p.innerHTML = html;
@@ -759,6 +789,8 @@ function openPanel(kind: string, html: string) {
   if (btn) $(btn).classList.add('on');
 }
 function closePanel() {
+  stopTutorial?.();
+  stopTutorial = null;
   panelKind = null;
   $('panel').classList.add('hidden');
   for (const id of ['bNav', 'bFriends', 'bFig', 'bShop']) $(id).classList.remove('on');
@@ -1309,6 +1341,80 @@ function renderMarket() {
 }
 
 /** Choose a game at a game console. */
+/** Jukebox: choose a tune that everyone in the room hears in sync. */
+function renderJukebox(itemId: number) {
+  const it = items.get(itemId);
+  if (!it) return;
+  const mayPick = room?.canBuild || me?.role !== 'user';
+  openPanel(
+    'jukebox',
+    head(
+      '📻 Jukebox',
+      mayPick
+        ? 'Vælg en melodi – alle i rummet hører den samtidig.'
+        : 'Kun ejeren kan vælge musik her.',
+    ) +
+      MELODY_IDS.map((id) => {
+        const m = MELODIES[id];
+        const playing = it.song === id;
+        return `<button class="${playing ? 'primary' : ''}" data-song="${id}" ${mayPick ? '' : 'disabled'} style="display:block;width:100%;margin:6px 0;text-align:left">${m.icon} ${esc(m.name)} <span class="sub">· ${m.bpm} bpm</span>${playing ? ' ▶︎' : ''}</button>`;
+      }).join('') +
+      (it.song && mayPick ? '<button data-song="">⏹ Stop musikken</button>' : '') +
+      (audio.settings.music
+        ? ''
+        : '<p class="sub">🔇 Musik er slået fra i dine lydindstillinger (🔊).</p>'),
+  );
+  $('panel')
+    .querySelectorAll<HTMLElement>('[data-song]')
+    .forEach((b) =>
+      b.addEventListener('click', () =>
+        net?.send({ t: 'jukebox', itemId, song: b.dataset.song || null }),
+      ),
+    );
+}
+
+/** Jukeboxes get quieter the further away you stand. */
+function updateJukeboxVolumes() {
+  const a = myActor();
+  for (const id of audio.jukeboxIds()) {
+    const o = objs.get(id);
+    if (!o || !a) {
+      audio.setJukeboxVolume(id, 0.6);
+      continue;
+    }
+    const d = Math.hypot(o.position.x - a.obj.position.x, o.position.z - a.obj.position.z);
+    audio.setJukeboxVolume(id, Math.max(0.12, Math.min(1, 1.25 - d / 8)));
+  }
+}
+
+/** 🔊 Sound settings, saved in this browser. */
+function renderSound() {
+  const s = audio.settings;
+  openPanel(
+    'sound',
+    head('🔊 Lyd', 'Alle lyde er lavet i kode. Indstillingerne gemmes i denne browser.') +
+      `<label class="sub" style="display:block;margin:10px 0">Lydstyrke <input id="sndVol" type="range" min="0" max="100" value="${Math.round(s.volume * 100)}" style="width:100%"></label>
+      <label style="display:block;margin:8px 0"><input id="sndSfx" type="checkbox" ${s.sfx ? 'checked' : ''}> Lydeffekter (klik, mønter, døre, chat)</label>
+      <label style="display:block;margin:8px 0"><input id="sndMusic" type="checkbox" ${s.music ? 'checked' : ''}> Musik fra jukebokse</label>
+      <button id="sndTest">▶︎ Prøv en lyd</button>`,
+  );
+  ($('sndVol') as HTMLInputElement).addEventListener('input', (e) =>
+    audio.saveSettings({ volume: Number((e.target as HTMLInputElement).value) / 100 }),
+  );
+  ($('sndSfx') as HTMLInputElement).addEventListener('change', (e) =>
+    audio.saveSettings({ sfx: (e.target as HTMLInputElement).checked }),
+  );
+  ($('sndMusic') as HTMLInputElement).addEventListener('change', (e) =>
+    audio.saveSettings({ music: (e.target as HTMLInputElement).checked }),
+  );
+  $('sndTest').addEventListener('click', () => audio.sfx('coin'));
+  updateSoundIcon();
+}
+function updateSoundIcon() {
+  const s = audio.settings;
+  $('bSound').textContent = s.volume === 0 || (!s.sfx && !s.music) ? '🔇' : '🔊';
+}
+
 function renderGames(itemId: number) {
   const count = (t: string) => [...items.values()].filter((i) => i.type === t).length;
   const ok = {
@@ -1324,7 +1430,8 @@ function renderGames(itemId: number) {
         return `<div class="petcard"><b style="font-size:17px">${g.icon} ${g.name}</b> <span class="sub">· ${g.secs} sek · vinderen får ${g.reward} ${COIN}</span>
           <p class="sub">${g.rules}</p>
           <p class="sub">Kræver: ${g.needs.toLowerCase()} ${ok[k] ? '✅' : '❌ (køb dem i butikken)'}</p>
-          <button class="primary" data-game="${k}" ${ok[k] && !busy ? '' : 'disabled'}>${busy ? 'Et spil er i gang' : 'Start'}</button></div>`;
+          <button class="primary" data-game="${k}" ${ok[k] && !busy ? '' : 'disabled'}>${busy ? 'Et spil er i gang' : 'Start'}</button>
+          <button data-tut="${k}">▶︎ Se hvordan det virker</button></div>`;
       }).join('') +
       '<p class="sub">Mønter gives kun, når mindst to spiller med (højst 20 om dagen fra spil).</p>',
   );
@@ -1335,6 +1442,36 @@ function renderGames(itemId: number) {
         net?.send({ t: 'gameStart', itemId, kind: b.dataset.game as RoomGameKind }),
       ),
     );
+  $('panel')
+    .querySelectorAll<HTMLElement>('[data-tut]')
+    .forEach((b) =>
+      b.addEventListener('click', () => renderTutorial(itemId, b.dataset.tut as RoomGameKind)),
+    );
+}
+
+/** A short animated film that shows how a room game is set up and played. */
+function renderTutorial(itemId: number, kind: RoomGameKind) {
+  const g = ROOM_GAMES[kind];
+  openPanel(
+    'tutorial',
+    head(`${g.icon} Sådan spiller man ${g.name}`, g.rules) +
+      `<canvas id="tutCanvas" style="display:block;border-radius:12px;background:rgba(0,0,0,.25);margin:8px 0"></canvas>
+      <p id="tutCap" style="min-height:44px;font-size:15px;margin:6px 0"></p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button id="tutPause">⏸ Pause</button>
+        <button id="tutAgain">↺ Forfra</button>
+        <button id="tutBack" class="primary">← Tilbage til konsollen</button>
+      </div>`,
+  );
+  const film = playTutorial($('tutCanvas') as HTMLCanvasElement, kind, (text, step, total) => {
+    $('tutCap').textContent = `${text}  (${step}/${total})`;
+  });
+  stopTutorial = film.stop;
+  $('tutPause').addEventListener('click', () => {
+    $('tutPause').textContent = film.toggle() ? '▶︎ Afspil' : '⏸ Pause';
+  });
+  $('tutAgain').addEventListener('click', () => film.restart());
+  $('tutBack').addEventListener('click', () => renderGames(itemId));
 }
 
 /** Score and clock for the game in this room (updated a few times a second). */
@@ -2109,6 +2246,7 @@ function onClick() {
   }
   const it = hitItem(false);
   if (it && it.type === 'gamebox') return renderGames(it.id);
+  if (it && it.type === 'jukebox') return renderJukebox(it.id);
   if (
     it &&
     furniture(it.type).states &&
@@ -2116,6 +2254,7 @@ function onClick() {
     (room?.canBuild || me?.role !== 'user')
   )
     return net.send({ t: 'use', itemId: it.id });
+  if (it && it.type === 'teleport') audio.sfx('teleport');
   if (it && it.type === 'teleport') return net.send({ t: 'teleport', itemId: it.id });
   if (it && furniture(it.type).seat) return net.send({ t: 'sit', itemId: it.id });
   const t = hitTile();
@@ -2333,6 +2472,8 @@ $('bNav').addEventListener(
 $('bFriends').addEventListener('click', toggle('friends', renderFriends));
 $('bFig').addEventListener('click', toggle('fig', renderFigure));
 $('bPets').addEventListener('click', toggle('pets', renderPets));
+$('bSound').addEventListener('click', toggle('sound', renderSound));
+$('panel').addEventListener('change', () => panelKind === 'sound' && updateSoundIcon());
 $('bMarket').addEventListener('click', toggle('market', openMarket));
 $('bShop').addEventListener('click', toggle('shop', renderShop));
 $('bBuild').addEventListener('click', () => {
@@ -2558,6 +2699,7 @@ $('signupForm').addEventListener('submit', async (e) => {
 function start(token: string) {
   net?.close();
   net = new Net(WS_URL, token);
+  audio.setClock(() => (net ? net.now() : Date.now()));
   net.onMessage = handle;
   // A short drop (a deploy or a hiccup) goes unnoticed: only say something after a few seconds.
   let offlineTimer = 0;
@@ -2626,6 +2768,7 @@ function loop() {
     b.el.style.transform = `translate(${x}px,${y - 26 - b.off - age * 5}px) translate(-50%,-100%)`;
     b.el.style.opacity = String(age > 5.5 ? Math.max(0, (7 - age) / 1.5) : 1);
   }
+  updateJukeboxVolumes();
   stage.render();
   requestAnimationFrame(loop);
 }

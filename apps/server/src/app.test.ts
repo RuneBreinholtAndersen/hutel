@@ -933,6 +933,30 @@ describe('multiplayer', () => {
     b.c.ws.close();
   }, 20_000);
 
+  it('plays a jukebox tune for everyone in the room, chosen only by the owner', async () => {
+    const a = await login('Dj Ejer');
+    const b = await login('Lytter');
+    const ua = app.store.getUser(a.g.userId)!;
+    const home = app.store.getRoom(ua.homeRoomId)!;
+    home.items.push({ id: 9201, type: 'jukebox', x: 6, z: 6, rot: 0 });
+    b.c.send({ t: 'join', roomId: ua.homeRoomId });
+    await b.c.waitFor('room', (m) => m.room.id === ua.homeRoomId);
+    // A guest may not pick the music.
+    b.c.send({ t: 'jukebox', itemId: 9201, song: 'fredag' });
+    await b.c.waitFor('toast', (m) => /ejeren/.test(m.text));
+    a.c.send({ t: 'jukebox', itemId: 9201, song: 'fredag' });
+    const put = await b.c.waitFor('itemPut', (m) => m.item.id === 9201 && m.item.song === 'fredag');
+    expect(put.item.state).toBe(1);
+    expect(Math.abs(put.item.songAt! - Date.now())).toBeLessThan(5000);
+    // Unknown tunes are rejected by the schema.
+    a.c.send({ t: 'jukebox', itemId: 9201, song: 'ukendt' } as never);
+    a.c.send({ t: 'jukebox', itemId: 9201, song: null });
+    const off = await b.c.waitFor('itemPut', (m) => m.item.id === 9201 && !m.item.song);
+    expect(off.item.state).toBe(0);
+    a.c.ws.close();
+    b.c.ws.close();
+  });
+
   it('plays Kapløb: the first runner on the goal tile wins coins', async () => {
     const a = await login('Løberen');
     const b = await login('Tilskuer');

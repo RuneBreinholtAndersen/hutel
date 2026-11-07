@@ -14,6 +14,16 @@ export interface ReleaseNote {
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
     date: '2026-11-07',
+    title: 'Lyd, jukebox og spil-videoer',
+    items: [
+      '🔊 Lydeffekter ved mønter, døre, chat, badges og spil – slå dem til og fra under 🔊',
+      '📻 Jukeboxen spiller nu rigtige melodier, som alle i rummet hører samtidig',
+      '▶︎ "Se hvordan det virker" på spilkonsollen viser en lille film om Farvekamp og Kapløb',
+      '🚪 Du ryger ikke længere ind ad en dør, bare fordi du stopper foran den',
+    ],
+  },
+  {
+    date: '2026-11-07',
     title: 'Rum-spil, ny butik og opdateringer uden afbrydelser',
     items: [
       '🕹️ Spilkonsol med Farvekamp og Kapløb',

@@ -16,6 +16,9 @@ export interface PlacedItem {
   state?: number;
   /** Teleporters: both twins share this id. */
   pair?: string;
+  /** Jukebox: the tune playing and when it started (ms epoch). */
+  song?: string;
+  songAt?: number;
 }
 
 /** Current state of a switchable item (falls back to its default). */

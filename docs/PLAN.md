@@ -37,6 +37,9 @@ Sidst opdateret: 6. november 2026. Rækkefølge: voksen-Hutel i lukket beta før
 - ✅ Byg om: egne rum kan være 7×7 til 12×12 og have form som kvadrat, bred, L, spejlet L eller U; møbler der ikke passer lægges i inventaret
 - ✅ Kæledyr: hund, kat og drage (lv 4) der følger dig, kan fodres, lærer tricks (sæt dig, hop, rul, tig, dans) og stiger i level; svarer når man siger deres navn
 - ✅ Opdateringer uden afbrydelse: kort genforbindelse uden besked, tilbage i samme rum og på samme felt; ny version vises som knap med "Se nyt" (kun tvungen opdatering når PROTOCOL_VERSION ændres); "Nyt i Hutel" én gang efter opdatering (noter i packages/shared/src/releases.ts)
+- ✅ Lyd (Web Audio, alt lavet i kode): lydeffekter, 🔊-panel med lydstyrke og til/fra (gemmes i browseren), jukebox med 6 melodier synkroniseret til serverens ur og afstandsafhængig lydstyrke
+- ✅ Vejlednings-film på spilkonsollen ("Se hvordan det virker") tegnet live på canvas
+- ✅ Døre bruges kun, når man klikker på dem eller går ind i væggen – ikke når man bare stopper foran
 - ✅ Tapet (8 slags) og gulve (8 slags): købes én gang og bruges i alle egne rum
 - ✅ Vægmøbler: maleri, stort maleri, plakat, vindue, væghylde, vægur, spejl og neonskilt (hænges på bag- eller venstrevæg)
 - ✅ Lobbyen og caféen er nu 12×12 med ny møblering; rumstørrelse kan variere pr. rum

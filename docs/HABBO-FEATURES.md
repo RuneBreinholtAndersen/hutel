@@ -2,7 +2,7 @@
 
 Listen sammenligner Hutel med de klassiske funktioner fra Habbo Hotel. Navne, grafik og møbler kopieres ikke: vi laver vores egen version af idéen.
 
-_Senest opdateret: 7. november 2026 (opdateringer uden afbrydelse)._
+_Senest opdateret: 7. november 2026 (lyd, jukebox og spil-videoer)._
 
 **Sådan læses den**
 - **Værdi**: hvor meget det betyder for spillerne (★–★★★)
@@ -19,9 +19,8 @@ Det her mener jeg giver mest spil for pengene, i den rækkefølge:
 - [ ] **2. Wired light: møbler der reagerer** – trykplader, "når nogen går her → tænd lampe / teleportér / sig noget". Giver brugerne mulighed for at bygge deres egne spil. ★★★ · L
 - [ ] **3. Grupper/klubber** – navn, logo-generator (vores egen), medlemsliste, gruppe-rum, gruppe-badge ved navnet. ★★ · M
 - [ ] **4. Sjældne møbler ("rares")** – begrænsede møbler, der kun sælges en uge eller i et bestemt antal, med serienummer. Driver byttehandel. ★★★ · S (vi har allerede bytte + inventar)
-- [ ] **5. Lyd og musik** – jukebox med egne korte melodier, lyde ved klik, dør, mønter. Generér selv musik/lyde, så intet kopieres. ★★ · M
-- [ ] **6. Mobil-kontroller** – tryk-for-at-gå er der, men knapper og paneler skal tilpasses små skærme. ★★★ · M
-- [ ] **7. Hutel Junior** – menu-chat, forældrekonto, vennekoder, egen server/database (se PLAN.md). ★★★ · L
+- [ ] **5. Mobil-kontroller** – tryk-for-at-gå er der, men knapper og paneler skal tilpasses små skærme. ★★★ · M
+- [ ] **6. Hutel Junior** – menu-chat, forældrekonto, vennekoder, egen server/database (se PLAN.md). ★★★ · L
 
 ## 💡 Habbo-funktioner vi mangler (fuld liste)
 
@@ -110,6 +109,9 @@ Det her mener jeg giver mest spil for pengene, i den rækkefølge:
 - ✅ Vægmøbler: malerier, plakater, vinduer, hylder, ur, spejl, neonskilt
 - ✅ Opdateringer uden afbrydelse: knap med "Ny version" og "Se hvad der er nyt"
 - ✅ Butik med kategorier og søgefelt (møbler, væg, spil, tapet og gulv, inventar)
+- ✅ Lydeffekter lavet i kode (klik, døre, teleport, mønter, chat, badges, spil, kæledyr) med 🔊-indstillinger
+- ✅ Jukebox med 6 egne melodier, synkroniseret for alle i rummet og svagere jo længere væk man står
+- ✅ Animerede vejlednings-film til rum-spillene på spilkonsollen
 - ✅ Butik med møbler og tøj, låst op med level og badges
 - ✅ Mønter (online-tid, opgaver, events, spil) – beregnet på serveren
 - ✅ Byttehandel med inventar, begge parter skal godkende, alt logges

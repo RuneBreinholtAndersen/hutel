@@ -22,6 +22,7 @@ import {
 } from './layout';
 import { ROOM_GAME_IDS, type RoomGameView } from './roomgames';
 import type { ReleaseNote } from './releases';
+import { MELODY_IDS } from './music';
 import { PET_KIND_IDS, PET_TRICK_IDS, type PetAct, type PetInfo, type PetView } from './pets';
 
 const tileCoord = z.number().int().min(0).max(31);
@@ -58,6 +59,12 @@ export const ClientMsgSchema = z.discriminatedUnion('t', [
   /** Take a pet out (it follows you) or send it home (null). */
   z.object({ t: z.literal('petOut'), id: z.string().max(40).nullable() }),
   z.object({ t: z.literal('petFeed') }),
+  /** Play a tune on a jukebox (null = stop). */
+  z.object({
+    t: z.literal('jukebox'),
+    itemId: z.number().int(),
+    song: z.enum(MELODY_IDS as [string, ...string[]]).nullable(),
+  }),
   /** Start a room game from a game console. */
   z.object({
     t: z.literal('gameStart'),
