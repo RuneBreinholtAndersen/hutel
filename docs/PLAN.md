@@ -25,6 +25,8 @@ Sidst opdateret: 6. november 2026. Rækkefølge: voksen-Hutel i lukket beta før
 
 ## Færdigt 6. november (eftermiddag)
 
+- ✅ Rum-spil med møbler: Spilkonsol + Farvekamp (to hold farver felter, 60 sek) og Kapløb (fra startfelt til målfelt); serveren styrer reglerne, mønter kun når mindst to spiller med
+- ✅ Navigator åbner altid på Populære; kategorier viser alle åbne rum i kategorien
 - ✅ Døre i lejligheden: stuen har en dør til hvert af dine andre rum, de andre rum en dør tilbage; gå ind ad døren (klik eller piletaster) for at komme ind
 - ✅ Profil som hjemmeside: level, online, kæledyr, venner, værelser, motto og gæstebog (ejer, skribent og moderatorer kan slette)
 - ✅ Teleportere: købes i par (lv 2); den ene placeres, tvillingen ryger i inventaret og kan stilles i et andet rum eller byttes til en ven

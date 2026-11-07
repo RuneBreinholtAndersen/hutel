@@ -17,6 +17,7 @@ import {
   type RoomCategory,
   type TileHeights,
   type AptDoor,
+  type RoomGameView,
   canStep,
   type RoomAccess,
   type RoomTheme,
@@ -90,6 +91,9 @@ export class RoomInstance {
     return { size: this.meta.size, shape: this.meta.shape, heights: this.meta.heights };
   }
 
+  /** The room game being played right now, if any (run by the hotel). */
+  game: RoomGameView | null = null;
+
   humans(): PlayerState[] {
     return [...this.players.values()].filter((p) => !p.bot);
   }
@@ -136,6 +140,7 @@ export class RoomInstance {
       category: this.meta.category,
       heights: this.meta.heights,
       doors: this.meta.doors,
+      game: this.game,
       paidSize: this.meta.paidSize,
       wall: this.meta.wall,
       floor: this.meta.floor,

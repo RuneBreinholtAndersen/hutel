@@ -197,6 +197,20 @@ export const FURNITURE = {
   },
   pool: { name: 'Pool', icon: '🏊', price: 0, w: 3, d: 2, noShop: true },
   arcade: { name: 'Spilleautomat', icon: '🕹️', price: 0, w: 1, d: 1, noShop: true },
+  // ---- Room games (the server runs the rules) ----
+  gamebox: { name: 'Spilkonsol', icon: '🕹️', price: 25, w: 1, d: 1, minLevel: 2 },
+  colortile: {
+    name: 'Farvefelt',
+    icon: '🟦',
+    price: 3,
+    w: 1,
+    d: 1,
+    walk: true,
+    states: 3,
+    defaultState: 0,
+  },
+  racestart: { name: 'Startfelt', icon: '🟩', price: 4, w: 1, d: 1, walk: true },
+  racegoal: { name: 'Målfelt', icon: '🏁', price: 6, w: 1, d: 1, walk: true },
   teleport: {
     name: 'Teleporter (par)',
     icon: '🌀',

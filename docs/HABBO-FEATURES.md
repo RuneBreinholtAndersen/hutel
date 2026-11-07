@@ -2,7 +2,7 @@
 
 Listen sammenligner Hutel med de klassiske funktioner fra Habbo Hotel. Navne, grafik og møbler kopieres ikke: vi laver vores egen version af idéen.
 
-_Senest opdateret: 6. november 2026 (døre mellem rummene i lejligheden)._
+_Senest opdateret: 7. november 2026 (rum-spil: Farvekamp og Kapløb)._
 
 **Sådan læses den**
 - **Værdi**: hvor meget det betyder for spillerne (★–★★★)
@@ -15,7 +15,7 @@ _Senest opdateret: 6. november 2026 (døre mellem rummene i lejligheden)._
 
 Det her mener jeg giver mest spil for pengene, i den rækkefølge:
 
-- [ ] **1. Rum-spil som møbler** – frysekamp/snebold-arena, farvefelter man løber på (som "Battle Banzai"), stoleleg, kapløb. Serveren styrer reglerne. ★★★ · L
+- [ ] **1. Flere rum-spil** – snebold-arena med hold og stoleleg (Farvekamp og Kapløb findes). ★★ · M
 - [ ] **2. Wired light: møbler der reagerer** – trykplader, "når nogen går her → tænd lampe / teleportér / sig noget". Giver brugerne mulighed for at bygge deres egne spil. ★★★ · L
 - [ ] **3. Grupper/klubber** – navn, logo-generator (vores egen), medlemsliste, gruppe-rum, gruppe-badge ved navnet. ★★ · M
 - [ ] **4. Sjældne møbler ("rares")** – begrænsede møbler, der kun sælges en uge eller i et bestemt antal, med serienummer. Driver byttehandel. ★★★ · S (vi har allerede bytte + inventar)
@@ -58,8 +58,8 @@ Det her mener jeg giver mest spil for pengene, i den rækkefølge:
 - [ ] **Bære ting i hånden** – kaffe, is, blomst (fra dispensere eller gaver). S
 
 ### Spil og aktiviteter
-- [ ] **Snebold/arena-spil** med hold og point. L
-- [ ] **Farve-felt-spil** – løb og farv flest felter på 2 minutter. M
+- [ ] **Snebold/arena-spil** med hold og point. M
+- [ ] **Stoleleg** – musik, stop, sæt dig; én stol færre hver runde. M
 - [ ] **Quiz-shows / "Hvem vil være millionær"-agtigt** med en 🤖-vært. M
 - [ ] **Bingo og lotteri med mønter**. S
 - [ ] **Skattejagt** på tværs af rum. M
@@ -120,6 +120,7 @@ Det her mener jeg giver mest spil for pengene, i den rækkefølge:
 - ✅ Badges, level ved navnet, hotel-opgaver, daglige opgaver og streaks
 - ✅ Events (fx fredagsfest med dobbelt mønter) og event-badge
 - ✅ Mini-spil: `/terning`, `/ssp`, `/quiz`
+- ✅ Rum-spil med møbler: Spilkonsol, Farvekamp (to hold farver felter) og Kapløb (start- og målfelter)
 - ✅ AI-beboere (🤖 tydeligt markeret) og guiden Magnus for nye gæster
 - ✅ Blokér, rapportér, moderator-panel med advarsel, pause, smid ud og ban
 - ✅ Login med e-mail og Google, 18+-bekræftelse og vilkår

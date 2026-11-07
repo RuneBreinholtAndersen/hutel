@@ -14,6 +14,10 @@ import {
   DEFAULT_LOOK,
   footprint,
   isWallItem,
+  ROOM_GAMES,
+  ROOM_GAME_IDS,
+  TEAM_NAMES,
+  type RoomGameKind,
   MARKET_FEE,
   MARKET_MAX_LISTINGS,
   MARKET_MAX_PRICE,
@@ -329,6 +333,7 @@ function setRoom(view: RoomView) {
   stage.setRoomSize(view.size);
   roomGfx.setTheme(view.theme);
   roomGfx.setAptDoors(view.doors);
+  setTimeout(updateGameBar, 0);
   applyDecor();
   for (const it of view.items) {
     items.set(it.id, it);
@@ -467,6 +472,11 @@ function handle(msg: ServerMsg) {
         bubble(`pet:${msg.ownerId}`, `${PET_KINDS[p.view.kind].icon} ${p.view.name}`, msg.say);
       return;
     }
+    case 'roomGame':
+      if (room) room.game = msg.game;
+      updateGameBar();
+      if (msg.game?.phase === 'play' && panelKind === 'game') closePanel();
+      return;
     case 'heights':
       if (!room) return;
       room.heights = msg.heights;
@@ -676,6 +686,7 @@ function handle(msg: ServerMsg) {
       return;
     case 'navigator':
       if ((msg.q ?? '') !== navQuery) return; // an older search
+      if (msg.cat && msg.cat !== navTab) return; // an older category
       lastRooms = msg.rooms;
       clearTimeout(navRetry);
       if (panelKind === 'nav') renderNavigator(msg.rooms);
@@ -734,6 +745,9 @@ function renderEventBar() {
 let navRetry: number | undefined;
 function openNavigator() {
   if (panelKind === 'nav') return;
+  // Always open on the popular rooms (not on an empty tab from last time).
+  navTab = 'popular';
+  navQuery = '';
   // Show the last list at once (it refreshes when the answer arrives).
   if (lastRooms) renderNavigator(lastRooms);
   else
@@ -741,13 +755,18 @@ function openNavigator() {
       'nav',
       head('🧭 Navigator', 'Gå på opdagelse i hotellet.') + '<p class="sub">Henter rum…</p>',
     );
-  net?.send({ t: 'navigator', q: navQuery || undefined });
+  net?.send(navRequest());
   clearTimeout(navRetry);
   navRetry = window.setTimeout(() => {
-    if (panelKind === 'nav') net?.send({ t: 'navigator', q: navQuery || undefined });
+    if (panelKind === 'nav') net?.send(navRequest());
   }, 1500);
 }
 type NavTab = 'popular' | 'fav' | RoomCategory;
+const navRequest = () => ({
+  t: 'navigator' as const,
+  q: navQuery || undefined,
+  cat: navTab !== 'popular' && navTab !== 'fav' && !navQuery ? navTab : undefined,
+});
 let navTab: NavTab = 'popular';
 let navQuery = '';
 let navSearchTimer = 0;
@@ -810,7 +829,7 @@ function renderNavigator(rooms: NavigatorRoom[]) {
         : '') +
       `<h3>${navQuery ? `Søgning: “${esc(navQuery)}”` : navTab === 'popular' ? '🔥 Værelser lige nu' : 'Værelser'}</h3><div class="list">${
         guest.map(row).join('') ||
-        `<p class="sub">${navQuery ? 'Ingen rum passer til din søgning.' : navTab === 'fav' ? 'Tryk ☆ ved et rum for at gemme det her.' : 'Ingen værelser her lige nu.'}</p>`
+        `<p class="sub">${navQuery ? 'Ingen rum passer til din søgning.' : navTab === 'fav' ? 'Tryk ☆ ved et rum for at gemme det her.' : navTab === 'popular' ? 'Ingen værelser med gæster lige nu.' : 'Ingen rum i denne kategori endnu – ejere vælger kategori under "Dit værelse".'}</p>${navTab !== 'popular' || navQuery ? '<button class="small" id="navAll">← Vis populære rum</button>' : ''}`
       }</div>` +
       `<h3>📅 Ugens events</h3><p class="sub">${EVENTS.map((e) => `${e.name}: ${WEEKDAYS[e.weekday]} kl. ${e.start}–${e.end}`).join('<br>')}<br>Dobbelt mønter og et særligt badge, hvis du er med i 5 minutter.</p>` +
       own,
@@ -823,7 +842,7 @@ function renderNavigator(rooms: NavigatorRoom[]) {
     .forEach((b) =>
       b.addEventListener('click', () => {
         net?.send({ t: 'favorite', roomId: b.dataset.fav!, on: !b.classList.contains('on') });
-        if (navQuery) net?.send({ t: 'navigator', q: navQuery });
+        if (navQuery || navTab !== 'popular') net?.send(navRequest());
       }),
     );
   $('panel')
@@ -832,14 +851,22 @@ function renderNavigator(rooms: NavigatorRoom[]) {
       b.addEventListener('click', () => {
         navTab = b.dataset.tab as NavTab;
         renderNavigator(rooms);
+        // A category shows every open room in it, not only the busy ones.
+        net?.send(navRequest());
       }),
     );
+  $('navAll')?.addEventListener('click', () => {
+    navTab = 'popular';
+    navQuery = '';
+    net?.send(navRequest());
+    renderNavigator(rooms);
+  });
   const q = $<HTMLInputElement>('navQ');
   q.addEventListener('input', () => {
     clearTimeout(navSearchTimer);
     navSearchTimer = window.setTimeout(() => {
       navQuery = q.value.trim();
-      net?.send({ t: 'navigator', q: navQuery || undefined });
+      net?.send(navRequest());
     }, 300);
   });
   if (navQuery) {
@@ -1192,6 +1219,66 @@ function renderMarket() {
     q.setSelectionRange(q.value.length, q.value.length);
   }
 }
+
+/** Choose a game at a game console. */
+function renderGames(itemId: number) {
+  const count = (t: string) => [...items.values()].filter((i) => i.type === t).length;
+  const ok = {
+    paint: count('colortile') >= 4,
+    race: count('racestart') > 0 && count('racegoal') > 0,
+  } as const;
+  const busy = !!room?.game;
+  openPanel(
+    'game',
+    head('🕹️ Spilkonsol', 'Start et spil for alle i rummet. Serveren holder styr på reglerne.') +
+      ROOM_GAME_IDS.map((k) => {
+        const g = ROOM_GAMES[k];
+        return `<div class="petcard"><b style="font-size:17px">${g.icon} ${g.name}</b> <span class="sub">· ${g.secs} sek · vinderen får ${g.reward} ${COIN}</span>
+          <p class="sub">${g.rules}</p>
+          <p class="sub">Kræver: ${g.needs.toLowerCase()} ${ok[k] ? '✅' : '❌ (køb dem i butikken)'}</p>
+          <button class="primary" data-game="${k}" ${ok[k] && !busy ? '' : 'disabled'}>${busy ? 'Et spil er i gang' : 'Start'}</button></div>`;
+      }).join('') +
+      '<p class="sub">Mønter gives kun, når mindst to spiller med (højst 20 om dagen fra spil).</p>',
+  );
+  $('panel')
+    .querySelectorAll<HTMLElement>('[data-game]')
+    .forEach((b) =>
+      b.addEventListener('click', () =>
+        net?.send({ t: 'gameStart', itemId, kind: b.dataset.game as RoomGameKind }),
+      ),
+    );
+}
+
+/** Score and clock for the game in this room (updated a few times a second). */
+function updateGameBar() {
+  const bar = $('gameBar');
+  const g = room?.game;
+  if (!g) {
+    bar.classList.add('hidden');
+    return;
+  }
+  const def = ROOM_GAMES[g.kind];
+  const left = Math.max(0, Math.ceil((g.until - (net ? net.now() : Date.now())) / 1000));
+  const clock =
+    g.phase === 'countdown'
+      ? `Starter om ${left}…`
+      : `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+  let mid = '';
+  if (g.kind === 'paint' && g.score) {
+    const team = me && g.teams?.[me.id];
+    mid = `<b style="color:#ff8a7a">🔴 ${g.score[0]}</b> – <b style="color:#8ab8ff">🔵 ${g.score[1]}</b>${team ? ` · du er ${TEAM_NAMES[team]}` : ''}`;
+  } else if (g.kind === 'race') {
+    mid =
+      me && g.racers?.includes(me.id)
+        ? 'Du er med – løb mod 🏁!'
+        : `${g.racers?.length ?? 0} løbere`;
+  }
+  bar.innerHTML = `<b>${def.icon} ${def.name}</b><span>${mid}</span><span class="sub">${clock}</span>`;
+  bar.classList.remove('hidden');
+}
+setInterval(() => {
+  if (room?.game) updateGameBar();
+}, 250);
 
 function levelBox() {
   if (!me) return '';
@@ -1933,7 +2020,13 @@ function onClick() {
     return openNavigator();
   }
   const it = hitItem(false);
-  if (it && furniture(it.type).states && (room?.canBuild || me?.role !== 'user'))
+  if (it && it.type === 'gamebox') return renderGames(it.id);
+  if (
+    it &&
+    furniture(it.type).states &&
+    it.type !== 'colortile' &&
+    (room?.canBuild || me?.role !== 'user')
+  )
     return net.send({ t: 'use', itemId: it.id });
   if (it && it.type === 'teleport') return net.send({ t: 'teleport', itemId: it.id });
   if (it && furniture(it.type).seat) return net.send({ t: 'sit', itemId: it.id });

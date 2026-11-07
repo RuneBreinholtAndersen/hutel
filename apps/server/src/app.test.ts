@@ -882,6 +882,73 @@ describe('multiplayer', () => {
     c.ws.close();
   }, 15_000);
 
+  it('lists every open room in a category, even with nobody in it', async () => {
+    const owner = await login('Butiksejer');
+    owner.c.send({ t: 'roomSettings', name: 'Byttebiksen', category: 'handel' });
+    await owner.c.waitFor('roomMeta', (m) => m.category === 'handel');
+    owner.c.ws.close();
+    const v = await login('Kigger');
+    v.c.send({ t: 'navigator', cat: 'handel' });
+    const res = await v.c.waitFor('navigator', (m) => m.cat === 'handel');
+    expect(res.rooms.some((r) => r.name === 'Byttebiksen' && r.users === 0)).toBe(true);
+    v.c.ws.close();
+  });
+
+  it('plays Farvekamp: two teams paint colour tiles and the bigger team wins', async () => {
+    const a = await login('Maleren');
+    const b = await login('Pensel');
+    const ua = app.store.getUser(a.g.userId)!;
+    const home = app.store.getRoom(ua.homeRoomId)!;
+    // A game console and a row of colour tiles in Maleren's room.
+    home.items.push({ id: 9001, type: 'gamebox', x: 7, z: 7, rot: 0 });
+    for (let x = 0; x < 6; x++)
+      home.items.push({ id: 9010 + x, type: 'colortile', x, z: 6, rot: 0 });
+    b.c.send({ t: 'join', roomId: ua.homeRoomId });
+    await b.c.waitFor('room', (m) => m.room.id === ua.homeRoomId);
+    a.c.send({ t: 'gameStart', itemId: 9001, kind: 'paint' });
+    const g = await a.c.waitFor('roomGame', (m) => m.game?.phase === 'countdown');
+    expect(Object.keys(g.game!.teams!).length).toBe(2);
+    const myTeam = g.game!.teams![a.g.userId]!;
+    await a.c.waitFor('roomGame', (m) => m.game?.phase === 'play', 6000);
+    a.c.send({ t: 'move', x: 5, z: 6 });
+    const tile = await b.c.waitFor(
+      'itemPut',
+      (m) => m.item.type === 'colortile' && m.item.state === myTeam,
+      6000,
+    );
+    expect(tile.item.state).toBe(myTeam);
+    // End early for the test: the clock runs out.
+    const room = (
+      app.hotel as unknown as { rooms: Map<string, { game: { until: number } | null }> }
+    ).rooms.get(ua.homeRoomId)!;
+    room.game!.until = Date.now();
+    const sys = await a.c.waitFor('sys', (m) => /vinder Farvekamp/.test(m.text), 4000);
+    expect(sys.text).toContain(myTeam === 1 ? 'Rød' : 'Blå');
+    await a.c.waitFor('roomGame', (m) => m.game === null);
+    a.c.ws.close();
+    b.c.ws.close();
+  }, 20_000);
+
+  it('plays Kapløb: the first runner on the goal tile wins coins', async () => {
+    const a = await login('Løberen');
+    const b = await login('Tilskuer');
+    const ua = app.store.getUser(a.g.userId)!;
+    const home = app.store.getRoom(ua.homeRoomId)!;
+    home.items.push({ id: 9101, type: 'gamebox', x: 7, z: 7, rot: 0 });
+    home.items.push({ id: 9102, type: 'racestart', x: 6, z: 1, rot: 0 });
+    home.items.push({ id: 9103, type: 'racegoal', x: 6, z: 3, rot: 0 });
+    b.c.send({ t: 'join', roomId: ua.homeRoomId });
+    await b.c.waitFor('room', (m) => m.room.id === ua.homeRoomId);
+    a.c.send({ t: 'gameStart', itemId: 9101, kind: 'race' });
+    await a.c.waitFor('roomGame', (m) => m.game?.phase === 'play', 6000);
+    const coins = ua.coins;
+    a.c.send({ t: 'move', x: 6, z: 3 });
+    await a.c.waitFor('sys', (m) => /Løberen vinder Kapløb/.test(m.text), 6000);
+    expect(ua.coins).toBe(coins + 5);
+    a.c.ws.close();
+    b.c.ws.close();
+  }, 20_000);
+
   it('whispers only to someone in the same room, hidden from others', async () => {
     const a = await login('Hviskeren');
     const b = await login('Lytteren');

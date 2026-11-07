@@ -1014,3 +1014,17 @@ button.badge.on {
     display: none;
   }
 }
+#gameBar {
+  position: fixed;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  padding: 8px 16px;
+  border-radius: 14px;
+  font-size: 15px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid rgba(122, 200, 255, 0.6);
+}

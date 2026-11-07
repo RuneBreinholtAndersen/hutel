@@ -20,6 +20,7 @@ import {
   type RoomShape,
   type TileHeights,
 } from './layout';
+import { ROOM_GAME_IDS, type RoomGameView } from './roomgames';
 import { PET_KIND_IDS, PET_TRICK_IDS, type PetAct, type PetInfo, type PetView } from './pets';
 
 const tileCoord = z.number().int().min(0).max(31);
@@ -56,6 +57,12 @@ export const ClientMsgSchema = z.discriminatedUnion('t', [
   /** Take a pet out (it follows you) or send it home (null). */
   z.object({ t: z.literal('petOut'), id: z.string().max(40).nullable() }),
   z.object({ t: z.literal('petFeed') }),
+  /** Start a room game from a game console. */
+  z.object({
+    t: z.literal('gameStart'),
+    itemId: z.number().int(),
+    kind: z.enum(ROOM_GAME_IDS as [string, ...string[]]),
+  }),
   /** Go through one of the apartment doors (walks there first if needed). */
   z.object({ t: z.literal('aptDoor'), index: z.number().int().min(0).max(10) }),
   /** Step into a teleporter (walks there first if needed). */
@@ -203,7 +210,12 @@ export const ClientMsgSchema = z.discriminatedUnion('t', [
   z.object({ t: z.literal('report'), userId, reason: z.string().min(3).max(300) }),
   z.object({ t: z.literal('profile'), userId }),
   z.object({ t: z.literal('motto'), motto: z.string().max(60) }),
-  z.object({ t: z.literal('navigator'), q: z.string().max(30).optional() }),
+  z.object({
+    t: z.literal('navigator'),
+    q: z.string().max(30).optional(),
+    /** List every open guest room in this category. */
+    cat: z.enum(ROOM_CATEGORY_IDS as [string, ...string[]]).optional(),
+  }),
   z.object({ t: z.literal('favorite'), roomId: z.string().max(40), on: z.boolean() }),
   z.object({ t: z.literal('ping') }),
 ]);
@@ -244,6 +256,8 @@ export interface RoomView {
   heights: TileHeights;
   /** Doors to the owner's other apartment rooms. */
   doors: AptDoor[];
+  /** A game running in the room right now. */
+  game: RoomGameView | null;
   /** Biggest size the owner has paid for (renovating up to it again is free). */
   paidSize: number;
   /** Wallpaper / floor chosen by the owner (null = the theme's own). */
@@ -410,6 +424,7 @@ export type ServerMsg =
   | { t: 'sys'; text: string; id?: string }
   | { t: 'wardrobe'; wardrobe: string[] }
   | { t: 'heights'; heights: TileHeights }
+  | { t: 'roomGame'; game: RoomGameView | null }
   | { t: 'market'; listings: MarketListing[]; mine: MarketListing[] }
   | { t: 'pets'; pets: PetInfo[]; active: string | null }
   | { t: 'petView'; ownerId: string; pet: PetView | null }
@@ -455,7 +470,7 @@ export type ServerMsg =
   | { t: 'hush'; from: string; fromName: string; to: string; toName: string; text: string }
   | { t: 'pmHistory'; with: string; msgs: PmLine[] }
   | { t: 'profile'; profile: ProfileView }
-  | { t: 'navigator'; rooms: NavigatorRoom[]; q?: string }
+  | { t: 'navigator'; rooms: NavigatorRoom[]; q?: string; cat?: RoomCategory }
   | { t: 'toast'; text: string; kind?: 'info' | 'error' }
   | { t: 'needPassword'; roomId: string }
   | { t: 'pong'; serverTime: number };

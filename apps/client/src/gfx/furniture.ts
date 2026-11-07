@@ -1,5 +1,5 @@
 import { furniture, type FurnitureType } from '@hutel/shared';
-import { canvasTex, cyl, M, pick, rbox, rnd, shade, sph, T } from './helpers';
+import { box, canvasTex, cyl, M, pick, rbox, rnd, shade, sph, T } from './helpers';
 
 const wood = M(0x8a5634, { roughness: 0.6 });
 const woodDark = M(0x5e3820, { roughness: 0.6 });
@@ -764,6 +764,75 @@ const BUILD: Record<FurnitureType, (c: number, state: number) => T.Group> = {
       l.position.set(0, 1.9, 0.5);
       g.add(l);
     }
+    return g;
+  },
+  gamebox() {
+    const g = new T.Group();
+    const body = M(0x2a2a35, { roughness: 0.5 });
+    g.add(rbox(0.6, 0.9, 0.5, body, 0, 0.45, 0, 0.06));
+    g.add(
+      rbox(
+        0.5,
+        0.36,
+        0.06,
+        M(0x111118, { emissive: 0x7ac8ff, emissiveIntensity: 0.9 }),
+        0,
+        0.98,
+        0.18,
+        0.02,
+      ),
+    );
+    g.add(rbox(0.58, 0.08, 0.32, M(0xffb347, { roughness: 0.4 }), 0, 0.92, 0.12, 0.03));
+    for (const [x, c] of [
+      [-0.14, 0xe0564a],
+      [0.0, 0x3f7fb6],
+      [0.14, 0x5bbf6a],
+    ] as const)
+      g.add(sph(0.035, M(c, { emissive: c, emissiveIntensity: 0.6 }), x, 0.98, 0.24));
+    g.add(cyl(0.02, 0.02, 0.1, M(0x111118), -0.2, 1.0, 0.1));
+    return g;
+  },
+  colortile(_c, state) {
+    // Neutral, red or blue – painted by Farvekamp.
+    const col = state === 1 ? 0xe0564a : state === 2 ? 0x3f7fb6 : 0xe9e2d4;
+    const g = new T.Group();
+    g.add(rbox(0.92, 0.05, 0.92, M(0x6a6a75, { roughness: 0.5 }), 0, 0.025, 0, 0.02));
+    g.add(
+      rbox(
+        0.8,
+        0.03,
+        0.8,
+        M(col, {
+          roughness: 0.35,
+          emissive: state ? col : 0x000000,
+          emissiveIntensity: state ? 0.25 : 0,
+        }),
+        0,
+        0.06,
+        0,
+        0.015,
+      ),
+    );
+    return g;
+  },
+  racestart() {
+    const g = new T.Group();
+    g.add(rbox(0.92, 0.05, 0.92, M(0x3d7a5a, { roughness: 0.5 }), 0, 0.025, 0, 0.02));
+    for (const z of [-0.25, 0, 0.25])
+      g.add(rbox(0.7, 0.012, 0.06, M(0xf4efe6), 0, 0.056, z, 0.004));
+    return g;
+  },
+  racegoal() {
+    const g = new T.Group();
+    g.add(rbox(0.92, 0.05, 0.92, M(0x2a2a35, { roughness: 0.5 }), 0, 0.025, 0, 0.02));
+    const white = M(0xf4efe6, { roughness: 0.5 });
+    for (let i = 0; i < 4; i++)
+      for (let k = 0; k < 4; k++)
+        if ((i + k) % 2 === 0)
+          g.add(box(0.2, 0.012, 0.2, white, -0.3 + i * 0.2, 0.056, -0.3 + k * 0.2));
+    g.add(cyl(0.02, 0.02, 1.2, M(0xc0c0c8, { metalness: 0.6 }), 0.4, 0.6, -0.4));
+    const flag = box(0.32, 0.2, 0.01, M(0xe0564a), 0.24, 1.08, -0.4);
+    g.add(flag);
     return g;
   },
   teleport(c) {

@@ -46,6 +46,10 @@ import {
   canPlace,
   isFloorTile,
   WALK_SPEED,
+  ROOM_GAMES,
+  GAME_COUNTDOWN_MS,
+  TEAM_NAMES,
+  type RoomGameKind,
   MARKET_FEE,
   MARKET_MAX_LISTINGS,
   MARKET_MAX_PRICE,
@@ -168,6 +172,7 @@ const LIMIT_FOR: Partial<Record<ClientMsg['t'], LimitKind>> = {
   setHeight: 'build',
   teleport: 'move',
   aptDoor: 'move',
+  gameStart: 'build',
   market: 'nav',
   marketSell: 'build',
   marketBuy: 'build',
@@ -565,7 +570,7 @@ export class Hotel {
    * your own, your friends' and your favourites (busiest first). With a search: every guest room
    * whose name, description or owner matches.
    */
-  private navigator(user: UserRecord, q?: string): NavigatorRoom[] {
+  private navigator(user: UserRecord, q?: string, cat?: RoomCategory): NavigatorRoom[] {
     const favs = new Set(user.favorites ?? []);
     const query = (q ?? '').trim().toLowerCase();
     const out: NavigatorRoom[] = PUBLIC_ROOMS.filter(
@@ -592,10 +597,13 @@ export class Hotel {
       .filter(({ rec, users, owner }) =>
         query
           ? `${rec.name} ${rec.description} ${owner ?? ''}`.toLowerCase().includes(query)
-          : users > 0 ||
-            rec.ownerId === user.id ||
-            user.friends.includes(rec.ownerId) ||
-            favs.has(rec.id),
+          : cat
+            ? (rec.category ?? 'andet') === cat &&
+              (rec.access !== 'locked' || rec.ownerId === user.id)
+            : users > 0 ||
+              rec.ownerId === user.id ||
+              user.friends.includes(rec.ownerId) ||
+              favs.has(rec.id),
       )
       .sort((a, b) => b.users - a.users || a.rec.name.localeCompare(b.rec.name, 'da'))
       .slice(0, 60)
@@ -812,6 +820,147 @@ export class Hotel {
     u.eventMins.mins++;
     if (u.eventMins.mins >= 5)
       this.badge(s, u, EVENTS.find((x) => x.id === e.id)?.badge ?? 'event');
+  }
+
+  /* ---------------- room games (furniture games) ---------------- */
+
+  /** Extra state per running game that clients don't need to see. */
+  private gameState = new Map<
+    string,
+    { startedBy: string; lastSent: number; cooldownUntil: number }
+  >();
+
+  private gameStart(s: Session, user: UserRecord, itemId: number, kind: RoomGameKind) {
+    const room = s.room;
+    if (!room || !s.player) return;
+    const box = room.items.find((i) => i.id === itemId && i.type === 'gamebox');
+    if (!box) return;
+    if (room.game) return this.toast(s, 'Der er allerede et spil i gang.');
+    const st = this.gameState.get(room.meta.id);
+    if (st && st.cooldownUntil > Date.now())
+      return this.toast(s, 'Vent et øjeblik før næste spil.');
+    const def = ROOM_GAMES[kind];
+    const count = (t: string) => room.items.filter((i) => i.type === t).length;
+    if (kind === 'paint' && count('colortile') < 4)
+      return this.toast(s, `${def.name} kræver: ${def.needs.toLowerCase()}.`, 'error');
+    if (kind === 'race' && (!count('racestart') || !count('racegoal')))
+      return this.toast(s, `${def.name} kræver: ${def.needs.toLowerCase()}.`, 'error');
+    const players = room.humans();
+    const until = Date.now() + GAME_COUNTDOWN_MS;
+    if (kind === 'paint') {
+      // Shuffle into two teams of (almost) equal size.
+      const order = [...players].sort(() => Math.random() - 0.5);
+      const teams: Record<string, 1 | 2> = {};
+      order.forEach((p, i) => (teams[p.id] = i % 2 === 0 ? 1 : 2));
+      for (const it of room.items)
+        if (it.type === 'colortile' && itemState(it) !== 0) {
+          it.state = 0;
+          room.broadcast({ t: 'itemPut', item: it });
+        }
+      room.game = { kind, phase: 'countdown', until, teams, score: [0, 0] };
+    } else {
+      const onStart = players.filter((p) => {
+        const [x, z] = room.tileOf(p);
+        return room.items.some((i) => i.type === 'racestart' && i.x === x && i.z === z);
+      });
+      room.game = {
+        kind,
+        phase: 'countdown',
+        until,
+        racers: (onStart.length ? onStart : players).map((p) => p.id),
+      };
+    }
+    this.gameState.set(room.meta.id, { startedBy: user.id, lastSent: 0, cooldownUntil: 0 });
+    room.broadcast({ t: 'roomGame', game: room.game });
+    this.sys(room, `${def.icon} ${user.name} starter ${def.name}! ${def.rules}`);
+  }
+
+  /** Runs every tick for rooms with a game. */
+  private gameTick(room: RoomInstance, now: number) {
+    const g = room.game;
+    if (!g) return;
+    const st = this.gameState.get(room.meta.id);
+    if (!room.humans().length) return this.gameEnd(room, null);
+    if (g.phase === 'countdown') {
+      if (now < g.until) return;
+      g.phase = 'play';
+      g.until = now + ROOM_GAMES[g.kind].secs * 1000;
+      room.broadcast({ t: 'roomGame', game: g });
+      this.sys(room, g.kind === 'race' ? '🏁 Løb!' : '🎨 Farv løs!');
+      return;
+    }
+    if (g.kind === 'paint') {
+      let changed = false;
+      for (const p of room.humans()) {
+        const team = g.teams?.[p.id];
+        if (!team) continue;
+        const [x, z] = room.tileOf(p);
+        const tile = room.items.find((i) => i.type === 'colortile' && i.x === x && i.z === z);
+        if (tile && itemState(tile) !== team) {
+          tile.state = team;
+          room.broadcast({ t: 'itemPut', item: tile });
+          changed = true;
+        }
+      }
+      if (changed || (st && now - st.lastSent > 1000)) {
+        const tiles = room.items.filter((i) => i.type === 'colortile');
+        g.score = [
+          tiles.filter((t) => itemState(t) === 1).length,
+          tiles.filter((t) => itemState(t) === 2).length,
+        ];
+        if (st) st.lastSent = now;
+        room.broadcast({ t: 'roomGame', game: g });
+      }
+      if (now >= g.until) {
+        const [r, b] = g.score ?? [0, 0];
+        this.gameEnd(room, r === b ? null : r > b ? 1 : 2);
+      }
+    } else {
+      for (const id of g.racers ?? []) {
+        const p = room.players.get(id);
+        if (!p) continue;
+        const [x, z] = room.tileOf(p);
+        if (room.items.some((i) => i.type === 'racegoal' && i.x === x && i.z === z))
+          return this.gameEnd(room, id);
+      }
+      if (now >= g.until) this.gameEnd(room, null);
+    }
+  }
+
+  /** Ends the game: winner is a team (Farvekamp) or a player id (Kapløb), or null. */
+  private gameEnd(room: RoomInstance, winner: 1 | 2 | string | null) {
+    const g = room.game;
+    if (!g) return;
+    room.game = null;
+    const st = this.gameState.get(room.meta.id);
+    if (st) st.cooldownUntil = Date.now() + 5000;
+    room.broadcast({ t: 'roomGame', game: null });
+    const def = ROOM_GAMES[g.kind];
+    const playing = g.kind === 'paint' ? Object.keys(g.teams ?? {}) : (g.racers ?? []);
+    const enough = playing.filter((id) => room.players.has(id)).length >= 2;
+    const winners =
+      winner === null
+        ? []
+        : typeof winner === 'number'
+          ? playing.filter((id) => g.teams?.[id] === winner)
+          : [winner];
+    for (const id of winners) {
+      const s = this.byUser.get(id);
+      const u = this.store.getUser(id);
+      if (!s || !u) continue;
+      // Coins only when at least two people played (no farming alone).
+      const got = enough ? this.gameReward(s, u, def.reward) : 0;
+      this.toast(s, got ? `🏆 Du vandt ${def.name}! +${got} 🪙` : `🏆 Du vandt ${def.name}!`);
+    }
+    const score = g.score ? ` (${g.score[0]}–${g.score[1]})` : '';
+    if (winner === null) this.sys(room, `${def.icon} ${def.name} slut – uafgjort${score}.`);
+    else if (typeof winner === 'number')
+      this.sys(room, `${def.icon} ${TEAM_NAMES[winner]} hold vinder ${def.name}${score}! 🎉`);
+    else
+      this.sys(
+        room,
+        `${def.icon} ${this.store.getUser(winner)?.name ?? '?'} vinder ${def.name}! 🎉`,
+      );
   }
 
   /* ---------------- mini games ---------------- */
@@ -1049,7 +1198,12 @@ export class Hotel {
       case 'join':
         return this.join(s, msg.roomId, msg.password);
       case 'navigator':
-        return this.send(s, { t: 'navigator', rooms: this.navigator(user, msg.q), q: msg.q });
+        return this.send(s, {
+          t: 'navigator',
+          rooms: this.navigator(user, msg.q, msg.cat as RoomCategory | undefined),
+          q: msg.q,
+          cat: msg.cat as RoomCategory | undefined,
+        });
       case 'favorite': {
         const favs = (user.favorites ??= []).filter((id) => id !== msg.roomId);
         if (
@@ -1097,6 +1251,8 @@ export class Hotel {
         const it = room.items.find((i) => i.id === msg.itemId);
         const def = it && furniture(it.type);
         if (!it || !def?.states) return;
+        // Colour tiles are painted by the game, not switched by hand.
+        if (it.type === 'colortile') return;
         const own = this.ownRoom(s, user);
         if (!own && user.role === 'user')
           return this.toast(s, 'Du kan kun tænde og slukke på dit eget værelse 💡', 'error');
@@ -1176,6 +1332,8 @@ export class Hotel {
         return this.guestbookDelete(s, user, msg.userId, msg.id);
       case 'teleport':
         return this.teleport(s, user, msg.itemId);
+      case 'gameStart':
+        return this.gameStart(s, user, msg.itemId, msg.kind as RoomGameKind);
       case 'aptDoor': {
         const d = room?.meta.doors[msg.index];
         if (!room || !player || !d) return;
@@ -2382,6 +2540,7 @@ export class Hotel {
     for (const room of this.rooms.values()) {
       room.tick(now);
       this.bots.tick(room, now);
+      if (room.game) this.gameTick(room, now);
     }
   }
 
