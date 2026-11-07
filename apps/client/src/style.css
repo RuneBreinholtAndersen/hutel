@@ -1526,3 +1526,61 @@ body {
     display: none;
   }
 }
+
+/* ---------------- admin ---------------- */
+#bAdmin {
+  position: fixed;
+  top: 84px;
+  left: 14px;
+  z-index: 5;
+  padding: 7px 12px;
+  font-size: 13px;
+  color: var(--txt);
+}
+#bAdmin.on {
+  background: var(--acc);
+  color: #3a2618;
+}
+.astats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin: 4px 0 12px;
+}
+.astats div {
+  background: rgba(255, 244, 224, 0.07);
+  border-radius: 12px;
+  padding: 8px 10px;
+  text-align: center;
+}
+.astats b {
+  display: block;
+  font-size: 22px;
+  color: var(--acc);
+}
+.astats small {
+  font-size: 11px;
+  color: var(--muted);
+}
+.tag-new {
+  background: #5fb37a;
+  color: #10231a;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 6px;
+  margin-left: 4px;
+}
+@media (max-width: 760px) {
+  #bAdmin {
+    top: calc(62px + env(safe-area-inset-top));
+    left: 8px;
+    padding: 6px 9px;
+  }
+  #bAdmin span {
+    display: none;
+  }
+  .astats b {
+    font-size: 18px;
+  }
+}

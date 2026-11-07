@@ -797,6 +797,39 @@ export class Hotel {
     switch (msg.action) {
       case 'reports':
         return this.send(s, { t: 'adminReports', reports: this.adminReports() });
+      case 'users': {
+        // Only admins see the whole list (moderators handle reports).
+        if (user.role !== 'admin') return this.toast(s, 'Kun for administratorer.', 'error');
+        const all = this.store.listUsers();
+        const now = Date.now();
+        const since = (ms: number) => all.filter((u) => now - Date.parse(u.createdAt) < ms).length;
+        const users = [...all]
+          .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+          .slice(0, 100)
+          .map((u) => ({
+            id: u.id,
+            name: u.name,
+            createdAt: u.createdAt,
+            lastSeen: u.lastSeen,
+            online: this.byUser.has(u.id),
+            role: u.role,
+            login: (u.authId ? 'google' : 'password') as 'google' | 'password',
+            coins: u.coins,
+            onlineMin: Math.floor(u.onlineSec / 60),
+            banned: !!u.bannedUntil && u.bannedUntil > now,
+            muted: !!u.mutedUntil && u.mutedUntil > now,
+          }));
+        return this.send(s, {
+          t: 'adminUsers',
+          stats: {
+            total: all.length,
+            today: since(24 * 3600_000),
+            week: since(7 * 24 * 3600_000),
+            online: this.byUser.size,
+          },
+          users,
+        });
+      }
       case 'resolve': {
         const r = this.store.listReports().find((x) => x.id === msg.reportId);
         if (!r) return;

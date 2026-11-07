@@ -159,6 +159,7 @@ export const ClientMsgSchema = z.discriminatedUnion('t', [
     t: z.literal('admin'),
     action: z.enum([
       'reports',
+      'users',
       'resolve',
       'warn',
       'mute',
@@ -412,6 +413,27 @@ export interface AdminReport {
   context: { name: string; text: string; at: number }[];
 }
 
+/** Admin's user list: who has signed up, newest first. No e-mails or passwords. */
+export interface AdminUser {
+  id: string;
+  name: string;
+  createdAt: string;
+  lastSeen: string;
+  online: boolean;
+  role: string;
+  login: 'google' | 'password';
+  coins: number;
+  onlineMin: number;
+  banned: boolean;
+  muted: boolean;
+}
+export interface AdminStats {
+  total: number;
+  today: number;
+  week: number;
+  online: number;
+}
+
 export interface InvItem {
   type: FurnitureType;
   color?: number;
@@ -529,6 +551,7 @@ export type ServerMsg =
   | { t: 'apartment'; rooms: { kind: string; id: string; name: string }[] }
   | { t: 'tag'; id: string; badge?: string; shown?: string | null; level?: number }
   | { t: 'adminReports'; reports: AdminReport[] }
+  | { t: 'adminUsers'; stats: AdminStats; users: AdminUser[] }
   | { t: 'events'; events: ActiveEvent[] }
   /** A system line in the room (game results etc.); shown over `id` if given. */
   | { t: 'sys'; text: string; id?: string }

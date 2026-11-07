@@ -109,6 +109,8 @@ import {
   type RoomView,
   type ServerMsg,
   type AdminReport,
+  type AdminStats,
+  type AdminUser,
   type ClientMsg,
   type TradeOfferView,
   type TradeView,
@@ -590,6 +592,7 @@ function handle(msg: ServerMsg) {
       setCoins(me.coins);
       setOnline(me.onlineSec);
       $('signup').classList.add('hidden');
+      $('bAdmin').classList.toggle('hidden', me.role !== 'admin');
       // Came from "Slet min konto" on lobbi.dk: open the figure panel at the delete box.
       if (wantDelete) {
         wantDelete = false;
@@ -709,6 +712,8 @@ function handle(msg: ServerMsg) {
       return;
     case 'adminReports':
       return renderAdmin(msg.reports);
+    case 'adminUsers':
+      return renderAdminUsers(msg.stats, msg.users);
     case 'apartment':
       if (!me) return;
       me.apartment = msg.rooms;
@@ -929,13 +934,14 @@ function openPanel(kind: string, html: string) {
   for (const id of ['bNav', 'bFriends', 'bFig', 'bShop']) $(id).classList.remove('on');
   const btn = { nav: 'bNav', friends: 'bFriends', fig: 'bFig', shop: 'bShop' }[kind];
   if (btn) $(btn).classList.add('on');
+  $('bAdmin').classList.toggle('on', kind === 'adminUsers');
 }
 function closePanel() {
   stopTutorial?.();
   stopTutorial = null;
   panelKind = null;
   $('panel').classList.add('hidden');
-  for (const id of ['bNav', 'bFriends', 'bFig', 'bShop']) $(id).classList.remove('on');
+  for (const id of ['bNav', 'bFriends', 'bFig', 'bShop', 'bAdmin']) $(id).classList.remove('on');
 }
 const head = (title: string, sub = '') =>
   `<h2>${title} <button class="x" data-close>✕</button></h2>${sub ? `<p class="sub">${sub}</p>` : ''}`;
@@ -2104,6 +2110,39 @@ function renderFigure() {
 }
 
 /* ---------------- moderation ---------------- */
+/** Admin: who has signed up, newest first. */
+function renderAdminUsers(stats: AdminStats, users: AdminUser[]) {
+  const ago = (iso: string) => {
+    const m = Math.round((Date.now() - Date.parse(iso)) / 60000);
+    if (m < 1) return 'lige nu';
+    if (m < 60) return `${m} min siden`;
+    const h = Math.round(m / 60);
+    if (h < 24) return `${h} t siden`;
+    const d = Math.round(h / 24);
+    return d < 30 ? `${d} dage siden` : new Date(iso).toLocaleDateString('da-DK');
+  };
+  const isNew = (iso: string) => Date.now() - Date.parse(iso) < 24 * 3600_000;
+  const row = (u: AdminUser) => `<div class="li">
+      <div class="grow"><b>${u.online ? '<span class="status-on">●</span> ' : ''}${esc(u.name)}</b>${isNew(u.createdAt) ? '<span class="tag-new">NY</span>' : ''}${u.role !== 'user' ? ` <small>🛡️ ${esc(u.role)}</small>` : ''}${u.banned ? ' <small>⛔</small>' : ''}${u.muted ? ' <small>🔇</small>' : ''}
+      <small>Oprettet ${ago(u.createdAt)} · sidst set ${u.online ? 'nu' : ago(u.lastSeen)} · ${u.login === 'google' ? 'Google' : 'navn + kode'} · ${u.onlineMin} min · 🪙 ${u.coins}</small></div>
+      <button class="small" data-prof="${esc(u.id)}">Profil</button></div>`;
+  openPanel(
+    'adminUsers',
+    head('🛡️ Admin') +
+      `<div class="astats"><div><b>${stats.total}</b><small>brugere i alt</small></div><div><b>${stats.today}</b><small>nye i dag</small></div><div><b>${stats.week}</b><small>nye på 7 dage</small></div><div><b>${stats.online}</b><small>online nu</small></div></div>` +
+      `<div class="chips" style="margin-bottom:10px"><button id="adRefresh" class="small">🔄 Opdatér</button><button id="adReports" class="small">⚠️ Rapporter</button></div>` +
+      `<h3>Nyeste brugere</h3><div class="list">${users.map(row).join('') || '<p class="sub">Ingen brugere endnu.</p>'}</div>` +
+      (users.length >= 100 ? '<p class="sub">Viser de 100 nyeste.</p>' : ''),
+  );
+  $('adRefresh').addEventListener('click', () => net?.send({ t: 'admin', action: 'users' }));
+  $('adReports').addEventListener('click', () => net?.send({ t: 'admin', action: 'reports' }));
+  $('panel')
+    .querySelectorAll<HTMLElement>('[data-prof]')
+    .forEach((b) =>
+      b.addEventListener('click', () => net?.send({ t: 'profile', userId: b.dataset.prof! })),
+    );
+}
+
 function renderAdmin(reports: AdminReport[]) {
   const until = (t: number | null) =>
     t && t > Date.now()
@@ -3053,6 +3092,10 @@ $('bNav').addEventListener(
   ),
 );
 $('bFriends').addEventListener('click', toggle('friends', renderFriends));
+$('bAdmin').addEventListener('click', () => {
+  if (panelKind === 'adminUsers') return closePanel();
+  net?.send({ t: 'admin', action: 'users' });
+});
 $('bFig').addEventListener('click', toggle('fig', renderFigure));
 $('bPets').addEventListener('click', toggle('pets', renderPets));
 $('bSound').addEventListener('click', () => {

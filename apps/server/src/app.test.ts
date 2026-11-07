@@ -1241,3 +1241,20 @@ describe('delete account', () => {
     expect(app.store.listRooms().some((r) => r.ownerId === g.userId)).toBe(false);
   });
 });
+
+describe('admin user list', () => {
+  it('shows admins the newest users, and nobody else', async () => {
+    const boss = await login('Chefen');
+    const guest = await login('Nygaest');
+    boss.c.send({ t: 'admin', action: 'users' });
+    const list = await boss.c.waitFor('adminUsers');
+    expect(list.users[0]!.name).toBe('Nygaest');
+    expect(list.stats.today).toBeGreaterThanOrEqual(2);
+    expect(JSON.stringify(list)).not.toContain('passwordHash');
+    guest.c.send({ t: 'admin', action: 'users' });
+    await new Promise((r) => setTimeout(r, 200));
+    expect(guest.c.msgs.some((m) => m.t === 'adminUsers')).toBe(false);
+    boss.c.ws.close();
+    guest.c.ws.close();
+  });
+});
