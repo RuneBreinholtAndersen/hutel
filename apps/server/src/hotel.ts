@@ -67,6 +67,7 @@ import {
   ROOM_GAMES,
   GAME_COUNTDOWN_MS,
   TEAM_NAMES,
+  SNOW,
   type RoomGameKind,
   MARKET_FEE,
   MARKET_MAX_LISTINGS,
@@ -139,6 +140,8 @@ export interface HotelConfig {
   allowReset?: boolean;
   /** Names (lower-case) that get the admin role. They should log in with Google (2FA). */
   adminNames?: string[];
+  /** Hutel Junior: no free text between strangers and no cinema (open YouTube). */
+  junior?: boolean;
 }
 
 export interface Connection {
@@ -195,6 +198,8 @@ const LIMIT_FOR: Partial<Record<ClientMsg['t'], LimitKind>> = {
   aptDoor: 'move',
   gameStart: 'build',
   jukebox: 'build',
+  cinema: 'build',
+  snowThrow: 'move',
   market: 'nav',
   marketSell: 'build',
   marketBuy: 'build',
@@ -903,9 +908,21 @@ export class Hotel {
       return this.toast(s, `${def.name} kræver: ${def.needs.toLowerCase()}.`, 'error');
     if (kind === 'race' && (!count('racestart') || !count('racegoal')))
       return this.toast(s, `${def.name} kræver: ${def.needs.toLowerCase()}.`, 'error');
+    if (kind === 'snow' && !count('snedrive'))
+      return this.toast(s, `${def.name} kræver: ${def.needs.toLowerCase()}.`, 'error');
     const players = room.humans();
     const until = Date.now() + GAME_COUNTDOWN_MS;
-    if (kind === 'paint') {
+    if (kind === 'snow') {
+      const order = [...players].sort(() => Math.random() - 0.5);
+      const teams: Record<string, 1 | 2> = {};
+      const ammo: Record<string, number> = {};
+      order.forEach((p, i) => {
+        teams[p.id] = i % 2 === 0 ? 1 : 2;
+        ammo[p.id] = SNOW.ammo;
+      });
+      room.game = { kind, phase: 'countdown', until, teams, score: [0, 0], ammo };
+      this.snowCd.clear();
+    } else if (kind === 'paint') {
       // Shuffle into two teams of (almost) equal size.
       const order = [...players].sort(() => Math.random() - 0.5);
       const teams: Record<string, 1 | 2> = {};
@@ -944,7 +961,30 @@ export class Hotel {
       g.phase = 'play';
       g.until = now + ROOM_GAMES[g.kind].secs * 1000;
       room.broadcast({ t: 'roomGame', game: g });
-      this.sys(room, g.kind === 'race' ? '🏁 Løb!' : '🎨 Farv løs!');
+      this.sys(
+        room,
+        g.kind === 'race' ? '🏁 Løb!' : g.kind === 'snow' ? '❄️ Kast løs!' : '🎨 Farv løs!',
+      );
+      return;
+    }
+    if (g.kind === 'snow') {
+      // Standing next to a snow pile refills your snowballs.
+      let changed = false;
+      const piles = room.items.filter((i) => i.type === 'snedrive');
+      for (const p of room.humans()) {
+        if (!g.teams?.[p.id] || !g.ammo) continue;
+        const [x, z] = room.tileOf(p);
+        const near = piles.some((i) => Math.max(Math.abs(i.x - x), Math.abs(i.z - z)) <= 1);
+        if (near && (g.ammo[p.id] ?? 0) < SNOW.ammo) {
+          g.ammo[p.id] = SNOW.ammo;
+          changed = true;
+        }
+      }
+      if (changed) room.broadcast({ t: 'roomGame', game: g });
+      if (now >= g.until) {
+        const [r, b] = g.score ?? [0, 0];
+        this.gameEnd(room, r === b ? null : r > b ? 1 : 2);
+      }
       return;
     }
     if (g.kind === 'paint') {
@@ -985,6 +1025,41 @@ export class Hotel {
     }
   }
 
+  /** Last throw and "frozen until" per player in a Sneboldkamp. */
+  private snowCd = new Map<string, { at: number; frozen: number }>();
+
+  private snowThrow(s: Session, room: RoomInstance, p: PlayerState, targetId: string) {
+    const g = room.game;
+    if (!g || g.kind !== 'snow' || g.phase !== 'play' || !g.teams || !g.ammo) return;
+    const myTeam = g.teams[p.id];
+    const theirTeam = g.teams[targetId];
+    const target = room.players.get(targetId);
+    if (!myTeam || !theirTeam || myTeam === theirTeam || !target) return;
+    const now = Date.now();
+    const cd = this.snowCd.get(p.id) ?? { at: 0, frozen: 0 };
+    if (cd.frozen > now) return this.toast(s, '🥶 Du er ramt – vent et øjeblik');
+    if (now - cd.at < SNOW.cooldownMs) return;
+    if ((g.ammo[p.id] ?? 0) <= 0) return this.toast(s, '❄️ Ingen snebolde – gå hen til snedriven');
+    const [ax, az] = room.tileOf(p);
+    const [bx, bz] = room.tileOf(target);
+    if (Math.max(Math.abs(ax - bx), Math.abs(az - bz)) > SNOW.range)
+      return this.toast(s, 'For langt væk – gå tættere på');
+    cd.at = now;
+    this.snowCd.set(p.id, cd);
+    g.ammo[p.id] = (g.ammo[p.id] ?? 0) - 1;
+    const tc = this.snowCd.get(target.id) ?? { at: 0, frozen: 0 };
+    // A player who was just hit can't be hit again right away.
+    const hit = tc.frozen <= now;
+    if (hit) {
+      tc.frozen = now + SNOW.freezeMs;
+      this.snowCd.set(target.id, tc);
+      const [r, b] = g.score ?? [0, 0];
+      g.score = myTeam === 1 ? [r + 1, b] : [r, b + 1];
+    }
+    room.broadcast({ t: 'snowball', from: p.id, to: target.id, hit });
+    room.broadcast({ t: 'roomGame', game: g });
+  }
+
   /** Ends the game: winner is a team (Farvekamp) or a player id (Kapløb), or null. */
   private gameEnd(room: RoomInstance, winner: 1 | 2 | string | null) {
     const g = room.game;
@@ -994,7 +1069,7 @@ export class Hotel {
     if (st) st.cooldownUntil = Date.now() + 5000;
     room.broadcast({ t: 'roomGame', game: null });
     const def = ROOM_GAMES[g.kind];
-    const playing = g.kind === 'paint' ? Object.keys(g.teams ?? {}) : (g.racers ?? []);
+    const playing = g.teams ? Object.keys(g.teams) : (g.racers ?? []);
     const enough = playing.filter((id) => room.players.has(id)).length >= 2;
     const winners =
       winner === null
@@ -1488,6 +1563,45 @@ export class Hotel {
         return this.guestbookDelete(s, user, msg.userId, msg.id);
       case 'teleport':
         return this.teleport(s, user, msg.itemId);
+      case 'cinema': {
+        if (!room) return;
+        if (this.cfg.junior) return this.toast(s, 'Biografen findes ikke i Hutel Junior.', 'error');
+        const it = room.items.find((i) => i.id === msg.itemId && i.type === 'laerred');
+        if (!it) return;
+        const rec = this.roomRecord(room);
+        const owner =
+          user.role !== 'user' ||
+          (rec && (rec.ownerId === user.id || rec.rights.includes(user.id)));
+        // In the public cinema anyone may start a film when nothing is playing.
+        const allowed = owner || (room.meta.isPublic && !it.video);
+        if (!allowed)
+          return this.toast(
+            s,
+            room.meta.isPublic
+              ? 'Der kører allerede en video – vent til den er slut 🎬'
+              : 'Kun ejeren kan vælge video her 🎬',
+            'error',
+          );
+        if (msg.video) {
+          it.video = msg.video;
+          it.videoAt = Date.now();
+          it.state = 1;
+          this.sys(room, `🎬 ${user.name} starter en video på lærredet.`);
+        } else {
+          delete it.video;
+          delete it.videoAt;
+          it.state = 0;
+        }
+        const saved = rec?.items.find((i) => i.id === it.id);
+        if (saved && saved !== it)
+          Object.assign(saved, { state: it.state, video: it.video, videoAt: it.videoAt });
+        this.store.touch();
+        room.broadcast({ t: 'itemPut', item: it });
+        return;
+      }
+      case 'snowThrow':
+        if (room && player) this.snowThrow(s, room, player, msg.targetId);
+        return;
       case 'jukebox': {
         if (!room) return;
         const it = room.items.find((i) => i.id === msg.itemId && i.type === 'jukebox');

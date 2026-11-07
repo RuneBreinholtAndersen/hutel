@@ -7,6 +7,7 @@ export type RoomTheme =
   | 'cafe'
   | 'roof'
   | 'arcade'
+  | 'cinema'
   | 'pool'
   | 'bedroom'
   | 'bathroom'
@@ -256,6 +257,25 @@ export const PUBLIC_ROOMS: PublicRoomDef[] = [
       { id: 5010, type: 'table', x: 3, z: 1, rot: 0 },
     ],
   },
+  {
+    id: 'cinema',
+    category: 'chill',
+    name: 'Biografen',
+    description: 'Sæt dig i en biografstol og se YouTube-videoer sammen med de andre.',
+    theme: 'cinema',
+    items: [
+      { id: 6001, type: 'laerred', x: 2, z: 0, rot: 0 },
+      { id: 6002, type: 'rug', x: 2, z: 3, rot: 0, color: 1 },
+      { id: 6003, type: 'biografstol', x: 2, z: 3, rot: 2 },
+      { id: 6004, type: 'biografstol', x: 3, z: 3, rot: 2 },
+      { id: 6005, type: 'biografstol', x: 4, z: 3, rot: 2 },
+      { id: 6006, type: 'biografstol', x: 2, z: 5, rot: 2, color: 1 },
+      { id: 6007, type: 'biografstol', x: 3, z: 5, rot: 2, color: 1 },
+      { id: 6008, type: 'biografstol', x: 4, z: 5, rot: 2, color: 1 },
+      { id: 6009, type: 'kaffemaskine', x: 7, z: 1, rot: 3 },
+      { id: 6010, type: 'plant', x: 7, z: 7, rot: 0 },
+    ],
+  },
 ];
 
 /** Starting furniture for every new guest room. */
@@ -268,3 +288,14 @@ export const DEFAULT_HOME_ITEMS: Omit<PlacedItem, 'id'>[] = [
   { type: 'shelf', x: 0, z: 4, rot: 1 },
   { type: 'armchair', x: 5, z: 2, rot: 3 },
 ];
+
+/** The 11-character video id from a YouTube link (or a bare id), or null. */
+export function youtubeId(input: string): string | null {
+  const t = input.trim();
+  if (/^[A-Za-z0-9_-]{11}$/.test(t)) return t;
+  const m =
+    /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/.exec(
+      t,
+    );
+  return m ? m[1]! : null;
+}

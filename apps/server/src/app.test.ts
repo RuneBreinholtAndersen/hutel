@@ -1033,6 +1033,56 @@ describe('multiplayer', () => {
     b.c.ws.close();
   }, 15_000);
 
+  it('plays a YouTube video on the cinema screen, chosen by the owner', async () => {
+    const a = await login('Filmejer');
+    const b = await login('Filmgæst');
+    const ua = app.store.getUser(a.g.userId)!;
+    const home = app.store.getRoom(ua.homeRoomId)!;
+    home.items.push({ id: 9501, type: 'laerred', x: 2, z: 0, rot: 0 });
+    b.c.send({ t: 'join', roomId: ua.homeRoomId });
+    await b.c.waitFor('room', (m) => m.room.id === ua.homeRoomId);
+    b.c.send({ t: 'cinema', itemId: 9501, video: 'dQw4w9WgXcQ' });
+    await b.c.waitFor('toast', (m) => /Kun ejeren/.test(m.text));
+    a.c.send({ t: 'cinema', itemId: 9501, video: 'not a video id' } as never);
+    a.c.send({ t: 'cinema', itemId: 9501, video: 'dQw4w9WgXcQ' });
+    const put = await b.c.waitFor('itemPut', (m) => m.item.id === 9501 && !!m.item.video);
+    expect(put.item.video).toBe('dQw4w9WgXcQ');
+    expect(Math.abs(put.item.videoAt! - Date.now())).toBeLessThan(5000);
+    a.c.send({ t: 'cinema', itemId: 9501, video: null });
+    await b.c.waitFor('itemPut', (m) => m.item.id === 9501 && !m.item.video);
+    a.c.ws.close();
+    b.c.ws.close();
+  });
+
+  it('plays Sneboldkamp: hits score points, cost snowballs and freeze the target', async () => {
+    const a = await login('Snekaster');
+    const b = await login('Snemand');
+    const ua = app.store.getUser(a.g.userId)!;
+    const home = app.store.getRoom(ua.homeRoomId)!;
+    home.items.push({ id: 9601, type: 'gamebox', x: 7, z: 7, rot: 0 });
+    home.items.push({ id: 9602, type: 'snedrive', x: 6, z: 1, rot: 0 });
+    b.c.send({ t: 'join', roomId: ua.homeRoomId });
+    await b.c.waitFor('room', (m) => m.room.id === ua.homeRoomId);
+    a.c.send({ t: 'gameStart', itemId: 9601, kind: 'snow' });
+    const g = await a.c.waitFor('roomGame', (m) => m.game?.phase === 'countdown');
+    expect(g.game!.teams![a.g.userId]).not.toBe(g.game!.teams![b.g.userId]);
+    await a.c.waitFor('roomGame', (m) => m.game?.phase === 'play', 6000);
+    const team = g.game!.teams![a.g.userId]!;
+    a.c.send({ t: 'snowThrow', targetId: b.g.userId });
+    const ball = await b.c.waitFor('snowball', (m) => m.from === a.g.userId);
+    expect(ball.hit).toBe(true);
+    const after = await b.c.waitFor(
+      'roomGame',
+      (m) => !!m.game?.score && m.game.score[team - 1] === 1,
+    );
+    expect(after.game!.ammo![a.g.userId]).toBe(4);
+    // The target is frozen and can't throw back right away.
+    b.c.send({ t: 'snowThrow', targetId: a.g.userId });
+    await b.c.waitFor('toast', (m) => /ramt/.test(m.text));
+    a.c.ws.close();
+    b.c.ws.close();
+  }, 15_000);
+
   it('plays a jukebox tune for everyone in the room, chosen only by the owner', async () => {
     const a = await login('Dj Ejer');
     const b = await login('Lytter');

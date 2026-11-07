@@ -767,7 +767,7 @@ const BUILD: Record<FurnitureType, (c: number, state: number) => T.Group> = {
   },
   noteboard() {
     const g = new T.Group();
-    g.add(shade(rbox(1.3, 0.85, 0.05, woodDark, 0.45, 1.8, 0.025, 0.02)));
+    g.add(shade(rbox(1.3, 0.85, 0.05, woodDark, 0, 1.8, 0.025, 0.02)));
     const tex = canvasTex(160, 104, (x, w, h) => {
       x.fillStyle = '#c99a62';
       x.fillRect(0, 0, w, h);
@@ -791,8 +791,53 @@ const BUILD: Record<FurnitureType, (c: number, state: number) => T.Group> = {
       });
     });
     const p = new T.Mesh(new T.PlaneGeometry(1.2, 0.76), M(0xffffff, { map: tex, roughness: 1 }));
-    p.position.set(0.45, 1.8, 0.055);
+    p.position.set(0, 1.8, 0.055);
     g.add(p);
+    return g;
+  },
+  laerred(_c, on) {
+    const g = new T.Group();
+    const frame = M(0x1a1a20, { roughness: 0.5 });
+    g.add(shade(rbox(2.7, 1.55, 0.06, frame, 0, 1.75, 0.03, 0.02)));
+    // The canvas glows softly while a film is playing (the video itself is shown on top).
+    const screen = M(on ? 0xdfe8ff : 0xf2efe8, {
+      roughness: 0.9,
+      emissive: on ? 0x6f8fd8 : 0x000000,
+      emissiveIntensity: on ? 0.9 : 0,
+    });
+    const p = new T.Mesh(new T.PlaneGeometry(2.5, 1.4), screen);
+    p.position.set(0, 1.75, 0.065);
+    g.add(p);
+    const curtain = M(0x8a1f2a, { roughness: 0.85 });
+    for (const sx of [-1, 1])
+      g.add(shade(rbox(0.22, 1.8, 0.08, curtain, sx * 1.45, 1.7, 0.06, 0.04)));
+    return g;
+  },
+  biografstol(c) {
+    const g = new T.Group();
+    const m = M(c, { roughness: 0.8 });
+    const dark = M(0x2a2228, { roughness: 0.6 });
+    g.add(rbox(0.62, 0.14, 0.55, m, 0, 0.32, 0.02, 0.06));
+    g.add(rbox(0.62, 0.7, 0.14, m, 0, 0.62, -0.25, 0.06));
+    for (const sx of [-1, 1]) g.add(rbox(0.08, 0.42, 0.55, dark, sx * 0.34, 0.33, 0, 0.03));
+    g.add(rbox(0.5, 0.25, 0.4, dark, 0, 0.13, 0, 0.03));
+    return g;
+  },
+  snedrive() {
+    const g = new T.Group();
+    const snow = M(0xf4f8ff, { roughness: 0.95, emissive: 0x9fb8d8, emissiveIntensity: 0.15 });
+    for (const [x, y, z, r] of [
+      [0, 0.16, 0, 0.34],
+      [0.18, 0.12, 0.12, 0.22],
+      [-0.2, 0.1, -0.1, 0.24],
+      [0.05, 0.34, -0.05, 0.2],
+    ] as const)
+      g.add(sph(r, snow, x, y, z));
+    for (const [x, z] of [
+      [0.28, -0.2],
+      [-0.25, 0.22],
+    ] as const)
+      g.add(sph(0.08, snow, x, 0.08, z));
     return g;
   },
   mirror() {

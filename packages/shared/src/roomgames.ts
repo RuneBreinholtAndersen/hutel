@@ -18,6 +18,15 @@ export const ROOM_GAMES = {
     needs: 'Mindst ét startfelt og ét målfelt',
     reward: 5,
   },
+  snow: {
+    name: 'Sneboldkamp',
+    icon: '❄️',
+    secs: 90,
+    rules:
+      'To hold. Klik på en fra det andet hold for at kaste en snebold (højst 5 felter væk). Hent nye snebolde ved snedriven. Flest træffere vinder.',
+    needs: 'Mindst én snedrive',
+    reward: 4,
+  },
 } as const;
 export type RoomGameKind = keyof typeof ROOM_GAMES;
 export const ROOM_GAME_IDS = Object.keys(ROOM_GAMES) as RoomGameKind[];
@@ -40,4 +49,18 @@ export interface RoomGameView {
   score?: [number, number];
   /** Kapløb: who is racing. */
   racers?: string[];
+  /** Sneboldkamp: snowballs left per player. */
+  ammo?: Record<string, number>;
 }
+
+/** Sneboldkamp rules (the server enforces them). */
+export const SNOW = {
+  /** Max distance in tiles (the larger of dx and dz). */
+  range: 5,
+  /** Snowballs you can carry; refill next to a snow pile. */
+  ammo: 5,
+  /** Time between two throws. */
+  cooldownMs: 900,
+  /** A hit player can't throw for this long. */
+  freezeMs: 1500,
+} as const;

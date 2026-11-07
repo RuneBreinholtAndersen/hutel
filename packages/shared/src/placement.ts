@@ -19,6 +19,9 @@ export interface PlacedItem {
   /** Jukebox: the tune playing and when it started (ms epoch). */
   song?: string;
   songAt?: number;
+  /** Cinema screen: YouTube video id and when it started (ms epoch). */
+  video?: string;
+  videoAt?: number;
 }
 
 /** Current state of a switchable item (falls back to its default). */

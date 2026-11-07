@@ -139,7 +139,9 @@ export type Sfx =
   | 'place'
   | 'woof'
   | 'meow'
-  | 'roar';
+  | 'roar'
+  | 'whoosh'
+  | 'splat';
 
 const lastSfx = new Map<Sfx, number>();
 
@@ -202,6 +204,11 @@ export function sfx(name: Sfx) {
       return tone(o, 300, t + 0.18, 0.12, { wave: 'sawtooth', vol: 0.12, slideTo: 170 });
     case 'meow':
       return tone(o, 600, t, 0.4, { wave: 'triangle', vol: 0.12, slideTo: 900, attack: 0.1 });
+    case 'whoosh':
+      return noise(o, t, 0.25, 0.08, 2500);
+    case 'splat':
+      noise(o, t, 0.18, 0.2, 600);
+      return tone(o, 300, t, 0.12, { wave: 'sine', vol: 0.12, slideTo: 120 });
     case 'roar':
       noise(o, t, 0.5, 0.12, 200);
       return tone(o, 110, t, 0.5, { wave: 'sawtooth', vol: 0.15, slideTo: 70 });

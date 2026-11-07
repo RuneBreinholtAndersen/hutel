@@ -27,6 +27,7 @@ const app = createApp({
       .filter((p) => p.length === 2 && p[0] && p[1]),
   ),
   allowReset: process.env.ALLOW_RESET !== 'false',
+  junior: process.env.HUTEL_JUNIOR === 'true',
   adminNames: (process.env.ADMIN_NAMES ?? '')
     .split(',')
     .map((n) => n.trim().toLowerCase())

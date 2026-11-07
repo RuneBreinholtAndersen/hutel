@@ -14,6 +14,15 @@ export interface ReleaseNote {
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
     date: '2026-11-07',
+    title: 'Biograf og sneboldkamp',
+    items: [
+      '🎬 Ny Biograf: se YouTube-videoer sammen på lærredet',
+      '💺 Køb dit eget lærred og biografstole til værelset',
+      '❄️ Sneboldkamp på spilkonsollen – kast, ram og hent nye snebolde ved snedriven',
+    ],
+  },
+  {
+    date: '2026-11-07',
     title: 'Nyt tøj, outfits og ting i hånden',
     items: [
       '👗 Kjole, dunjakke, baret, solhat, nye sko og tilbehør – i flere farver',

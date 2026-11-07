@@ -22,6 +22,8 @@ import {
   OUTFIT_SLOTS,
   effectUnlocked,
   type CarryKind,
+  SNOW,
+  youtubeId,
   type EffectId,
   EVENTS,
   WEEKDAYS,
@@ -127,7 +129,7 @@ import { createRoom } from './gfx/room';
 import { createStage } from './gfx/scene';
 import { Net } from './net';
 import * as audio from './audio';
-import { playTutorial } from './tutorial';
+import { hasTutorial, playTutorial } from './tutorial';
 import { $, COIN, confetti, setCoinText, esc, logLine, lookEditor, pop, toast } from './ui';
 
 const envServer = (import.meta.env.VITE_SERVER_URL as string | undefined) || '';
@@ -748,6 +750,9 @@ function handle(msg: ServerMsg) {
         if (panelKind === 'fig') renderFigure();
       }
       return;
+    case 'snowball':
+      throwSnowball(msg.from, msg.to, msg.hit);
+      return;
     case 'carry':
       actors.get(msg.id)?.setCarry(msg.item);
       if (me && msg.id === me.id && panelKind === 'moves') renderMoves();
@@ -792,6 +797,7 @@ function handle(msg: ServerMsg) {
       return;
     case 'itemPut':
       items.set(msg.item.id, msg.item);
+      if (msg.item.type === 'laerred' && panelKind === 'cinema') renderCinema(msg.item.id);
       if (msg.item.type === 'jukebox') {
         audio.setJukebox(msg.item.id, msg.item.song, msg.item.songAt);
         if (panelKind === 'jukebox') renderJukebox(msg.item.id);
@@ -1476,6 +1482,152 @@ function renderMoves() {
   );
 }
 
+/* ---------------- cinema ---------------- */
+
+/** 🎬 Choose a YouTube video for the screen (official embed player only). */
+function renderCinema(itemId: number) {
+  const it = items.get(itemId);
+  if (!it) return;
+  const owner = room?.canBuild || me?.role !== 'user';
+  const mayStart = owner || (!room?.ownerId && !it.video);
+  openPanel(
+    'cinema',
+    head(
+      '🎬 Biograf',
+      mayStart
+        ? 'Sæt et link til en YouTube-video ind. Alle i rummet ser den samtidig på lærredet.'
+        : 'Der kører allerede en video. Sæt dig i en stol og se med 🍿',
+    ) +
+      (mayStart
+        ? `<div class="row" style="display:flex;gap:6px"><input id="ytUrl" placeholder="https://www.youtube.com/watch?v=…" style="flex:1"><button id="ytPlay" class="primary">▶︎ Afspil</button></div>`
+        : '') +
+      (it.video && owner ? '<button id="ytStop">⏹ Stop videoen</button>' : '') +
+      `<p class="sub">Videoen afspilles med YouTubes egen afspiller. Skru op og ned for lyden i afspilleren.${cinemaHidden ? ' Du har skjult lærredet – <a href="#" id="ytShow">vis det igen</a>.' : ''}</p>`,
+  );
+  $('ytPlay')?.addEventListener('click', () => {
+    const id = youtubeId($<HTMLInputElement>('ytUrl').value);
+    if (!id) return toast('Det ligner ikke et YouTube-link 🤔', 'error');
+    cinemaHidden = false;
+    net?.send({ t: 'cinema', itemId, video: id });
+  });
+  $('ytStop')?.addEventListener('click', () => net?.send({ t: 'cinema', itemId, video: null }));
+  $('ytShow')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    cinemaHidden = false;
+    renderCinema(itemId);
+  });
+}
+
+/** The playing YouTube player, laid over the screen in the room. */
+let cinemaKey = '';
+let cinemaHidden = false;
+let cinemaBig = false;
+function updateCinema() {
+  const box = $('cinema');
+  const it = [...items.values()].find((i) => i.type === 'laerred' && i.video && i.videoAt);
+  const o = it ? objs.get(it.id) : undefined;
+  if (!it || !o || cinemaHidden) {
+    if (cinemaKey) {
+      box.innerHTML = '';
+      cinemaKey = '';
+    }
+    box.classList.add('hidden');
+    return;
+  }
+  const key = `${it.video}@${it.videoAt}`;
+  if (key !== cinemaKey) {
+    cinemaKey = key;
+    const start = Math.max(0, Math.floor(((net ? net.now() : Date.now()) - it.videoAt!) / 1000));
+    const f = document.createElement('iframe');
+    f.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(it.video!)}?autoplay=1&start=${start}&playsinline=1&rel=0&modestbranding=1`;
+    f.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
+    f.referrerPolicy = 'strict-origin-when-cross-origin';
+    f.title = 'Biograf';
+    const bar = document.createElement('div');
+    bar.className = 'cbar';
+    const big = document.createElement('button');
+    big.textContent = '⤢';
+    big.title = 'Større / mindre';
+    big.onclick = () => {
+      cinemaBig = !cinemaBig;
+    };
+    const hide = document.createElement('button');
+    hide.textContent = '✕';
+    hide.title = 'Skjul for mig';
+    hide.onclick = () => {
+      cinemaHidden = true;
+      updateCinema();
+    };
+    bar.append(big, hide);
+    box.replaceChildren(f, bar);
+  }
+  box.classList.remove('hidden');
+  box.classList.toggle('big', cinemaBig);
+  if (cinemaBig) {
+    box.style.cssText = '';
+    return;
+  }
+  // Follow the screen on the wall: project its left and right edge.
+  const left = new T.Vector3(-1.25, 1.75, 0.08).applyMatrix4(o.matrixWorld).project(stage.camera);
+  const right = new T.Vector3(1.25, 1.75, 0.08).applyMatrix4(o.matrixWorld).project(stage.camera);
+  const lx = ((left.x + 1) / 2) * innerWidth;
+  const rx = ((right.x + 1) / 2) * innerWidth;
+  const ly = ((1 - left.y) / 2) * innerHeight;
+  const ry = ((1 - right.y) / 2) * innerHeight;
+  const w = Math.max(220, Math.hypot(rx - lx, ry - ly));
+  const cx = (lx + rx) / 2;
+  const cy = (ly + ry) / 2;
+  box.style.cssText = `width:${w}px;height:${(w * 9) / 16}px;transform:translate(${cx - w / 2}px,${cy - (w * 9) / 32}px)`;
+}
+
+/* ---------------- snowballs ---------------- */
+const snowballs: {
+  m: T.Mesh;
+  from: T.Vector3;
+  to: T.Vector3;
+  born: number;
+  hit: boolean;
+  who: string;
+}[] = [];
+const snowMat = new T.MeshStandardMaterial({
+  color: 0xffffff,
+  roughness: 0.9,
+  emissive: new T.Color(0x9fb8d8),
+  emissiveIntensity: 0.3,
+});
+function throwSnowball(from: string, to: string, hit: boolean) {
+  const a = actors.get(from);
+  const b = actors.get(to);
+  if (!a || !b) return;
+  const m = new T.Mesh(new T.SphereGeometry(0.09, 12, 10), snowMat);
+  stage.scene.add(m);
+  snowballs.push({
+    m,
+    from: a.obj.position.clone().add(new T.Vector3(0, 1.1, 0)),
+    to: b.obj.position.clone().add(new T.Vector3(0, 0.9, 0)),
+    born: performance.now(),
+    hit,
+    who: to,
+  });
+  a.setAction('wave');
+  audio.sfx('whoosh');
+}
+function updateSnowballs(t: number) {
+  for (let i = snowballs.length - 1; i >= 0; i--) {
+    const s = snowballs[i]!;
+    const k = (t - s.born) / 450;
+    if (k >= 1) {
+      stage.scene.remove(s.m);
+      snowballs.splice(i, 1);
+      floatEmote(s.who, s.hit ? '💥' : '💨');
+      if (s.hit) audio.sfx('splat');
+      continue;
+    }
+    s.m.position.lerpVectors(s.from, s.to, k);
+    s.m.position.y += Math.sin(k * Math.PI) * 0.8;
+  }
+}
+
 /** Counter / machine: pick what you'd like to carry. */
 function renderDispense(itemId: number, kinds: readonly CarryKind[]) {
   openPanel(
@@ -1635,6 +1787,7 @@ function renderGames(itemId: number) {
   const ok = {
     paint: count('colortile') >= 4,
     race: count('racestart') > 0 && count('racegoal') > 0,
+    snow: count('snedrive') > 0,
   } as const;
   const busy = !!room?.game;
   openPanel(
@@ -1646,7 +1799,7 @@ function renderGames(itemId: number) {
           <p class="sub">${g.rules}</p>
           <p class="sub">Kræver: ${g.needs.toLowerCase()} ${ok[k] ? '✅' : '❌ (køb dem i butikken)'}</p>
           <button class="primary" data-game="${k}" ${ok[k] && !busy ? '' : 'disabled'}>${busy ? 'Et spil er i gang' : 'Start'}</button>
-          <button data-tut="${k}">▶︎ Se hvordan det virker</button></div>`;
+          ${hasTutorial(k) ? `<button data-tut="${k}">▶︎ Se hvordan det virker</button>` : ''}</div>`;
       }).join('') +
       '<p class="sub">Mønter gives kun, når mindst to spiller med (højst 20 om dagen fra spil).</p>',
   );
@@ -1707,6 +1860,10 @@ function updateGameBar() {
   if (g.kind === 'paint' && g.score) {
     const team = me && g.teams?.[me.id];
     mid = `<b style="color:#ff8a7a">🔴 ${g.score[0]}</b> – <b style="color:#8ab8ff">🔵 ${g.score[1]}</b>${team ? ` · du er ${TEAM_NAMES[team]}` : ''}`;
+  } else if (g.kind === 'snow' && g.score) {
+    const team = me && g.teams?.[me.id];
+    const ammo = me ? (g.ammo?.[me.id] ?? 0) : 0;
+    mid = `<b style="color:#ff8a7a">🔴 ${g.score[0]}</b> – <b style="color:#8ab8ff">🔵 ${g.score[1]}</b>${team ? ` · du er ${TEAM_NAMES[team]} · ❄️ ${'●'.repeat(ammo)}${'○'.repeat(SNOW.ammo - ammo)}` : ''}`;
   } else if (g.kind === 'race') {
     mid =
       me && g.racers?.includes(me.id)
@@ -2553,6 +2710,13 @@ function onClick() {
     }
   }
   const a = hitActor();
+  const g = room?.game;
+  if (a && g?.kind === 'snow' && g.phase === 'play' && me && g.teams?.[me.id]) {
+    const mine = g.teams[me.id];
+    const theirs = g.teams[a.id];
+    if (theirs && theirs !== mine) return net.send({ t: 'snowThrow', targetId: a.id });
+    if (a.id === me.id || theirs === mine) return toast('Kast på det andet hold ❄️');
+  }
   if (a) return net.send({ t: 'profile', userId: a.id });
   const aptHit = ray.intersectObject(roomGfx.aptDoors, true)[0];
   if (aptHit && room) {
@@ -2568,6 +2732,7 @@ function onClick() {
   if (it && it.type === 'gamebox') return renderGames(it.id);
   if (it && it.type === 'jukebox') return renderJukebox(it.id);
   if (it && it.type === 'noteboard') return openNotes();
+  if (it && it.type === 'laerred') return renderCinema(it.id);
   const disp = it ? furniture(it.type).dispense : undefined;
   if (it && disp?.length) {
     if (disp.length === 1) return net.send({ t: 'dispense', itemId: it.id, kind: disp[0]! });
@@ -3108,6 +3273,8 @@ function loop() {
   }
   updateJukeboxVolumes();
   updateFloats(t);
+  updateSnowballs(t);
+  updateCinema();
   stage.render();
   requestAnimationFrame(loop);
 }

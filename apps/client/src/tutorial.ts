@@ -28,7 +28,7 @@ interface Film {
 const tiles: Pt[] = [];
 for (let x = 1; x <= 4; x++) for (const z of [2, 3]) tiles.push([x, z]);
 
-const FILMS: Record<RoomGameKind, Film> = {
+const FILMS: Partial<Record<RoomGameKind, Film>> = {
   paint: {
     length: 17,
     captions: [
@@ -154,7 +154,7 @@ export function playTutorial(
   kind: RoomGameKind,
   onCaption: (text: string, step: number, total: number) => void,
 ): { stop: () => void; toggle: () => boolean; restart: () => void } {
-  const film = FILMS[kind];
+  const film = FILMS[kind]!;
   const W = 520;
   const H = 300;
   const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -370,3 +370,6 @@ export function playTutorial(
     },
   };
 }
+
+/** True if there is a how-to film for this game. */
+export const hasTutorial = (kind: RoomGameKind) => !!FILMS[kind];

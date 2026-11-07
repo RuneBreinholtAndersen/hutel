@@ -2,7 +2,7 @@
 
 Listen sammenligner Hutel med de klassiske funktioner fra Habbo Hotel. Navne, grafik og møbler kopieres ikke: vi laver vores egen version af idéen.
 
-_Senest opdateret: 7. november 2026 (nyt tøj, gemte outfits, effekter, bære ting og biograf-idé)._
+_Senest opdateret: 7. november 2026 (biograf og sneboldkamp)._
 
 **Sådan læses den**
 - **Værdi**: hvor meget det betyder for spillerne (★–★★★)
@@ -15,7 +15,7 @@ _Senest opdateret: 7. november 2026 (nyt tøj, gemte outfits, effekter, bære ti
 
 Det her mener jeg giver mest spil for pengene, i den rækkefølge:
 
-- [ ] **1. Flere rum-spil** – snebold-arena med hold og stoleleg (Farvekamp og Kapløb findes). ★★ · M
+- [ ] **1. Flere rum-spil** – stoleleg (Farvekamp, Kapløb og Sneboldkamp findes). ★★ · M
 - [ ] **2. Wired light: møbler der reagerer** – trykplader, "når nogen går her → tænd lampe / teleportér / sig noget". Giver brugerne mulighed for at bygge deres egne spil. ★★★ · L
 - [ ] **3. Grupper/klubber** – navn, logo-generator (vores egen), medlemsliste, gruppe-rum, gruppe-badge ved navnet. ★★ · M
 - [ ] **4. Sjældne møbler ("rares")** – begrænsede møbler, der kun sælges en uge eller i et bestemt antal, med serienummer. Driver byttehandel. ★★★ · S (vi har allerede bytte + inventar)
@@ -46,8 +46,6 @@ Det her mener jeg giver mest spil for pengene, i den rækkefølge:
 ### Figur
 
 ### Spil og aktiviteter
-- [ ] **Biograf** – et rum med lærred, hvor man sidder og ser YouTube-videoer sammen, synkroniseret for alle; ejeren vælger video. Kun officiel YouTube-indlejring, og aldrig i Junior. M
-- [ ] **Snebold/arena-spil** med hold og point. M
 - [ ] **Stoleleg** – musik, stop, sæt dig; én stol færre hver runde. M
 - [ ] **Quiz-shows / "Hvem vil være millionær"-agtigt** med en 🤖-vært. M
 - [ ] **Bingo og lotteri med mønter**. S
@@ -114,6 +112,8 @@ Det her mener jeg giver mest spil for pengene, i den rækkefølge:
 - ✅ Effekter: farvet skygge, gyldent skær, stjernestøv og festaura (gratis under events)
 - ✅ Bære ting i hånden: kaffe, is, sodavand, blomst og cupcake fra cafédisken, kaffemaskine, isboks, køleskab og blomstervase – og give dem til andre
 - ✅ Badekar: man sidder nu nede i vandet i stedet for at ligge oven på
+- ✅ Biograf: offentligt rum "Biografen" + lærred og biografstole til eget værelse; YouTube-video (officiel indlejring) synkroniseret for alle, ejeren vælger – slået fra i Junior
+- ✅ Sneboldkamp: to hold, klik for at kaste (højst 5 felter), 5 snebolde der fyldes op ved snedriven, ramte fryses 1,5 sek, flest træffere vinder
 - ✅ Butik med møbler og tøj, låst op med level og badges
 - ✅ Mønter (online-tid, opgaver, events, spil) – beregnet på serveren
 - ✅ Byttehandel med inventar, begge parter skal godkende, alt logges

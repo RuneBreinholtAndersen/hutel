@@ -78,6 +78,17 @@ export const ClientMsgSchema = z.discriminatedUnion('t', [
     itemId: z.number().int(),
     song: z.enum(MELODY_IDS as [string, ...string[]]).nullable(),
   }),
+  /** Cinema screen: play a YouTube video (11-character id) or stop it (null). */
+  z.object({
+    t: z.literal('cinema'),
+    itemId: z.number().int(),
+    video: z
+      .string()
+      .regex(/^[A-Za-z0-9_-]{11}$/)
+      .nullable(),
+  }),
+  /** Sneboldkamp: throw at a player from the other team. */
+  z.object({ t: z.literal('snowThrow'), targetId: z.string().max(40) }),
   /** Start a room game from a game console. */
   z.object({
     t: z.literal('gameStart'),
@@ -557,6 +568,7 @@ export type ServerMsg =
   | { t: 'emote'; id: string; kind: EmoteKind }
   | { t: 'effect'; id: string; effect: string }
   | { t: 'carry'; id: string; item: CarryKind | null }
+  | { t: 'snowball'; from: string; to: string; hit: boolean }
   | { t: 'notes'; notes: RoomNote[]; canModerate: boolean }
   | { t: 'action'; id: string; kind: ActionKind | null }
   | { t: 'look'; id: string; look: Look }

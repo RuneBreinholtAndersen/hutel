@@ -115,6 +115,11 @@ const THEMES: Record<RoomTheme, { wall: T.Texture; wain: number; floor: [number,
     wain: 0x16102a,
     floor: [0x2a2040, 0x3a2a5a],
   },
+  cinema: {
+    wall: wallpaper('#3a1418', '#44181d', 'rgba(255,200,120,.18)', true),
+    wain: 0x1a0a0c,
+    floor: [0x3a2228, 0x2e1a20],
+  },
   bedroom: {
     wall: wallpaper('#d6dff0', '#cbd6ea', 'rgba(90,110,170,.3)'),
     wain: 0x5a6a8f,
@@ -399,6 +404,23 @@ function decor(theme: RoomTheme): { group: T.Group; lights: T.Light[]; windowLig
       z + 0.1,
     );
     group.add(moon);
+    return { group, lights, windowLight: false };
+  }
+  if (theme === 'cinema') {
+    // Dark red cinema: a few warm wall lamps and a soft blue glow from the screen.
+    for (const px of [-2.6, 2.6]) {
+      group.add(
+        sph(0.08, M(0xffe2b0, { emissive: 0xffb35c, emissiveIntensity: 2 }), px, 2.1, z + 0.12),
+      );
+      const l = new T.PointLight(0xffb35c, 0.5, 5, 2);
+      l.position.set(px, 2.1, z + 0.5);
+      lights.push(l);
+      group.add(l);
+    }
+    const glow = new T.PointLight(0x8fb0ff, 0.6, 7, 2);
+    glow.position.set(-0.5, 1.8, z + 1.5);
+    lights.push(glow);
+    group.add(glow);
     return { group, lights, windowLight: false };
   }
   if (theme === 'arcade') {
