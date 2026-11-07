@@ -90,6 +90,15 @@ const things = [
     </div>
   </section>
 
+  <section class="scene-band" aria-label="Et kig ind i spillehallen">
+    <div class="room-scene" data-room="arcade" data-view="3.6" aria-hidden="true"></div>
+    <div class="wrap scene-label">
+      <span class="live">● Lige nu</span>
+      <strong>Spillehallen</strong>
+      <span>Farvekamp, Kapløb og Sneboldkamp – vinderne får mønter.</span>
+    </div>
+  </section>
+
   <section class="things-sec has-chatter" aria-labelledby="things-title">
     <div class="sparkles" aria-hidden="true"></div>
     <div class="wrap">
@@ -176,6 +185,12 @@ const things = [
     startLobby(document.getElementById('lobby')!);
     startFigure(document.getElementById('figure')!, document.getElementById('figure-controls')!);
   }
+  // Rooms "open" as they scroll into view.
+  const bandIo = new IntersectionObserver(
+    (es) => es.forEach((e) => e.isIntersecting && e.target.classList.add('seen')),
+    { threshold: 0.25 },
+  );
+  document.querySelectorAll('.scene-band').forEach((b) => bandIo.observe(b));
 </script>
 
 <style>
@@ -338,28 +353,39 @@ const things = [
     margin-top: 8px;
   }
   @media (max-width: 860px) {
+    /* On a phone the living lobby comes first, so it's the first thing you see. */
     .hero {
       flex-direction: column;
       align-items: stretch;
-      padding: 84px 0 0;
+      padding: 0 0 36px;
+      min-height: 0;
     }
     .hero-scene {
       position: relative;
       inset: auto;
-      left: 0;
-      height: 52vh;
+      height: 62vh;
+      min-height: 380px;
+      order: 1;
+    }
+    .hero-copy {
       order: 2;
+      margin-top: -56px;
     }
     .speech {
-      padding: 28px 26px 22px;
+      padding: 26px 24px 22px;
+    }
+    .speech h1 {
+      font-size: 2.4rem;
     }
     .speech::after {
       right: auto;
-      left: 60px;
-      bottom: -30px;
+      left: 50%;
+      top: -28px;
+      bottom: auto;
+      margin-left: -16px;
       border: 16px solid transparent;
-      border-top: 32px solid var(--cream);
-      border-bottom: 0;
+      border-bottom: 30px solid var(--cream);
+      border-top: 0;
     }
   }
 
@@ -631,6 +657,34 @@ const things = [
   .last-scene {
     position: absolute;
     inset: 0;
+  }
+  /* The room grows into place as you scroll down to it. */
+  .scene-band .room-scene {
+    transform: scale(0.9);
+    opacity: 0;
+    transition:
+      transform 1.1s cubic-bezier(0.2, 0.8, 0.2, 1),
+      opacity 0.8s ease;
+  }
+  .scene-band.seen .room-scene {
+    transform: none;
+    opacity: 1;
+  }
+  .scene-band .scene-label {
+    transform: translateY(30px);
+    opacity: 0;
+    transition: all 0.8s ease 0.4s;
+  }
+  .scene-band.seen .scene-label {
+    transform: none;
+    opacity: 1;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .scene-band .room-scene,
+    .scene-band .scene-label {
+      transform: none;
+      opacity: 1;
+    }
   }
   .scene-label {
     position: absolute;

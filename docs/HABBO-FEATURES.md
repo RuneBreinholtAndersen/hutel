@@ -2,7 +2,7 @@
 
 Listen sammenligner Lobbi (tidligere Hutel) med de klassiske funktioner fra Habbo Hotel. Navne, grafik og møbler kopieres ikke: vi laver vores egen version af idéen.
 
-_Senest opdateret: 7. november 2026 (levende rum fra spillet på hjemmesiden)._
+_Senest opdateret: 7. november 2026 (mobilforside og spillehal)._
 
 **Sådan læses den**
 - **Værdi**: hvor meget det betyder for spillerne (★–★★★)
@@ -114,7 +114,8 @@ Det her mener jeg giver mest spil for pengene, i den rækkefølge:
 - ✅ Badekar: man sidder nu nede i vandet i stedet for at ligge oven på
 - ✅ Biograf: offentligt rum "Biografen" + lærred (stort, 16:9) og biografstole til eget værelse; YouTube-video (officiel indlejring) ligger skråt på lærredet og er synkroniseret for alle; kø med op til 10 videoer, højst 10 min pr. video, skip ved flertal; i Biografen koster en video 5 mønter (refunderes hvis fjernet før visning), i eget rum gratis for ejer og dem med rettigheder; ejer/moderator kan stoppe og fjerne; titlen hentes fra YouTube og ikke-indlejrbare videoer afvises; slået fra i Junior
 - ✅ Lobbi Junior (første del): egen udgave med menu-chat (færdige sætninger i 6 kategorier), sjove navne valgt med terning, venner kun via vennekode, ingen fri tekst nogen steder, AI-beboere med faste replikker – alt tjekkes på serveren. Kører på egen server (lobbi-junior.fly.dev)
-- ✅ Hjemmesiden viser rigtige rum fra spillet med figurer, der går rundt og snakker: Caféen på forsiden, poolen nederst, et rum øverst på hver underside (spillehal, biograf, café) og børn i poolen på Junior-siden – rummene starter først, når man scroller hen til dem
+- ✅ Hjemmesiden viser rigtige rum fra spillet med figurer, der går rundt og snakker: Caféen og Spillehallen på forsiden (vokser frem, når man scroller), poolen nederst, et rum øverst på hver underside (spillehal, biograf, café) og børn i poolen på Junior-siden – rummene starter først, når man scroller hen til dem
+- ✅ Mobil: forsiden starter med den levende lobby øverst (tættere på, så figurerne er store), og Junior-siden starter med figuren og chat-menuen
 - ✅ Google-login på mobil: besked når man er i en apps indbyggede browser (Messenger, Facebook, Instagram …), hvor Google blokerer login; fejl fra Google vises i stedet for en tom side; login fra den gamle adresse går ikke tabt
 - ✅ Hjemmesiden lobbi.dk: forsiden lader dig vælge dør – Lobbi (18+) eller Lobbi Junior (8–12); egen Junior-side med selvkørende chat-menu og en side med vilkår og privatliv for forældre; animationer på alle sider (ting glider ind, talebobler der popper op, lysende etage-skilt, døre der åbner sig)
 - ✅ Oprettelse: figuren vises i 3D og drejer, mens man vælger tøj, hår og farver (står fast ved siden af/øverst, når man scroller); invitationskode vises kun, hvis den kræves; Junior siger "Pige/Dreng" og har intet skæg (serveren fjerner det også)

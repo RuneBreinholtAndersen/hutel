@@ -93,7 +93,8 @@ export function startLobby(el: HTMLElement) {
   startRoomScene(el, {
     roomId: 'lobby',
     guests: GUESTS,
-    view: 6.2,
+    // On a phone the room fills the top of the screen, a bit closer so the guests are big.
+    view: wide ? 6.2 : 3.9,
     target: [-0.2, 0.6, -0.2],
     shiftX: wide ? 0.17 : 0,
   });
