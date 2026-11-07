@@ -1,6 +1,6 @@
 {
-  "name": "Hutel.dk",
-  "short_name": "Hutel",
+  "name": "Lobbi.dk",
+  "short_name": "Lobbi",
   "description": "Et hyggeligt chat-hotel i browseren.",
   "start_url": "/",
   "display": "standalone",

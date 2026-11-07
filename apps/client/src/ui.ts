@@ -23,7 +23,7 @@ export const esc = (s: string) =>
 const hex = (n: number) => '#' + n.toString(16).padStart(6, '0');
 
 let toastT: number | undefined;
-/** Hutel's own gold coin (the 🪙 emoji looks silver on some systems). */
+/** Lobbi's own gold coin (the 🪙 emoji looks silver on some systems). */
 export const COIN = '<i class="coin" aria-label="mønter"></i>';
 
 /** Put text in an element safely, drawing every 🪙 as a gold coin. */

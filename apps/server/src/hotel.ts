@@ -140,7 +140,7 @@ export interface HotelConfig {
   allowReset?: boolean;
   /** Names (lower-case) that get the admin role. They should log in with Google (2FA). */
   adminNames?: string[];
-  /** Hutel Junior: no free text between strangers and no cinema (open YouTube). */
+  /** Lobbi Junior: no free text between strangers and no cinema (open YouTube). */
   junior?: boolean;
 }
 
@@ -790,7 +790,7 @@ export class Hotel {
         if (ts)
           this.toast(
             ts,
-            `⚠️ Besked fra en moderator: ${msg.text ?? 'Husk at være venlig på Hutel.'}`,
+            `⚠️ Besked fra en moderator: ${msg.text ?? 'Husk at være venlig på Lobbi.'}`,
             'error',
           );
         log('warn', target.id, msg.text);
@@ -1565,7 +1565,7 @@ export class Hotel {
         return this.teleport(s, user, msg.itemId);
       case 'cinema': {
         if (!room) return;
-        if (this.cfg.junior) return this.toast(s, 'Biografen findes ikke i Hutel Junior.', 'error');
+        if (this.cfg.junior) return this.toast(s, 'Biografen findes ikke i Lobbi Junior.', 'error');
         const it = room.items.find((i) => i.id === msg.itemId && i.type === 'laerred');
         if (!it) return;
         const rec = this.roomRecord(room);
@@ -2941,7 +2941,7 @@ export class Hotel {
           id: targetId,
           name: botPlayer.name,
           look: botPlayer.look,
-          motto: 'AI-beboer på Hutel 🤖',
+          motto: 'AI-beboer på Lobbi 🤖',
           badges: [],
           since: '',
           bot: true,

@@ -169,7 +169,7 @@ export function createApp(
   /** Returns [status, message] if the profile can't be used, otherwise null. */
   const checkProfile = (p: { name: string; invite?: string }): [number, string] | null => {
     if (invites.length && !invites.includes((p.invite ?? '').trim().toLowerCase()))
-      return [403, 'Hutel er i lukket beta – du skal bruge en gyldig invitationskode.'];
+      return [403, 'Lobbi er i lukket beta – du skal bruge en gyldig invitationskode.'];
     const name = p.name.trim();
     if (!isValidName(name))
       return [400, 'Navnet må kun have bogstaver, tal, mellemrum, - og _ (2–16 tegn).'];

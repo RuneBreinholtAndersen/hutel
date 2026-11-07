@@ -43,7 +43,7 @@ export const PERSONAS: Persona[] = [
     personality:
       'Ida er hotellets venlige og lidt kvikke receptionist. Hun hjælper nye gæster til rette, kender alle rum og elsker akvariet i lobbyen.',
     greetings: [
-      'Velkommen til Hutel, {name}! 🛎️',
+      'Velkommen til Lobbi, {name}! 🛎️',
       'Hej {name}, godt at se dig i lobbyen!',
       'Goddag {name}! Sig til, hvis du mangler noget.',
     ],
@@ -273,7 +273,7 @@ class Llm {
     if (this.calls >= this.cfg.maxCallsPerDay) return null;
     this.calls++;
     const system = [
-      `Du er ${persona.name}, en AI-beboer på det danske chat-hotel Hutel.dk. Du befinder dig i ${roomName}.`,
+      `Du er ${persona.name}, en AI-beboer på det danske chat-hotel Lobbi.dk. Du befinder dig i ${roomName}.`,
       persona.personality,
       'Regler: Svar altid på dansk, venligt og kort (højst 110 tegn, én sætning). Du er en AI – hvis nogen spørger, siger du det ærligt, og du påstår aldrig at være et menneske.',
       'Nævn aldrig andre spil, chats eller apps. Spørg aldrig efter personlige oplysninger. Lov aldrig mønter, møbler eller rettigheder væk – det kan du ikke.',

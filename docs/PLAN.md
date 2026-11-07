@@ -45,6 +45,7 @@ Sidst opdateret: 6. november 2026. Rækkefølge: voksen-Hutel i lukket beta før
 - ✅ Figur: nyt tøj (kjole, dunjakke, baret, solhat, sko, tilbehør) med farvevalg, 5 gemte outfits, effekter (skygge, skær, stjernestøv, festaura), bære ting fra diske/maskiner og give dem væk (forsvinder efter 10 min); badekar-stilling rettet
 - ✅ Højttaler-knappen slår al lyd til/fra med ét klik (rød streg når slået fra); lydstyrke og effekter/musik under Figur → Lydindstillinger
 - ✅ Biograf (YouTube via youtube-nocookie-indlejring, video-id valideres på serveren, start-tid synkroniseres; spærret når HUTEL_JUNIOR=true) og Sneboldkamp (server styrer rækkevidde, ammo, cooldown og frys)
+- ✅ Navneskift i brugerfladen: Hutel → Lobbi (lobbi.dk købt). Tekniske navne (`@hutel/*`, Fly-app, localStorage) er uændrede
 - ✅ Tapet (8 slags) og gulve (8 slags): købes én gang og bruges i alle egne rum
 - ✅ Vægmøbler: maleri, stort maleri, plakat, vindue, væghylde, vægur, spejl og neonskilt (hænges på bag- eller venstrevæg)
 - ✅ Lobbyen og caféen er nu 12×12 med ny møblering; rumstørrelse kan variere pr. rum

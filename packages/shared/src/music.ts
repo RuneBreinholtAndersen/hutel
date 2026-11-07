@@ -1,5 +1,5 @@
 /**
- * Hutel's own little tunes, written as notes (nothing copied). Each song is a loop of 32 eighth-
+ * Lobbi's own little tunes, written as notes (nothing copied). Each song is a loop of 32 eighth-
  * note steps. A token is a note like "C4", "F#3", or "-" for a rest. Drums: k = kick, s = snare,
  * h = hi-hat, "-" = nothing.
  */

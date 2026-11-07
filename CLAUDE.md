@@ -1,4 +1,6 @@
-# CLAUDE.md – Hutel.dk
+# CLAUDE.md – Lobbi.dk (tidligere Hutel)
+
+> **Navn:** Spillet hedder nu **Lobbi** (domæne: lobbi.dk). Al tekst i brugerfladen siger Lobbi. Repo, pakkenavne (`@hutel/...`), localStorage-nøgler og Fly-appen hedder stadig `hutel` – dem ændrer vi ikke, så intet går i stykker.
 
 Hutel er et socialt chat-spil i browseren: man laver sin egen figur, går rundt i et hotel i varm 3D-stil, chatter i talebobler, indretter sit eget værelse, tjener mønter og møder andre – både rigtige mennesker og tydeligt markerede AI-beboere.
 

@@ -150,7 +150,7 @@ function offerUpdate(notes: ReleaseNote | undefined, must: boolean) {
   const bar = $('updateBar');
   const what = notes ? esc(notes.title) : 'Nye forbedringer';
   bar.innerHTML = must
-    ? `<b>✨ Hutel er blevet opdateret</b><span>${what}</span><button id="upGo" class="small primary">Opdater nu</button>`
+    ? `<b>✨ Lobbi er blevet opdateret</b><span>${what}</span><button id="upGo" class="small primary">Opdater nu</button>`
     : `<b>✨ Ny version</b><span>${what}</span><button id="upNews" class="small">Se nyt</button><button id="upGo" class="small primary">Opdater</button><button id="upLater" class="small" title="Senere">✕</button>`;
   bar.classList.remove('hidden');
   $('upGo').addEventListener('click', () => location.reload());
@@ -169,7 +169,7 @@ function showNotes(notes: ReleaseNote | undefined, pending: boolean, must = fals
   openPanel(
     'notes',
     head(
-      `✨ ${must ? 'Hutel er blevet opdateret' : pending ? 'Ny version klar' : 'Nyt i Hutel'}`,
+      `✨ ${must ? 'Lobbi er blevet opdateret' : pending ? 'Ny version klar' : 'Nyt i Lobbi'}`,
       esc(notes.title),
     ) +
       `<ul class="notes">${notes.items.map((i) => `<li>${esc(i)}</li>`).join('')}</ul>` +
@@ -486,7 +486,7 @@ function updateRoomUi() {
   if (!room || !me) return;
   $('roomName').textContent = room.ownerName
     ? `${room.name} · ${room.ownerName}`
-    : `${room.name} · Hutel.dk`;
+    : `${room.name} · Lobbi.dk`;
   $<HTMLButtonElement>('bBuild').disabled = !room.canBuild;
   $<HTMLButtonElement>('bShop').disabled = !isOwner();
   roomGfx.setDoorUnlocked(onboarded());
@@ -1416,7 +1416,7 @@ function renderMarket() {
         .join(
           '',
         )}</select><input id="mkPrice" type="number" min="1" max="${MARKET_MAX_PRICE}" value="10" style="width:90px"><button id="mkSell" class="small primary">Sæt til salg</button></div>
-       <p class="sub">Hutel tager ${Math.round(MARKET_FEE * 100)} % af salgsprisen. Du får mønterne, også selvom du er offline.</p>`
+       <p class="sub">Lobbi tager ${Math.round(MARKET_FEE * 100)} % af salgsprisen. Du får mønterne, også selvom du er offline.</p>`
     : '<p class="sub">Dit inventar er tomt. Gem møbler væk (📦 i byggetilstand) for at kunne sælge dem.</p>';
   openPanel(
     'market',
@@ -2266,7 +2266,7 @@ function renderProfile(p: ProfileView) {
     head(
       `${p.bot ? '🤖 ' : ''}${esc(p.name)}`,
       p.bot
-        ? 'AI-beboer på Hutel. Svarene er skrevet af en AI.'
+        ? 'AI-beboer på Lobbi. Svarene er skrevet af en AI.'
         : p.since
           ? `Gæst siden ${p.since}`
           : '',
@@ -3048,7 +3048,7 @@ function showSignup(error = '', mode: AuthMode = social() ? 'social' : 'signup')
   $('authFacebook').classList.toggle('hidden', !authCfg.providers.includes('facebook'));
   $('signupForm').classList.toggle('hidden', mode !== 'signup' && mode !== 'profile');
   $('loginForm').classList.toggle('hidden', mode !== 'login');
-  // A social account has no Hutel password – the profile step only asks for name and figure.
+  // A social account has no Lobbi password – the profile step only asks for name and figure.
   const profile = mode === 'profile';
   // In the profile step the password is optional: it links an old name+password account.
   $('suPwLabel').textContent = profile
@@ -3063,13 +3063,13 @@ function showSignup(error = '', mode: AuthMode = social() ? 'social' : 'signup')
   $('toSocialRow').classList.toggle('hidden', !social());
   $('signupForm').querySelector('h1')!.textContent = profile
     ? 'Lav din figur'
-    : 'Velkommen til Hutel';
+    : 'Velkommen til Lobbi';
   $('authError').textContent = mode === 'social' ? error : '';
   $('suError').textContent = mode === 'signup' || profile ? error : '';
   $('liError').textContent = mode === 'login' ? error : '';
   lookEditor($('suLook'), signupLook, (l) => (signupLook = l));
 }
-/** Trade a Supabase login for a Hutel game token (and create the figure the first time). */
+/** Trade a Supabase login for a Lobbi game token (and create the figure the first time). */
 async function exchange(profile?: object): Promise<boolean> {
   const at = await accessToken(authCfg).catch(() => null);
   if (!at) return false;

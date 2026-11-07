@@ -1047,7 +1047,7 @@ export function drawTv(
   const w = tv.canvas.width;
   const h = tv.canvas.height;
   if (tv.channel === 1) {
-    // Hutel Nyt: studio + ticker
+    // Lobbi Nyt: studio + ticker
     const gr = g.createLinearGradient(0, 0, 0, h);
     gr.addColorStop(0, '#1b3a6b');
     gr.addColorStop(1, '#0d1d38');

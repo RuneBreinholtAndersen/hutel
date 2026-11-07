@@ -1,5 +1,5 @@
 /**
- * Small animated "how to play" films for the room games, drawn live on a 2D canvas in Hutel's
+ * Small animated "how to play" films for the room games, drawn live on a 2D canvas in Lobbi's
  * own isometric style. No video files: each film is a timeline of scenes with a caption.
  */
 import type { RoomGameKind } from '@hutel/shared';

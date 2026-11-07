@@ -65,7 +65,7 @@ export interface DailyView {
 export type QuestId = (typeof QUESTS)[number]['id'] | (typeof HOTEL_QUESTS)[number]['id'];
 
 export const BADGES = {
-  welcome: { name: 'Ny gæst', icon: '🔑', text: 'Tjekkede ind på Hutel' },
+  welcome: { name: 'Ny gæst', icon: '🔑', text: 'Tjekkede ind på Lobbi' },
   onboarded: { name: 'Klar til hotellet', icon: '🎉', text: 'Klarede alle startopgaver' },
   festabe: { name: 'Festaben', icon: '🎉', text: 'Var med til Fredagsfest' },
   stjernekigger: { name: 'Stjernekigger', icon: '🔭', text: 'Var med til Stjerneaften' },

@@ -1,6 +1,6 @@
-# Hutel vs. Habbo – det der mangler, og hvad der giver mening
+# Lobbi vs. Habbo – det der mangler, og hvad der giver mening
 
-Listen sammenligner Hutel med de klassiske funktioner fra Habbo Hotel. Navne, grafik og møbler kopieres ikke: vi laver vores egen version af idéen.
+Listen sammenligner Lobbi (tidligere Hutel) med de klassiske funktioner fra Habbo Hotel. Navne, grafik og møbler kopieres ikke: vi laver vores egen version af idéen.
 
 _Senest opdateret: 7. november 2026 (biograf og sneboldkamp)._
 

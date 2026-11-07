@@ -1,5 +1,5 @@
 /**
- * All of Hutel's sound is made in code with Web Audio – no sound files, nothing copied.
+ * All of Lobbi's sound is made in code with Web Audio – no sound files, nothing copied.
  * Sound effects are short synth blips; jukebox tunes are played by a tiny step sequencer that
  * is locked to the server clock, so everyone in a room hears the same beat at the same time.
  */

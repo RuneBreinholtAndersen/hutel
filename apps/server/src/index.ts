@@ -38,7 +38,7 @@ const app = createApp({
 
 app.server.listen(port, () => {
   console.log(
-    `Hutel-server kører på http://localhost:${port}  (ws: /ws, AI-beboere: ${app.hotel.aiEnabled ? 'Anthropic' : 'faste replikker'})`,
+    `Lobbi-server kører på http://localhost:${port}  (ws: /ws, AI-beboere: ${app.hotel.aiEnabled ? 'Anthropic' : 'faste replikker'})`,
   );
 });
 

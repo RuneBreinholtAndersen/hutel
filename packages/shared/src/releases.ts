@@ -16,6 +16,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
     date: '2026-11-07',
     title: 'Biograf og sneboldkamp',
     items: [
+      '🏨 Hutel hedder nu Lobbi!',
       '🎬 Ny Biograf: se YouTube-videoer sammen på lærredet',
       '💺 Køb dit eget lærred og biografstole til værelset',
       '❄️ Sneboldkamp på spilkonsollen – kast, ram og hent nye snebolde ved snedriven',
