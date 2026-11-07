@@ -14,6 +14,15 @@ export interface ReleaseNote {
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
     date: '2026-11-07',
+    title: 'Ny indgang og vælg køn',
+    items: [
+      '🛎️ Nyt og pænere tjek-ind-skærm',
+      '🧍 Vælg kvinde, mand eller "vil ikke sige" til din figur under Figur',
+      '🔇 Ingen lyde fra faner i baggrunden, og lyd slået fra gælder alle faner',
+    ],
+  },
+  {
+    date: '2026-11-07',
     title: 'Biograf og sneboldkamp',
     items: [
       '🏨 Hutel hedder nu Lobbi!',

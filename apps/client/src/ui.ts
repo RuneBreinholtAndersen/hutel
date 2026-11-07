@@ -5,6 +5,7 @@ import {
   GLASSES,
   HAIR_STYLES,
   HATS,
+  GENDERS,
   SHOES,
   ACCESSORIES,
   PALETTE,
@@ -121,6 +122,11 @@ const LABELS = {
   extra: 'Hat, sko og tilbehør',
 } as const;
 const OPTS = {
+  gender: {
+    label: 'Køn',
+    vals: GENDERS,
+    names: { kvinde: 'Kvinde', mand: 'Mand', andet: 'Vil ikke sige' },
+  },
   hairStyle: {
     label: 'Frisure',
     vals: HAIR_STYLES,
@@ -193,7 +199,7 @@ export function lookEditor(
       Object.entries(OPTS)
         .map(
           ([k, o]) =>
-            `<div class="row"><label>${o.label}</label><div class="chips">${o.vals.map((v) => `<button type="button" data-k="${k}" data-v="${v}" class="${look[k as keyof Look] === v ? 'on' : ''}">${(o.names as Record<string, string>)[v]}</button>`).join('')}</div></div>`,
+            `<div class="row"><label>${o.label}</label><div class="chips">${o.vals.map((v) => `<button type="button" data-k="${k}" data-v="${v}" class="${(look[k as keyof Look] ?? (k === 'gender' ? 'andet' : undefined)) === v ? 'on' : ''}">${(o.names as Record<string, string>)[v]}</button>`).join('')}</div></div>`,
         )
         .join('') +
       (Object.keys(LABELS) as (keyof typeof LABELS)[])

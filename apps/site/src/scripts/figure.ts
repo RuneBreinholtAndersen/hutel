@@ -1,5 +1,5 @@
 /** "Prøv at lave din figur": one figure on a little stage, changed with chips. */
-import { DEFAULT_LOOK, GLASSES, HAIR_STYLES, PALETTE, type Look } from '@hutel/shared';
+import { DEFAULT_LOOK, GENDERS, GLASSES, HAIR_STYLES, PALETTE, type Look } from '@hutel/shared';
 import { buildParts, makeAvatar } from '@game/gfx/avatar';
 import { cyl, M, T } from '@game/gfx/helpers';
 import { miniStage } from './stage';
@@ -7,6 +7,9 @@ import { miniStage } from './stage';
 const TOPS = ['tshirt', 'stribet', 'hoodie', 'kjole', 'dunjakke', 'skjorte'] as const;
 const HATS = ['ingen', 'hue', 'baret', 'solhat', 'cowboy'] as const;
 const NAMES: Record<string, string> = {
+  kvinde: 'Kvinde',
+  mand: 'Mand',
+  andet: 'Vil ikke sige',
   kort: 'Kort',
   krøller: 'Krøller',
   hestehale: 'Hestehale',
@@ -50,6 +53,7 @@ export function startFigure(el: HTMLElement, controls: HTMLElement) {
     vals: readonly (string | number)[];
     color?: boolean;
   }[] = [
+    { label: 'Køn', key: 'gender', vals: GENDERS },
     { label: 'Frisure', key: 'hairStyle', vals: HAIR_STYLES },
     { label: 'Overdel', key: 'top', vals: TOPS },
     { label: 'Hat', key: 'hat', vals: HATS },
@@ -73,7 +77,13 @@ export function startFigure(el: HTMLElement, controls: HTMLElement) {
           b.type = 'button';
           const cur =
             (look[r.key] ??
-              (r.key === 'hat' ? 'ingen' : r.key === 'top' ? 'tshirt' : undefined)) === v;
+              (r.key === 'hat'
+                ? 'ingen'
+                : r.key === 'top'
+                  ? 'tshirt'
+                  : r.key === 'gender'
+                    ? 'andet'
+                    : undefined)) === v;
           b.setAttribute('aria-pressed', String(cur));
           if (r.color) {
             b.style.background = hex(v as number);

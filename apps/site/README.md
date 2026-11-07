@@ -10,5 +10,5 @@ pnpm --filter @hutel/site build   # → apps/site/dist
 
 - **"Spil gratis"-knapper** går til `https://spil.lobbi.dk` (kan ændres med `PUBLIC_PLAY_URL`).
 - **Nyheder** kommer fra `packages/shared/src/releases.ts` – samme noter som "Nyt i Lobbi" i spillet.
-- **Deploy:** `.github/workflows/deploy-site.yml` bygger og uploader med rsync over SSH, når
-  secret `SIMPLY_SSH_KEY` findes. Ellers: upload indholdet af `dist/` til `public_html/` med FTPS.
+- **Deploy:** `.github/workflows/deploy-site.yml` bygger og uploader automatisk ved hvert push,
+  når secret `SIMPLY_FTP_PASSWORD` (FTPS) eller `SIMPLY_SSH_KEY` (rsync over SSH) findes.

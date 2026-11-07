@@ -9,7 +9,7 @@ Sidst opdateret: 6. november 2026. Rækkefølge: voksen-Hutel i lukket beta før
 ## Det skal Rune gøre selv
 
 - [ ] Opret et privat, tomt GitHub-repo `hutel` (ingen README, .gitignore eller licens), så koden kan skubbes op
-- [ ] Hjemmesiden på lobbi.dk: upload `apps/site/dist` til `public_html/` hos Simply (FTPS) – eller lav en SSH-nøgle, læg den offentlige del i Simply → SSH Keys og den private som GitHub-secret `SIMPLY_SSH_KEY`, så deployer den selv
+- [ ] Automatisk upload af lobbi.dk: læg lobbi.dk-produktets adgangskode fra Simply som GitHub-secret `SIMPLY_FTP_PASSWORD` (repo → Settings → Secrets and variables → Actions). Derefter opdateres hjemmesiden af sig selv ved hvert push – kør evt. "Deploy lobbi.dk" manuelt under Actions første gang
 - [ ] Spillet på spil.lobbi.dk: kør `fly certs add spil.lobbi.dk -a hutel` og `git pull && fly deploy`. Når https://spil.lobbi.dk virker: `fly secrets set CANONICAL_URL=https://spil.lobbi.dk -a hutel` (så sendes hutel.fly.dev videre, og man forbliver logget ind)
 - [ ] Tilføj https://spil.lobbi.dk som tilladt adresse/redirect-URL i Supabase og Google Cloud (login med Google)
 - [ ] Få vilkår og privatlivspolitik på lobbi.dk gennemlæst før lancering
@@ -52,6 +52,7 @@ Sidst opdateret: 6. november 2026. Rækkefølge: voksen-Hutel i lukket beta før
 - ✅ Lyd: slå lyd fra i én fane slår den også fra i andre åbne Lobbi-faner
 - ✅ Hjemmeside lobbi.dk i Astro (`apps/site`): levende lobby i hero, figur-bygger, hotel-oversigt, sikkerhed, nyheder fra RELEASE_NOTES, Sådan spiller du, Spørgsmål, Vilkår/Privatliv (kladder), 404, .htaccess; deploy-workflow til Simply via SSH-nøgle
 - ✅ DNS: CNAME `spil.lobbi.dk` → hutel.fly.dev oprettet hos Simply; CLIENT_ORIGIN opdateret; `CANONICAL_URL` sender gamle adresser videre med login i behold; hjemmesidens knapper peger på spil.lobbi.dk
+- ✅ Køn på figuren (kvinde/mand/vil ikke sige: vipper, skuldre, bryn, mund) i spil og på hjemmesiden; nyt tjek-ind-design (cremefarvet reception-kort); ingen lyd fra baggrundsfaner; auto-deploy af hjemmesiden via FTPS-secret
 - ✅ Tapet (8 slags) og gulve (8 slags): købes én gang og bruges i alle egne rum
 - ✅ Vægmøbler: maleri, stort maleri, plakat, vindue, væghylde, vægur, spejl og neonskilt (hænges på bag- eller venstrevæg)
 - ✅ Lobbyen og caféen er nu 12×12 med ny møblering; rumstørrelse kan variere pr. rum

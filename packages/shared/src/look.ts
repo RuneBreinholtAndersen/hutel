@@ -12,6 +12,8 @@ export const PALETTE = {
 
 export const HAIR_STYLES = ['kort', 'krøller', 'hestehale', 'langt', 'kasket', 'skaldet'] as const;
 export const GLASSES = ['ingen', 'runde', 'sol'] as const;
+/** Body type of the figure. 'andet' is the neutral figure. */
+export const GENDERS = ['kvinde', 'mand', 'andet'] as const;
 export const BEARDS = ['ingen', 'stubbe', 'fuld'] as const;
 export const TOPS = [
   'tshirt',
@@ -89,6 +91,7 @@ export const LookSchema = z.object({
   shoes: z.enum(SHOES).optional(),
   acc: z.enum(ACCESSORIES).optional(),
   extra: color(PALETTE.extra).optional(),
+  gender: z.enum(GENDERS).optional(),
 });
 export type Look = z.infer<typeof LookSchema>;
 

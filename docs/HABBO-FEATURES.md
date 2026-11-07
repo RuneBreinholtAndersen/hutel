@@ -2,7 +2,7 @@
 
 Listen sammenligner Lobbi (tidligere Hutel) med de klassiske funktioner fra Habbo Hotel. Navne, grafik og møbler kopieres ikke: vi laver vores egen version af idéen.
 
-_Senest opdateret: 7. november 2026 (biograf og sneboldkamp)._
+_Senest opdateret: 7. november 2026 (køn på figuren)._
 
 **Sådan læses den**
 - **Værdi**: hvor meget det betyder for spillerne (★–★★★)
@@ -80,7 +80,7 @@ Det her mener jeg giver mest spil for pengene, i den rækkefølge:
 
 ## ✅ Det har vi allerede (Habbo-lignende)
 
-- ✅ Egen figur med hud, hår, øjne, trøje, bukser, briller, skæg, tøj og hatte
+- ✅ Egen figur med køn (kvinde, mand, vil ikke sige), hud, hår, øjne, trøje, bukser, briller, skæg, tøj og hatte
 - ✅ Isometrisk hotel med lobby, café, tagterrasse, spillehal og pool
 - ✅ Store offentlige rum (lobby og café 12×12) og loft på 25 gæster pr. rum
 - ✅ Eget værelse + lejlighed med soveværelse, badeværelse, køkken og altan

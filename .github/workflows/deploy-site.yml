@@ -1,17 +1,26 @@
 name: Deploy lobbi.dk
-# Builds the Astro site and uploads it to Simply (public_html) over SSH.
-# Needs the repository secret SIMPLY_SSH_KEY (a private key whose public half is added in
-# Simply's control panel under "SSH Keys"). Without the secret the upload is skipped.
+# Builds the Astro site and uploads it to Simply (public_html) on every push that changes it.
+# One-time setup – add ONE of these repository secrets (Settings → Secrets and variables → Actions):
+#   SIMPLY_FTP_PASSWORD  the lobbi.dk product password from Simply's control panel (upload via FTPS)
+#   SIMPLY_SSH_KEY       a private key whose public half is added in Simply under "SSH Keys"
+# Without a secret the site is still built (so errors show), but nothing is uploaded.
 on:
   push:
     branches: [main]
-    paths: ['apps/site/**', 'packages/shared/**', 'apps/client/src/gfx/**', 'apps/client/src/actors.ts']
+    paths:
+      - 'apps/site/**'
+      - 'packages/shared/**'
+      - 'apps/client/src/gfx/**'
+      - 'apps/client/src/actors.ts'
+      - '.github/workflows/deploy-site.yml'
   workflow_dispatch:
+concurrency: deploy-site
 jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
       SSH_KEY: ${{ secrets.SIMPLY_SSH_KEY }}
+      FTP_PASSWORD: ${{ secrets.SIMPLY_FTP_PASSWORD }}
       PUBLIC_PLAY_URL: ${{ vars.PUBLIC_PLAY_URL }}
     steps:
       - uses: actions/checkout@v4
@@ -22,7 +31,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @hutel/site build
-      - name: Upload to Simply
+      - name: Upload with SSH (rsync)
         if: env.SSH_KEY != ''
         run: |
           mkdir -p ~/.ssh
@@ -30,3 +39,11 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H ssh.simply.com >> ~/.ssh/known_hosts
           rsync -az --delete -e "ssh -i ~/.ssh/id_ed25519" apps/site/dist/ lobbi.dk@ssh.simply.com:public_html/
+      - name: Upload with FTPS (lftp)
+        if: env.SSH_KEY == '' && env.FTP_PASSWORD != ''
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+          lftp -u "lobbi.dk,$FTP_PASSWORD" ftp.simply.com -e "set ftp:ssl-force true; set ftp:ssl-protect-data true; set ssl:verify-certificate yes; mirror --reverse --delete --verbose --exclude-glob .git* apps/site/dist/ public_html/; quit"
+      - name: No upload secret
+        if: env.SSH_KEY == '' && env.FTP_PASSWORD == ''
+        run: echo "::warning::Tilføj secret SIMPLY_FTP_PASSWORD (eller SIMPLY_SSH_KEY) for at uploade til lobbi.dk"

@@ -16,6 +16,11 @@ export interface AvatarParts {
   parts: T.Group;
   /** Clothing extras on the body (collars, hoods, jackets…). */
   outfit: T.Group;
+  torso: T.Mesh;
+  brows: T.Mesh[];
+  /** Lashes, shown for the female figure. */
+  lashes: T.Group;
+  mouth: T.Mesh;
 }
 
 export function makeAvatar(look: Look): T.Group {
@@ -64,6 +69,10 @@ export function makeAvatar(look: Look): T.Group {
   skull.scale.set(1, 0.95, 0.95);
   head.add(skull, sph(0.07, mats.skin, -0.33, -0.03, 0), sph(0.07, mats.skin, 0.33, -0.03, 0));
   const eyes: T.Group[] = [];
+  const brows: T.Mesh[] = [];
+  const lashes = new T.Group();
+  head.add(lashes);
+  const lashMat = M(0x1e1412, { roughness: 0.5 });
   for (const sx of [-1, 1]) {
     const e = new T.Group();
     e.position.set(sx * 0.12, 0, 0.27);
@@ -81,6 +90,22 @@ export function makeAvatar(look: Look): T.Group {
     const br = rbox(0.11, 0.028, 0.035, mats.hair, sx * 0.12, 0.135, 0.3, 0.012);
     br.rotation.z = -sx * 0.15;
     head.add(br);
+    brows.push(br);
+    // Three little lashes on the outer side of each eye.
+    for (let i = 0; i < 3; i++) {
+      const l = rbox(
+        0.014,
+        0.05,
+        0.014,
+        lashMat,
+        sx * (0.17 + i * 0.022),
+        0.1 - i * 0.025,
+        0.3,
+        0.005,
+      );
+      l.rotation.z = -sx * (0.5 + i * 0.35);
+      lashes.add(l);
+    }
   }
   head.add(sph(0.045, mats.skin, 0, -0.07, 0.325));
   const mouth = new T.Mesh(
@@ -97,7 +122,22 @@ export function makeAvatar(look: Look): T.Group {
   const outfit = new T.Group();
   rig.add(outfit);
   g.scale.setScalar(0.95);
-  const ud: AvatarParts = { mats, legL, legR, armL, armR, head, rig, eyes, parts, outfit };
+  const ud: AvatarParts = {
+    mats,
+    legL,
+    legR,
+    armL,
+    armR,
+    head,
+    rig,
+    eyes,
+    parts,
+    outfit,
+    torso,
+    brows,
+    lashes,
+    mouth,
+  };
   g.userData = ud as unknown as Record<string, unknown>;
   buildParts(g, look);
   return g;
@@ -112,6 +152,16 @@ export function buildParts(g: T.Group, look: Look) {
   for (const k of ['skin', 'hair', 'shirt', 'pants', 'eyes'] as const)
     mats[k].color.copy(lin(look[k]));
   mats.extra.color.copy(lin(look.extra ?? 0xc94f3d));
+  // Body type: small, friendly differences – lashes and a softer mouth, or broader shoulders.
+  const g2 = look.gender ?? 'andet';
+  P.lashes.visible = g2 === 'kvinde';
+  P.torso.scale.set(g2 === 'mand' ? 1.07 : g2 === 'kvinde' ? 0.94 : 1, 1.15, 0.9);
+  for (const b of P.brows) b.scale.set(1, g2 === 'mand' ? 1.45 : g2 === 'kvinde' ? 0.8 : 1, 1);
+  (P.mouth.material as T.MeshStandardMaterial).color.copy(
+    lin(g2 === 'kvinde' ? 0xb8344a : 0x5a1e1a),
+  );
+  P.armL.position.x = g2 === 'mand' ? -0.24 : g2 === 'kvinde' ? -0.212 : -0.225;
+  P.armR.position.x = -P.armL.position.x;
   const Hm = mats.hair;
   const grp = P.parts;
   while (grp.children.length) grp.remove(grp.children[0]!);

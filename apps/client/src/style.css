@@ -1180,3 +1180,154 @@ ul.notes {
   padding: 3px 8px;
   cursor: pointer;
 }
+
+/* ---------- check-in screens: a cream reception card, like the speech bubble on lobbi.dk ---------- */
+body:has(#signup:not(.hidden)) :is(#top, #bar, #hint, #quests, #log) {
+  visibility: hidden;
+}
+.screen {
+  background: radial-gradient(
+    ellipse at 50% 40%,
+    rgba(42, 27, 51, 0.35),
+    rgba(20, 10, 18, 0.82) 70%
+  );
+}
+.signup {
+  --wood: #3a2418;
+  width: min(480px, 100%);
+  background: #fff4e0;
+  color: var(--wood);
+  border: 0;
+  border-radius: 28px;
+  padding: 30px 34px 26px;
+  gap: 12px;
+  box-shadow: 0 30px 80px rgba(10, 4, 12, 0.55);
+  backdrop-filter: none;
+}
+.signup .logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font:
+    700 26px Fredoka,
+    sans-serif;
+  color: var(--wood);
+}
+.signup .logo svg {
+  width: 32px;
+  height: 32px;
+}
+.signup h1 {
+  font-size: 34px;
+  color: var(--wood);
+  margin-top: 6px;
+}
+.signup .sub {
+  color: #6b5242;
+  margin: 0;
+  font-size: 15px;
+}
+.signup a {
+  color: #b8561a;
+  font-weight: 600;
+}
+.signup > label,
+#emailForm label {
+  color: #6b5242;
+  font-size: 14px;
+  font-weight: 600;
+}
+.signup input:not([type='checkbox']) {
+  width: 100%;
+  font-size: 16px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 2px solid #e6d3b8;
+  background: #fffdf8;
+}
+.signup input:not([type='checkbox']):focus {
+  border-color: #ffb347;
+  box-shadow: 0 0 0 3px rgba(255, 179, 71, 0.3);
+}
+.signup .check {
+  color: var(--wood);
+}
+.signup .check input {
+  width: 18px;
+  height: 18px;
+  accent-color: #e08a1e;
+}
+#emailForm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.signup .primary {
+  width: 100%;
+  justify-content: center;
+  font:
+    600 17px Fredoka,
+    sans-serif;
+  padding: 13px;
+  border-radius: 999px;
+  background: #ffb347;
+  color: var(--wood);
+  box-shadow: 0 4px 0 #c97b1f;
+  margin-top: 4px;
+}
+.signup .primary:hover {
+  background: #ffbd5c;
+}
+.signup .primary:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 #c97b1f;
+}
+.signup .social {
+  border: 2px solid #e6d3b8;
+  background: #fff;
+  border-radius: 999px;
+  font-size: 16px;
+  padding: 12px 14px;
+}
+.signup .social:hover {
+  border-color: #d9bf9c;
+  background: #fff;
+}
+.signup .or {
+  color: #8a6e58;
+  opacity: 1;
+}
+.signup .or::before,
+.signup .or::after {
+  background: #e6d3b8;
+}
+.signup .error {
+  color: #b3261e;
+}
+.signup .row label {
+  color: #6b5242;
+}
+.signup .chips button {
+  background: rgba(58, 36, 24, 0.08);
+  color: var(--wood);
+}
+.signup .chips button:hover {
+  background: rgba(58, 36, 24, 0.15);
+}
+.signup .chips button.on {
+  background: #ffb347;
+}
+.signup .sw i {
+  box-shadow: 0 0 0 1px rgba(58, 36, 24, 0.25);
+}
+@media (max-width: 520px) {
+  .signup {
+    padding: 22px 20px;
+    border-radius: 22px;
+  }
+}
+.signup .sub:empty,
+.signup .error:empty {
+  display: none;
+}

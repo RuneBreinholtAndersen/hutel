@@ -57,6 +57,10 @@ export function saveSettings(patch: Partial<AudioSettings>) {
 }
 
 // Another open Lobbi tab changed the sound settings: follow it, so muting one tab mutes all.
+document.addEventListener('visibilitychange', () => {
+  Object.assign(settings, load());
+  applySettings();
+});
 addEventListener('storage', (e) => {
   if (e.key !== KEY) return;
   Object.assign(settings, load());
@@ -158,7 +162,12 @@ export type Sfx =
 const lastSfx = new Map<Sfx, number>();
 
 export function sfx(name: Sfx) {
-  if (!ctx || settings.muted || !settings.sfx || ctx.state !== 'running') return;
+  if (!ctx || ctx.state !== 'running') return;
+  // A tab in the background makes no noise, and the newest saved choice always wins
+  // (another tab, or an older version of the game, may have changed it).
+  if (document.hidden) return;
+  Object.assign(settings, load());
+  if (settings.muted || !settings.sfx) return;
   // Avoid machine-gun repeats (many coins at once etc.).
   const nowMs = performance.now();
   if (nowMs - (lastSfx.get(name) ?? 0) < 60) return;
