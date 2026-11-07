@@ -124,6 +124,8 @@ const LABELS = {
 /** Lobbi Junior says "pige/dreng" instead of "kvinde/mand". */
 export function useJuniorWords() {
   Object.assign(OPTS.gender.names, { kvinde: 'Pige', mand: 'Dreng' });
+  // No beards for children.
+  Reflect.deleteProperty(OPTS, 'beard');
 }
 const OPTS = {
   gender: {

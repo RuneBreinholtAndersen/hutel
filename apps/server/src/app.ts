@@ -297,9 +297,13 @@ export function createApp(
           });
         const bad = checkProfile({ name, invite: jp.data.invite });
         if (bad) return json(res, bad[0], { ok: false, error: bad[1] });
-        const { user, token } = store.createUser(name, freeLook(jp.data.look), {
-          password: jp.data.password,
-        });
+        const { user, token } = store.createUser(
+          name,
+          { ...freeLook(jp.data.look), beard: 'ingen' },
+          {
+            password: jp.data.password,
+          },
+        );
         user.parentEmail = jp.data.parentEmail.trim().toLowerCase();
         await sendParentMail(user, publicBase(req));
         return json(res, 200, { ok: true, token, userId: user.id, waitingForParent: true });

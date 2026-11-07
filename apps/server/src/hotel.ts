@@ -1691,10 +1691,11 @@ export class Hotel {
       case 'look':
         if (!lookAllowed(msg.look, user.wardrobe ?? []))
           return this.toast(s, 'Det tøj skal købes først 🛍️', 'error');
-        user.look = msg.look;
+        // Junior: no beards for children, whatever the client sends.
+        user.look = this.cfg.junior ? { ...msg.look, beard: 'ingen' } : msg.look;
         this.store.touch();
-        if (player) player.look = msg.look;
-        room?.broadcast({ t: 'look', id: user.id, look: msg.look });
+        if (player) player.look = user.look;
+        room?.broadcast({ t: 'look', id: user.id, look: user.look });
         this.quest(s, user, 'look');
         return;
       case 'motto':

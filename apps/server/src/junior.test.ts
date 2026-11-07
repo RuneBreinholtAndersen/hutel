@@ -206,6 +206,14 @@ describe('Lobbi Junior server', () => {
     b.c.ws.close();
   });
 
+  it('never gives a child a beard', async () => {
+    const a = await child();
+    a.c.send({ t: 'look', look: { ...DEFAULT_LOOK, beard: 'fuld' } });
+    const m = await a.c.waitFor('look');
+    expect(m.look.beard).toBe('ingen');
+    a.c.ws.close();
+  });
+
   it('blocks free-text mottos', async () => {
     const a = await child();
     a.c.send({ t: 'motto', motto: 'ring på 12345678' });
