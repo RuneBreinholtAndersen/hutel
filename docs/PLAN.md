@@ -25,6 +25,7 @@ Sidst opdateret: 6. november 2026. Rækkefølge: voksen-Hutel i lukket beta før
 
 ## Færdigt 6. november (eftermiddag)
 
+- ✅ Butikken er delt i kategorier (siddepladser, borde, seng og bad, køkken, lys og lyd, pynt, væg, spil, tapet og gulv, inventar) med søgefelt
 - ✅ Rum-spil med møbler: Spilkonsol + Farvekamp (to hold farver felter, 60 sek) og Kapløb (fra startfelt til målfelt); serveren styrer reglerne, mønter kun når mindst to spiller med
 - ✅ Navigator åbner altid på Populære; kategorier viser alle åbne rum i kategorien
 - ✅ Døre i lejligheden: stuen har en dør til hvert af dine andre rum, de andre rum en dør tilbage; gå ind ad døren (klik eller piletaster) for at komme ind

@@ -14,6 +14,7 @@ import {
   DEFAULT_LOOK,
   footprint,
   isWallItem,
+  SHOP_CATEGORIES,
   ROOM_GAMES,
   ROOM_GAME_IDS,
   TEAM_NAMES,
@@ -961,6 +962,9 @@ function renderRenovate() {
   $('renoBack').addEventListener('click', () => openNavigator());
 }
 
+/** Shop: tab (department, 'all', 'decor' or 'inv') and search text. */
+let shopTab = 'all';
+let shopQuery = '';
 function renderShop() {
   if (!me) return;
   const list = FURNITURE_TYPES.filter((k) => !furniture(k).noShop);
@@ -979,39 +983,83 @@ function renderShop() {
       : `<button data-buy="${k}" ${me!.coins < c.price ? 'disabled' : ''}>Køb</button>`;
     return `<div class="item${locked ? ' locked' : ''}"><div class="ic">${c.icon}</div><div class="n">${c.name}</div><div class="p">${c.price} ${COIN} · ${c.w}×${c.d}</div>${dots}${btn}</div>`;
   };
-  const onWall = list.filter((k) => (FURNITURE[k] as FurnitureDef).wall);
-  const floorList = list.filter((k) => !(FURNITURE[k] as FurnitureDef).wall);
-  const free = floorList.filter(
-    (k) => !(FURNITURE[k] as FurnitureDef).unlock && !(FURNITURE[k] as FurnitureDef).minLevel,
-  );
-  const special = floorList.filter((k) => (FURNITURE[k] as FurnitureDef).unlock);
-  const lev = floorList
-    .filter((k) => (FURNITURE[k] as FurnitureDef).minLevel)
-    .sort(
-      (a, b) => (FURNITURE[a] as FurnitureDef).minLevel! - (FURNITURE[b] as FurnitureDef).minLevel!,
-    );
   const inv = me.inventory;
   const invHtml = inv.length
-    ? `<h3>📦 Dit inventar</h3><div class="grid">${inv
+    ? `<div class="grid">${inv
         .map((it, i) => {
           const c = FURNITURE[it.type];
           return `<div class="item"><div class="ic">${c.icon}</div><div class="n">${c.name}</div><button data-inv="${i}">Placér</button></div>`;
         })
         .join('')}</div>`
-    : '';
+    : '<p class="sub">Dit inventar er tomt. Gem møbler væk med 📦 i byggetilstand.</p>';
+  // Unlocked things first, then by price.
+  const lv = levelOf(me).level;
+  const isLocked = (k: FurnitureType) => {
+    const c = FURNITURE[k] as FurnitureDef;
+    return (!!c.unlock && !me!.badges.includes(c.unlock)) || (!!c.minLevel && lv < c.minLevel);
+  };
+  const sorted = (ks: readonly FurnitureType[]) =>
+    ks
+      .filter((k) => list.includes(k))
+      .sort(
+        (a, b) =>
+          Number(isLocked(a)) - Number(isLocked(b)) ||
+          (FURNITURE[a] as FurnitureDef).price - (FURNITURE[b] as FurnitureDef).price,
+      );
+  const q = shopQuery.trim().toLowerCase();
+  let body: string;
+  if (q) {
+    const hits = sorted(list.filter((k) => FURNITURE[k].name.toLowerCase().includes(q)));
+    body = hits.length
+      ? `<h3>🔍 ${hits.length} fundet</h3><div class="grid">${hits.map(card).join('')}</div>`
+      : `<p class="sub">Ingen møbler hedder noget med “${esc(shopQuery)}”.</p>`;
+  } else if (shopTab === 'inv') body = `<h3>📦 Dit inventar</h3>${invHtml}`;
+  else if (shopTab === 'decor') body = decorShop();
+  else {
+    const cats =
+      shopTab === 'all' ? SHOP_CATEGORIES : SHOP_CATEGORIES.filter((c) => c.id === shopTab);
+    body = cats
+      .map(
+        (c) =>
+          `<h3>${c.icon} ${c.name}</h3>${c.id === 'wall' ? '<p class="sub">Peg på væggen (eller gulvet tæt ved den) for at hænge op · R skifter væg</p>' : ''}<div class="grid">${sorted(c.types).map(card).join('')}</div>`,
+      )
+      .join('');
+  }
+  const tab = (id: string, label: string) =>
+    `<button class="${shopTab === id && !q ? 'on' : ''}" data-stab="${id}">${label}</button>`;
+  const tabs = [
+    tab('all', '✨ Alle'),
+    ...SHOP_CATEGORIES.map((c) => tab(c.id, `${c.icon} ${c.name}`)),
+    tab('decor', '🎨 Tapet og gulv'),
+    tab('inv', `📦 Inventar${inv.length ? ` (${inv.length})` : ''}`),
+  ].join('');
   openPanel(
     'shop',
     head(
       '🛒 Møbelbutikken',
       'Køb med mønter. Møblet ryger direkte ind på dit værelse. Tryk 🎨 (eller F) for at vælge farve.',
     ) +
-      invHtml +
-      `<h3>🛒 Butikken</h3><div class="grid">${free.map(card).join('')}</div>
-      <h3>🖼️ Til væggen</h3><p class="sub">Peg på væggen (eller gulvet tæt ved den) for at hænge op · R skifter væg</p><div class="grid">${onWall.map(card).join('')}</div>
-      ${decorShop()}
-      <h3>🏠 Til lejligheden (låses op med level)</h3><div class="grid">${lev.map(card).join('')}</div>
-      <h3>✨ Låses op med badges</h3><div class="grid">${special.map(card).join('')}</div>`,
+      `<div class="row"><input id="shopQ" maxlength="30" placeholder="🔍 Søg efter et møbel…" value="${esc(shopQuery)}" style="width:100%"></div>
+       <div class="chips navtabs">${tabs}</div>${body}`,
   );
+  $('panel')
+    .querySelectorAll<HTMLElement>('[data-stab]')
+    .forEach((b) =>
+      b.addEventListener('click', () => {
+        shopTab = b.dataset.stab!;
+        shopQuery = '';
+        renderShop();
+      }),
+    );
+  const sq = $<HTMLInputElement>('shopQ');
+  sq.addEventListener('input', () => {
+    shopQuery = sq.value;
+    renderShop();
+  });
+  if (shopQuery) {
+    sq.focus();
+    sq.setSelectionRange(sq.value.length, sq.value.length);
+  }
   $('panel')
     .querySelectorAll<HTMLElement>('[data-buy]')
     .forEach((b) => b.addEventListener('click', () => startBuy(b.dataset.buy as FurnitureType)));

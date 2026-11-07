@@ -21,6 +21,9 @@ import {
   ROOM_SIZE,
   DOOR_TILE,
   findPath,
+  SHOP_CATEGORIES,
+  FURNITURE_TYPES,
+  furniture,
   doorSlots,
   doorSpot,
   canStep,
@@ -171,6 +174,19 @@ describe('apartment doors', () => {
         ).toBe(true);
       }
     }
+  });
+});
+
+describe('shop categories', () => {
+  it('puts every shop item in exactly one category', () => {
+    const shop = FURNITURE_TYPES.filter((t) => !furniture(t).noShop);
+    for (const t of shop)
+      expect(
+        SHOP_CATEGORIES.filter((c) => (c.types as readonly string[]).includes(t)).length,
+        t,
+      ).toBe(1);
+    for (const c of SHOP_CATEGORIES)
+      for (const t of c.types) expect(furniture(t).noShop ?? false, t).toBe(false);
   });
 });
 

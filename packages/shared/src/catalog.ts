@@ -295,3 +295,46 @@ export function furniture(type: FurnitureType): FurnitureDef {
 export function sellPrice(type: FurnitureType): number {
   return Math.floor(furniture(type).price / 2);
 }
+
+/** Shop departments. Every furniture type sold in the shop belongs to exactly one. */
+export const SHOP_CATEGORIES = [
+  {
+    id: 'sit',
+    name: 'Siddepladser',
+    icon: '🛋️',
+    types: ['stool', 'chair', 'armchair', 'sofa', 'beanbag', 'lounger'],
+  },
+  { id: 'table', name: 'Borde og opbevaring', icon: '🪑', types: ['table', 'shelf', 'nightstand'] },
+  { id: 'bed', name: 'Seng og bad', icon: '🛏️', types: ['bed', 'bathtub', 'sink'] },
+  { id: 'kitchen', name: 'Køkken og have', icon: '🍳', types: ['kitchen', 'fridge', 'grill'] },
+  {
+    id: 'light',
+    name: 'Lys og lyd',
+    icon: '💡',
+    types: ['lamp', 'tv', 'fireplace', 'jukebox', 'piano'],
+  },
+  {
+    id: 'deco',
+    name: 'Planter og pynt',
+    icon: '🪴',
+    types: ['plant', 'cactus', 'rug', 'aquarium'],
+  },
+  {
+    id: 'wall',
+    name: 'Til væggen',
+    icon: '🖼️',
+    types: ['painting', 'bigpainting', 'poster', 'window', 'wallshelf', 'clock', 'mirror', 'neon'],
+  },
+  {
+    id: 'games',
+    name: 'Spil og teleport',
+    icon: '🕹️',
+    types: ['gamebox', 'colortile', 'racestart', 'racegoal', 'teleport'],
+  },
+] as const satisfies readonly {
+  id: string;
+  name: string;
+  icon: string;
+  types: readonly FurnitureType[];
+}[];
+export type ShopCategoryId = (typeof SHOP_CATEGORIES)[number]['id'];
