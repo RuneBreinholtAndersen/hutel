@@ -1244,7 +1244,17 @@ describe('delete account', () => {
 
 describe('admin user list', () => {
   it('shows admins the newest users, and nobody else', async () => {
-    const boss = await login('Chefen');
+    // "Chefen" was created by an earlier test: log in again with the password.
+    const res = (await (
+      await fetch(`http://${base}/api/login`, {
+        method: 'POST',
+        body: JSON.stringify({ name: 'Chefen', password: 'hemmelig123' }),
+      })
+    ).json()) as { token: string };
+    const boss = { c: new TestClient() };
+    await boss.c.open();
+    boss.c.send({ t: 'auth', token: res.token });
+    await boss.c.waitFor('welcome');
     const guest = await login('Nygaest');
     boss.c.send({ t: 'admin', action: 'users' });
     const list = await boss.c.waitFor('adminUsers');
