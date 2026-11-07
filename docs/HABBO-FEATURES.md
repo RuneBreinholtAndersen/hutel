@@ -107,7 +107,7 @@ Det her mener jeg giver mest spil for pengene, i den rækkefølge:
 - ✅ Kæledyr (hund, kat, drage) med mad, tricks og level
 - ✅ Tapet og gulve man køber og skifter selv
 - ✅ Vægmøbler: malerier, plakater, vinduer, hylder, ur, spejl, neonskilt
-- ✅ Opdateringer uden afbrydelse: knap med "Ny version" og "Se hvad der er nyt"
+- ✅ Opdateringer uden afbrydelse: knap med "Ny version" og "Se hvad der er nyt" – og man står samme sted efter en genstart
 - ✅ Butik med kategorier og søgefelt (møbler, væg, spil, tapet og gulv, inventar)
 - ✅ Lydeffekter lavet i kode (klik, døre, teleport, mønter, chat, badges, spil, kæledyr) med 🔊-indstillinger
 - ✅ Jukebox med 6 egne melodier, synkroniseret for alle i rummet og svagere jo længere væk man står

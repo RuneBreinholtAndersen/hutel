@@ -36,7 +36,10 @@ const FILMS: Record<RoomGameKind, Film> = {
       [3, '2. Stil dem i rummet med 🔨 Byg – klik så på konsollen og tryk Start'],
       [5.2, '3. Alle i rummet deles i to hold: 🔴 Rød og 🔵 Blå'],
       [8, '4. Løb hen over felterne – de får dit holds farve (også dem, de andre har taget!)'],
-      [14, '5. Når tiden er gået, vinder holdet med flest felter mønter 🪙'],
+      [
+        14,
+        '5. Når tiden er gået, tælles felterne: holdet med flest felter i sin farve vinder mønter 🪙',
+      ],
     ],
     props: [
       { t: 0.6, kind: 'console', at: [5, 0] },
@@ -74,7 +77,7 @@ const FILMS: Record<RoomGameKind, Film> = {
     countdown: 5.2,
     play: [8, 14],
     paint: true,
-    end: { t: 14, text: '🔴 Rød vinder!' },
+    end: { t: 14, text: '' },
     click: { t: 3.6, at: [5, 0] },
   },
   race: {
@@ -310,7 +313,19 @@ export function playTutorial(
       g.roundRect(W / 2 - 150, H - 70, 300, 52, 14);
       g.fill();
       g.fillStyle = '#ffb347';
-      g.fillText(`${film.end.text} +🪙`, W / 2, H - 35);
+      let endText = film.end.text;
+      if (film.paint) {
+        // The winner is whoever really has the most tiles in the film – never hard-coded.
+        const red = [...paint.values()].filter((c) => c === film.runners[0]!.color).length;
+        const blue = paint.size - red;
+        endText =
+          red === blue
+            ? `Uafgjort ${red}–${blue}`
+            : red > blue
+              ? `🔴 Rød vinder ${red}–${blue}!`
+              : `🔵 Blå vinder ${blue}–${red}!`;
+      }
+      g.fillText(`${endText} +🪙`, W / 2, H - 35);
     }
     // progress bar
     g.fillStyle = 'rgba(255,255,255,0.15)';

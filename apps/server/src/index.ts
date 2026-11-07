@@ -41,8 +41,13 @@ app.server.listen(port, () => {
   );
 });
 
+let closing = false;
 const shutdown = () => {
+  if (closing) return;
+  closing = true;
   console.log('Lukker ned og gemmer data…');
+  // Data is saved first thing in close(); don't hang on idle keep-alive connections.
+  setTimeout(() => process.exit(0), 2500).unref();
   void app.close().then(() => process.exit(0));
 };
 process.on('SIGINT', shutdown);

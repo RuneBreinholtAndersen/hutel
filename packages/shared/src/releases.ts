@@ -20,6 +20,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       '📻 Jukeboxen spiller nu rigtige melodier, som alle i rummet hører samtidig',
       '▶︎ "Se hvordan det virker" på spilkonsollen viser en lille film om Farvekamp og Kapløb',
       '🚪 Du ryger ikke længere ind ad en dør, bare fordi du stopper foran den',
+      '📍 Efter en opdatering står du samme sted som før – ikke ved døren',
     ],
   },
   {

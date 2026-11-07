@@ -342,6 +342,8 @@ export class Hotel {
     this.handle(s, s.user, msg);
   }
 
+  private spotTick = 0;
+
   private rememberSpot(s: Session) {
     if (!s.user || !s.room) return;
     const t = s.player ? s.room.tileOf(s.player) : undefined;
@@ -396,8 +398,8 @@ export class Hotel {
     const exists = (id: string) =>
       PUBLIC_ROOMS.some((r) => r.id === id) || !!this.store.getRoom(id);
     const recent = last && Date.now() - last.at < 15 * 60_000 && exists(last.id);
-    // Back on the same tile if you were only gone a moment.
-    const tile = recent && Date.now() - last.at < 2 * 60_000 ? last.tile : undefined;
+    // Back on the same tile too (a deploy can take a minute or two).
+    const tile = recent ? last.tile : undefined;
     if (recent && last.id !== user.homeRoomId) this.join(s, last.id, undefined, tile);
     if (!s.room)
       this.join(
@@ -2593,6 +2595,12 @@ export class Hotel {
   private everySecond() {
     this.expireQuizzes();
     this.checkEvents();
+    // Save where everyone stands every few seconds, so even a hard restart (deploy, crash)
+    // puts people back on their own tile instead of at the door.
+    if (++this.spotTick % 5 === 0 && this.sessions.size) {
+      for (const s of this.sessions) this.rememberSpot(s);
+      this.store.touch();
+    }
     for (const s of this.byUser.values()) {
       const u = s.user!;
       u.onlineSec++;

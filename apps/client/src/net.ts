@@ -47,7 +47,8 @@ export class Net {
       }
       if (this.stopped) return;
       this.onStatus('offline');
-      const delay = Math.min(15_000, 500 * 2 ** this.retry++);
+      // Quick retries: a deploy is usually back within a minute.
+      const delay = Math.min(4_000, 500 * 2 ** this.retry++);
       setTimeout(() => this.connect(), delay);
     };
   }
