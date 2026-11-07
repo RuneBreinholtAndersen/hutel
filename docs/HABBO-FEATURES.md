@@ -2,7 +2,7 @@
 
 Listen sammenligner Lobbi (tidligere Hutel) med de klassiske funktioner fra Habbo Hotel. Navne, grafik og møbler kopieres ikke: vi laver vores egen version af idéen.
 
-_Senest opdateret: 7. november 2026 (begrænsede udgaver med serienummer)._
+_Senest opdateret: 7. november 2026 (inventar-knap)._
 
 **Sådan læses den**
 - **Værdi**: hvor meget det betyder for spillerne (★–★★★)
@@ -142,3 +142,4 @@ Det her mener jeg giver mest spil for pengene, i den rækkefølge:
 - ✅ Login med e-mail og Google, 18+-bekræftelse og vilkår
 - ✅ Guldkister: meget sjældent (i snit hver 4. time) dukker en glimtende guldkiste op i et offentligt rum. Den første, der klikker og når hen til den, får en sjælden ting, som ikke kan købes i butikken (Guldanden, Krystallampen, Guldtronen eller Regnbuekuglen). Kisten forsvinder efter 8 minutter. Admin kan gemme en kiste til test
 - ✅ Begrænsede udgaver: møbler der kun sælges i en periode og i et fast antal (første: Nordlyslampen, 100 stk. til og med 21. november). Hvert eksemplar har sit eget nummer (#7 af 100), som følger med, når det byttes eller sælges på markedet. Guldkisternes rares bliver også nummereret, og alle rares kan nu gemmes væk, byttes og sælges
+- ✅ Inventar med egen 📦-knap i bunden, der virker i alle rum, rød prik ved nye ting og "Vis"-knap, når man får noget

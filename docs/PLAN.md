@@ -209,6 +209,7 @@ Samme kodebase og grafik som Hutel, men en helt separat verden for børn. Børn 
 
 ### 7. november
 
+- ✅ Eget inventar-panel med 📦-knap i bunden: virker i alle rum (før lå det kun i butikken, som kun virker på eget værelse), rød prik ved nye ting og "Vis"-knap i beskeden, når man får noget
 - ✅ "Nyt i Lobbi" vises nu kun én gang pr. nyhed – ikke efter hver deploy
 - ✅ Begrænsede udgaver med serienummer: `packages/shared/src/limited.ts` styrer, hvad der sælges, hvor mange og hvornår. Butikken viser "✨ Begrænset udgave" med antal tilbage. Første drop: Nordlyslampen (100 stk., 250 mønter, til og med 21. nov.). Rettet: rares fra guldkister kunne ikke gemmes væk eller sælges på markedet
 - ✅ Guldkister med sjældne ting: i snit én kiste hver 4. time i et offentligt rum med gæster, den forsvinder efter 8 min, og den første, der når den, får Guldanden, Krystallampen, Guldtronen eller Regnbuekuglen (kan ikke købes, kan byttes og sælges på markedet). Knappen "✨ Gem en guldkiste her" i Admin-panelet bruges til test

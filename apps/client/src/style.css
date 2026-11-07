@@ -478,10 +478,19 @@ select {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
   text-align: center;
   max-width: 90vw;
+  z-index: 40;
 }
 #toast.show {
   opacity: 1;
   transform: translate(-50%, -50%) scale(1);
+}
+#toast.act {
+  pointer-events: auto;
+}
+#toast button {
+  margin-left: 8px;
+  background: #3a2618;
+  color: var(--txt);
 }
 #toast.error {
   background: #e0564a;

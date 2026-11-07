@@ -19,6 +19,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       '✨ En sjælden gang dukker en glimtende guldkiste op i et offentligt rum – den første, der når den, får en sjælden ting',
       '🌌 Begrænset udgave i butikken: Nordlyslampen – kun 100 stk. og kun til 21. november',
       '#️⃣ Sjældne ting har deres eget nummer, som følger med, når de byttes eller sælges',
+      '📦 Ny Inventar-knap i bunden – virker i alle rum, og en rød prik viser, når du har fået noget nyt',
     ],
   },
   {

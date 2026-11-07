@@ -41,12 +41,27 @@ export function setCoinText(el: HTMLElement, text: string) {
   });
 }
 
-export function toast(text: string, kind: 'info' | 'error' = 'info') {
+/** A short message at the top. `action` adds a button (e.g. "Vis") and keeps it up a bit longer. */
+export function toast(
+  text: string,
+  kind: 'info' | 'error' = 'info',
+  action?: { label: string; run: () => void },
+) {
   const el = $('toast');
   setCoinText(el, text);
-  el.className = 'show' + (kind === 'error' ? ' error' : '');
+  if (action) {
+    const b = document.createElement('button');
+    b.className = 'small';
+    b.textContent = action.label;
+    b.addEventListener('click', () => {
+      el.className = '';
+      action.run();
+    });
+    el.append(' ', b);
+  }
+  el.className = 'show' + (kind === 'error' ? ' error' : '') + (action ? ' act' : '');
   clearTimeout(toastT);
-  toastT = window.setTimeout(() => (el.className = ''), 2600);
+  toastT = window.setTimeout(() => (el.className = ''), action ? 6000 : 2600);
 }
 
 export function pop(text: string) {

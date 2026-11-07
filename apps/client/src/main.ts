@@ -769,6 +769,8 @@ function handle(msg: ServerMsg) {
     case 'inventory':
       if (!me) return;
       me.inventory = msg.items;
+      updateInvDot();
+      if (panelKind === 'inv') renderInventory();
       if (panelKind === 'shop') renderShop();
       if (panelKind === 'market') renderMarket();
       if (trade) renderTrade();
@@ -952,6 +954,8 @@ function handle(msg: ServerMsg) {
       $('fade').classList.remove('on');
       roomGfx.openDoor(false);
       if (msg.kind === 'error') audio.sfx('error');
+      if (msg.kind !== 'error' && /inventar/i.test(msg.text))
+        return toast(msg.text, msg.kind, { label: 'Vis', run: renderInventory });
       return toast(msg.text, msg.kind);
     case 'needPassword':
       $('fade').classList.remove('on');
@@ -973,8 +977,8 @@ function openPanel(kind: string, html: string) {
   p.innerHTML = html;
   p.classList.remove('hidden');
   p.querySelector('[data-close]')?.addEventListener('click', closePanel);
-  for (const id of ['bNav', 'bFriends', 'bFig', 'bShop']) $(id).classList.remove('on');
-  const btn = { nav: 'bNav', friends: 'bFriends', fig: 'bFig', shop: 'bShop' }[kind];
+  for (const id of ['bNav', 'bFriends', 'bFig', 'bShop', 'bInv']) $(id).classList.remove('on');
+  const btn = { nav: 'bNav', friends: 'bFriends', fig: 'bFig', shop: 'bShop', inv: 'bInv' }[kind];
   if (btn) $(btn).classList.add('on');
   $('bAdmin').classList.toggle('on', kind === 'adminUsers');
 }
@@ -983,7 +987,8 @@ function closePanel() {
   stopTutorial = null;
   panelKind = null;
   $('panel').classList.add('hidden');
-  for (const id of ['bNav', 'bFriends', 'bFig', 'bShop', 'bAdmin']) $(id).classList.remove('on');
+  for (const id of ['bNav', 'bFriends', 'bFig', 'bShop', 'bInv', 'bAdmin'])
+    $(id).classList.remove('on');
 }
 const head = (title: string, sub = '') =>
   `<h2>${title} <button class="x" data-close>✕</button></h2>${sub ? `<p class="sub">${sub}</p>` : ''}`;
@@ -1254,6 +1259,60 @@ function limitedSection() {
     })
     .join('');
   return `<h3>✨ Begrænset udgave</h3><p class="sub">Sælges kun i kort tid, og hvert eksemplar har sit eget nummer. Når de er væk, kan de kun fås ved at bytte eller på markedet.</p><div class="grid">${cards}</div>`;
+}
+
+/** How many inventory items the player has seen; more than that lights the red dot. */
+let invSeen = -1;
+function updateInvDot() {
+  if (!me) return;
+  if (invSeen < 0 || panelKind === 'inv') invSeen = me.inventory.length;
+  invSeen = Math.min(invSeen, me.inventory.length);
+  const fresh = me.inventory.length - invSeen;
+  const dot = $('invDot');
+  dot.classList.toggle('hidden', fresh <= 0);
+}
+
+/** The inventory works everywhere; placing things needs your own room. */
+function renderInventory() {
+  if (!me) return;
+  invSeen = me.inventory.length;
+  updateInvDot();
+  const inv = me.inventory.map((it, i) => ({ it, i }));
+  const special = (t: FurnitureType) =>
+    !!(FURNITURE[t] as FurnitureDef).rare || !!(FURNITURE[t] as FurnitureDef).limited;
+  // Newest first, rares and limited editions on top.
+  inv.reverse().sort((a, b) => Number(special(b.it.type)) - Number(special(a.it.type)));
+  const own = isOwner();
+  const cards = inv
+    .map(({ it, i }) => {
+      const c = FURNITURE[it.type] as FurnitureDef;
+      const col = c.colors?.[it.color ?? 0];
+      const tag = c.limited
+        ? '<small class="sub">✨ Begrænset udgave</small>'
+        : c.rare
+          ? '<small class="sub">✨ Sjælden</small>'
+          : '';
+      return `<div class="item${it.serial || special(it.type) ? ' limited' : ''}"><div class="ic">${c.icon}</div><div class="n">${esc(c.name)}${serialTag(it)}</div>${tag}${col !== undefined && it.color ? `<div class="dots"><i style="background:#${col.toString(16).padStart(6, '0')}"></i></div>` : ''}${own ? `<button data-inv="${i}">Placér</button>` : ''}</div>`;
+    })
+    .join('');
+  const hint = own
+    ? '<p class="sub">Tryk Placér for at stille en ting på dit værelse. Byt med andre, eller sælg på 🏪 Markedet.</p>'
+    : `<p class="sub">Du kan stille ting op, når du er på dit eget værelse.</p><div class="row"><button id="invHome" class="small primary">🏠 Gå til mit værelse</button></div>`;
+  openPanel(
+    'inv',
+    head(
+      `📦 Dit inventar${inv.length ? ` (${inv.length})` : ''}`,
+      'Ting du har gemt væk, fundet eller fået ved at bytte.',
+    ) +
+      (inv.length
+        ? hint + `<div class="grid">${cards}</div>`
+        : '<p class="sub">Dit inventar er tomt. Gem møbler væk med 📦 i byggetilstand, eller find en guldkiste ✨</p>'),
+  );
+  const p = $('panel');
+  p.querySelectorAll<HTMLElement>('[data-inv]').forEach((b) =>
+    b.addEventListener('click', () => startPlaceInv(Number(b.dataset.inv))),
+  );
+  $('invHome')?.addEventListener('click', () => goTo(me!.homeRoomId));
 }
 
 /** Shop: tab (department, 'all', 'decor' or 'inv') and search text. */
@@ -3196,6 +3255,7 @@ updateSoundIcon();
 $('panel').addEventListener('change', () => panelKind === 'sound' && updateSoundIcon());
 $('bMarket').addEventListener('click', toggle('market', openMarket));
 $('bShop').addEventListener('click', toggle('shop', renderShop));
+$('bInv').addEventListener('click', toggle('inv', renderInventory));
 $('bBuild').addEventListener('click', () => {
   closePanel();
   setBuild(!build);
