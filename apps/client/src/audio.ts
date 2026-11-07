@@ -56,6 +56,18 @@ export function saveSettings(patch: Partial<AudioSettings>) {
   applySettings();
 }
 
+// Another open Lobbi tab changed the sound settings: follow it, so muting one tab mutes all.
+addEventListener('storage', (e) => {
+  if (e.key !== KEY) return;
+  Object.assign(settings, load());
+  applySettings();
+  onExternalChange?.();
+});
+let onExternalChange: (() => void) | undefined;
+export function onSettingsChanged(fn: () => void) {
+  onExternalChange = fn;
+}
+
 /** Browsers only allow sound after a click or key press. */
 function unlock() {
   if (!ctx) {

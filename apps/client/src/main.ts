@@ -2975,6 +2975,7 @@ $('bSound').addEventListener('click', () => {
     });
   else audio.saveSettings({ muted: true });
   updateSoundIcon();
+  audio.onSettingsChanged(updateSoundIcon);
   if (off) setTimeout(() => audio.sfx('click'), 50);
   if (panelKind === 'sound') renderSound();
 });

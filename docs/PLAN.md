@@ -9,7 +9,9 @@ Sidst opdateret: 6. november 2026. Rækkefølge: voksen-Hutel i lukket beta før
 ## Det skal Rune gøre selv
 
 - [ ] Opret et privat, tomt GitHub-repo `hutel` (ingen README, .gitignore eller licens), så koden kan skubbes op
-- [ ] Registrér domænet **hutel.dk** (ledigt hos Simply pr. 6. nov. 2026)
+- [ ] Hjemmesiden på lobbi.dk: upload `apps/site/dist` til `public_html/` hos Simply (FTPS) – eller lav en SSH-nøgle, læg den offentlige del i Simply → SSH Keys og den private som GitHub-secret `SIMPLY_SSH_KEY`, så deployer den selv
+- [ ] DNS: peg `spil.lobbi.dk` på Fly (`fly certs add spil.lobbi.dk` og en CNAME til hutel.fly.dev), og sæt GitHub-variablen `PUBLIC_PLAY_URL=https://spil.lobbi.dk`
+- [ ] Få vilkår og privatlivspolitik på lobbi.dk gennemlæst før lancering
 - [ ] Opret et Supabase-projekt i EU-region og slå login med e-mail, Google og Facebook til (se `docs/DEPLOY.md` → "Login med e-mail, Google og Facebook")
 - [ ] Sæt `SUPABASE_URL` og `SUPABASE_ANON_KEY` som Fly-secrets og deploy igen
 - [ ] Facebook-login (sat på pause): opret Meta-app, indsæt App ID/Secret i Supabase, og sæt `AUTH_PROVIDERS=google,facebook`
@@ -46,6 +48,8 @@ Sidst opdateret: 6. november 2026. Rækkefølge: voksen-Hutel i lukket beta før
 - ✅ Højttaler-knappen slår al lyd til/fra med ét klik (rød streg når slået fra); lydstyrke og effekter/musik under Figur → Lydindstillinger
 - ✅ Biograf (YouTube via youtube-nocookie-indlejring, video-id valideres på serveren, start-tid synkroniseres; spærret når HUTEL_JUNIOR=true) og Sneboldkamp (server styrer rækkevidde, ammo, cooldown og frys)
 - ✅ Navneskift i brugerfladen: Hutel → Lobbi (lobbi.dk købt). Tekniske navne (`@hutel/*`, Fly-app, localStorage) er uændrede
+- ✅ Lyd: slå lyd fra i én fane slår den også fra i andre åbne Lobbi-faner
+- ✅ Hjemmeside lobbi.dk i Astro (`apps/site`): levende lobby i hero, figur-bygger, hotel-oversigt, sikkerhed, nyheder fra RELEASE_NOTES, Sådan spiller du, Spørgsmål, Vilkår/Privatliv (kladder), 404, .htaccess; deploy-workflow til Simply via SSH-nøgle
 - ✅ Tapet (8 slags) og gulve (8 slags): købes én gang og bruges i alle egne rum
 - ✅ Vægmøbler: maleri, stort maleri, plakat, vindue, væghylde, vægur, spejl og neonskilt (hænges på bag- eller venstrevæg)
 - ✅ Lobbyen og caféen er nu 12×12 med ny møblering; rumstørrelse kan variere pr. rum

@@ -1,0 +1,253 @@
+@import '@fontsource-variable/fredoka';
+@import '@fontsource-variable/figtree';
+
+:root {
+  --night: #241730;
+  --dusk: #6a3f45;
+  --wood: #3a2418;
+  --wood-2: #4e3121;
+  --cream: #fff4e0;
+  --cream-dim: #e9d9bf;
+  --lamp: #ffb347;
+  --teal: #5f9a8c;
+  --brass: #e0b04a;
+  --display: 'Fredoka Variable', system-ui, sans-serif;
+  --body: 'Figtree Variable', system-ui, sans-serif;
+  --measure: 62ch;
+}
+* {
+  box-sizing: border-box;
+}
+html {
+  background: var(--night);
+  color: var(--cream);
+  font-family: var(--body);
+  font-size: 18px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+body {
+  margin: 0;
+}
+a {
+  color: var(--lamp);
+}
+:focus-visible {
+  outline: 3px solid var(--lamp);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+h1,
+h2,
+h3 {
+  font-family: var(--display);
+  line-height: 1.1;
+  margin: 0 0 0.5em;
+  font-weight: 600;
+}
+h1 {
+  font-size: clamp(2.6rem, 6vw, 4.6rem);
+  letter-spacing: -0.01em;
+}
+h2 {
+  font-size: clamp(1.9rem, 3.6vw, 2.8rem);
+}
+h3 {
+  font-size: 1.3rem;
+}
+p {
+  max-width: var(--measure);
+  margin: 0 0 1em;
+}
+.wrap {
+  width: min(1160px, 100% - 48px);
+  margin-inline: auto;
+}
+.btn {
+  display: inline-block;
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 1.1rem;
+  text-decoration: none;
+  padding: 0.7em 1.4em;
+  border-radius: 999px;
+  background: var(--lamp);
+  color: var(--wood);
+  box-shadow: 0 4px 0 #c97b1f;
+  transition:
+    transform 0.12s,
+    box-shadow 0.12s;
+}
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 #c97b1f;
+}
+.btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 #c97b1f;
+}
+.btn.ghost {
+  background: transparent;
+  color: var(--cream);
+  box-shadow: inset 0 0 0 2px rgba(255, 244, 224, 0.45);
+}
+.btn.ghost:hover {
+  box-shadow: inset 0 0 0 2px var(--cream);
+}
+
+/* nav */
+.nav {
+  position: absolute;
+  inset: 0 0 auto 0;
+  z-index: 10;
+  padding: 18px 0;
+}
+.nav .wrap {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+.logo {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 1.7rem;
+  color: var(--cream);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.logo svg {
+  width: 30px;
+  height: 30px;
+}
+.nav ul {
+  display: flex;
+  gap: 22px;
+  list-style: none;
+  margin: 0 0 0 auto;
+  padding: 0;
+}
+.nav ul a {
+  color: var(--cream);
+  text-decoration: none;
+  font-weight: 600;
+}
+.nav ul a:hover {
+  color: var(--lamp);
+}
+.nav .btn {
+  font-size: 1rem;
+  padding: 0.5em 1.1em;
+}
+.page .nav {
+  position: static;
+  background: var(--wood);
+}
+@media (max-width: 720px) {
+  .nav ul {
+    display: none;
+  }
+  .nav .btn {
+    margin-left: auto;
+  }
+}
+
+/* game overlays reused from the game (name tags, speech bubbles) */
+.scene-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.scene-overlay .tag {
+  position: absolute;
+  left: 0;
+  top: 0;
+  background: rgba(40, 24, 16, 0.82);
+  color: var(--cream);
+  font: 600 13px var(--display);
+  padding: 2px 9px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+.scene-overlay .tag.bot {
+  background: rgba(35, 55, 70, 0.88);
+}
+.scene-overlay .tag span {
+  margin-left: 4px;
+}
+.scene-overlay .bubble {
+  position: absolute;
+  left: 0;
+  top: 0;
+  background: #fffaf0;
+  color: #3a2618;
+  padding: 6px 11px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.25;
+  max-width: 230px;
+  width: max-content;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
+  text-align: center;
+}
+.scene-overlay .bubble b {
+  color: #c4621a;
+}
+.scene-overlay .bubble:after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  margin-left: -7px;
+  border: 7px solid transparent;
+  border-top-color: #fffaf0;
+  border-bottom: 0;
+}
+
+/* footer */
+.foot {
+  background: var(--wood);
+  padding: 48px 0 40px;
+  font-size: 0.9rem;
+  color: var(--cream-dim);
+}
+.foot .wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px 48px;
+  justify-content: space-between;
+}
+.foot ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.foot a {
+  color: var(--cream);
+}
+
+/* simple content pages */
+.prose {
+  padding: 56px 0 80px;
+}
+.prose h1 {
+  font-size: clamp(2.2rem, 5vw, 3.4rem);
+}
+.prose h2 {
+  font-size: 1.6rem;
+  margin-top: 1.6em;
+}
+.prose li {
+  max-width: var(--measure);
+  margin-bottom: 0.4em;
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}

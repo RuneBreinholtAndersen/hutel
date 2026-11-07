@@ -1,0 +1,11 @@
+---
+import Base from '../layouts/Base.astro';
+import { PLAY_URL } from '../config';
+---
+<Base page title="Siden findes ikke" description="Siden findes ikke på Lobbi.">
+  <article class="prose wrap">
+    <h1>Den dør fører ingen steder hen.</h1>
+    <p>Siden findes ikke længere, eller adressen er skrevet forkert.</p>
+    <p><a class="btn" href="/">Til forsiden</a> <a class="btn ghost" href={PLAY_URL}>Spil gratis</a></p>
+  </article>
+</Base>

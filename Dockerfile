@@ -6,6 +6,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
 COPY apps/client/package.json apps/client/
 COPY apps/server/package.json apps/server/
 COPY packages/shared/package.json packages/shared/
+COPY apps/site/package.json apps/site/
 RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm --filter @hutel/client build

@@ -1,0 +1,7 @@
+{
+  "extends": "astro/tsconfigs/strict",
+  "compilerOptions": {
+    "paths": { "@game/*": ["../client/src/*"] }
+  },
+  "include": ["src", ".astro/types.d.ts"]
+}

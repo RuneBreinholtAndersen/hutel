@@ -1,0 +1,454 @@
+---
+import Base from '../layouts/Base.astro';
+import { PLAY_URL } from '../config';
+import { PUBLIC_ROOMS, RELEASE_NOTES } from '@hutel/shared';
+
+const FLOORS: Record<string, string> = {
+  lobby: 'Stuen',
+  cafe: 'Stuen',
+  arcade: '1. sal',
+  cinema: '1. sal',
+  pool: '2. sal',
+  roof: 'Taget',
+};
+const ORDER = ['Stuen', '1. sal', '2. sal', 'Taget'];
+const rooms = PUBLIC_ROOMS.map((r) => ({ name: r.name, text: r.description, floor: FLOORS[r.id] ?? '' })).sort(
+  (a, b) => ORDER.indexOf(a.floor) - ORDER.indexOf(b.floor),
+);
+const news = RELEASE_NOTES.slice(0, 2);
+const fmt = (d: string) =>
+  new Date(d).toLocaleDateString('da-DK', { day: 'numeric', month: 'long', year: 'numeric' });
+
+const things = [
+  { icon: '🛋️', title: 'Indret dit værelse', text: 'Køb møbler, tapet og gulv for de mønter, du tjener ved at være online. Byg trapper, skift rummets form og åbn døre til flere værelser.' },
+  { icon: '🎨', title: 'Spil med de andre', text: 'Start Farvekamp, Kapløb eller Sneboldkamp fra en spilkonsol. Vinderne får mønter.' },
+  { icon: '🎬', title: 'Se film sammen', text: 'Sæt dig i biografen og se YouTube-videoer på lærredet – alle ser det samme på samme tid.' },
+  { icon: '🐶', title: 'Få et kæledyr', text: 'En hund, en kat eller en lille drage, der følger efter dig, lærer tricks og stiger i level.' },
+  { icon: '🤝', title: 'Byt og handel', text: 'Byt møbler med andre gæster, eller sæt dem til salg på markedet – også mens du er offline.' },
+  { icon: '💬', title: 'Snak, hvisk og råb', text: 'Talebobler, hvisken til én, beskeder til venner og et råb til hele rummet, når det er vigtigt.' },
+];
+---
+<Base title="Lobbi" description="Lobbi er et dansk chat-hotel i browseren. Lav din figur, indret dit eget værelse, spil og mød nye mennesker. Gratis og uden download.">
+  <section class="hero" aria-labelledby="hero-title">
+    <div id="lobby" class="hero-scene" aria-hidden="true"></div>
+    <div class="wrap hero-copy">
+      <div class="speech">
+        <h1 id="hero-title">Tjek ind på Lobbi.</h1>
+        <p>Et hyggeligt chat-hotel lige i browseren. Lav din figur, indret dit eget værelse og mød nye mennesker – gratis og uden at downloade noget.</p>
+        <div class="cta">
+          <a class="btn" href={PLAY_URL}>Spil gratis</a>
+          <a class="btn ghost" href="/saadan-spiller-du/">Sådan spiller du</a>
+        </div>
+        <p class="small">Kun for voksne over 18 år.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="figure-sec" aria-labelledby="fig-title">
+    <div class="wrap figure-grid">
+      <div class="fig-stage">
+        <div id="figure" class="fig-canvas" aria-hidden="true"></div>
+      </div>
+      <div>
+        <h2 id="fig-title">Først skal du have en figur</h2>
+        <p>Stort hoved, runde former og et blink i øjet. Prøv dig frem her – i spillet kan du købe mere tøj, sko, hatte og effekter, og gemme dine yndlingsoutfits.</p>
+        <div id="figure-controls" class="fig-controls"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="directory-sec" aria-labelledby="dir-title">
+    <div class="wrap">
+      <h2 id="dir-title">Rundt i hotellet</h2>
+      <p>Hotellets rum er åbne for alle. Dit eget værelse er dit – du bestemmer, hvem der må komme ind.</p>
+      <div class="directory">
+        <ul>
+          {rooms.map((r) => (
+            <li>
+              <span class="room-name">{r.name}</span>
+              <span class="room-text">{r.text}</span>
+              <span class="room-floor">{r.floor}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="things-sec" aria-labelledby="things-title">
+    <div class="wrap">
+      <h2 id="things-title">Det kan du lave på Lobbi</h2>
+      <ul class="things">
+        {things.map((t) => (
+          <li>
+            <span class="thing-icon" aria-hidden="true">{t.icon}</span>
+            <div>
+              <h3>{t.title}</h3>
+              <p>{t.text}</p>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </section>
+
+  <section class="safe-sec" aria-labelledby="safe-title">
+    <div class="wrap safe-grid">
+      <div>
+        <h2 id="safe-title">Et rart sted at hænge ud</h2>
+        <p>Lobbi er for voksne, og vi vil gerne have, at alle har det godt her.</p>
+      </div>
+      <ul class="safe">
+        <li><strong>AI-beboere er altid markeret.</strong> Ida, Magnus og de andre AI-figurer har 🤖 ved navnet og siger aldrig, at de er mennesker.</li>
+        <li><strong>Du bestemmer, hvem du snakker med.</strong> Bloker, rapportér og slå "må ikke følges" til, så kan venner se, at du er online, men ikke hvor.</li>
+        <li><strong>Moderatorer holder øje.</strong> Chikane og hadsk tale fører til pause eller udelukkelse.</li>
+        <li><strong>Chatten slettes efter 30 dage.</strong> Vi gemmer kun beskeder, så længe det er nødvendigt for moderation.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="news-sec" aria-labelledby="news-title">
+    <div class="wrap">
+      <h2 id="news-title">Nyt i Lobbi</h2>
+      <div class="news">
+        {news.map((n) => (
+          <article>
+            <time datetime={n.date}>{fmt(n.date)}</time>
+            <h3>{n.title}</h3>
+            <ul>{n.items.map((i) => <li>{i}</li>)}</ul>
+          </article>
+        ))}
+      </div>
+      <p><a href="/nyheder/">Se alle nyheder</a></p>
+    </div>
+  </section>
+
+  <section class="last-sec">
+    <div class="wrap">
+      <h2>Der er altid nogen i lobbyen.</h2>
+      <a class="btn" href={PLAY_URL}>Spil gratis</a>
+    </div>
+  </section>
+</Base>
+
+<script>
+  import { startLobby } from '../scripts/lobby';
+  import { startFigure } from '../scripts/figure';
+  const supportsGL = (() => {
+    try {
+      return !!document.createElement('canvas').getContext('webgl');
+    } catch {
+      return false;
+    }
+  })();
+  if (supportsGL) {
+    startLobby(document.getElementById('lobby')!);
+    startFigure(document.getElementById('figure')!, document.getElementById('figure-controls')!);
+  }
+</script>
+
+<style>
+  .hero {
+    position: relative;
+    min-height: min(92vh, 900px);
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    background: linear-gradient(180deg, #2a1b33 0%, #6a3f45 58%, #2a1a22 100%);
+  }
+  .hero-scene {
+    position: absolute;
+    inset: 0;
+  }
+  .hero-scene :global(canvas) {
+    display: block;
+  }
+  .hero-copy {
+    position: relative;
+    z-index: 2;
+    pointer-events: none;
+  }
+  .speech {
+    pointer-events: auto;
+    position: relative;
+    max-width: 520px;
+    background: var(--cream);
+    color: var(--wood);
+    padding: 40px 44px 30px;
+    border-radius: 32px;
+    box-shadow: 0 24px 60px rgba(20, 8, 20, 0.45);
+  }
+  .speech::after {
+    /* The tail points at the lobby: the headline is "said" by the hotel. */
+    content: '';
+    position: absolute;
+    right: -26px;
+    bottom: 64px;
+    border: 18px solid transparent;
+    border-left: 34px solid var(--cream);
+    border-right: 0;
+  }
+  .speech h1 {
+    color: var(--wood);
+  }
+  .speech p {
+    font-size: 1.1rem;
+  }
+  .speech .small {
+    font-size: 0.85rem;
+    margin: 16px 0 0;
+    opacity: 0.75;
+  }
+  .speech .btn.ghost {
+    color: var(--wood);
+    box-shadow: inset 0 0 0 2px rgba(58, 36, 24, 0.35);
+  }
+  .cta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 8px;
+  }
+  @media (max-width: 860px) {
+    .hero {
+      flex-direction: column;
+      align-items: stretch;
+      padding-top: 84px;
+    }
+    .hero-scene {
+      position: relative;
+      inset: auto;
+      left: 0;
+      height: 52vh;
+      order: 2;
+    }
+    .speech {
+      padding: 28px 26px 22px;
+    }
+    .speech::after {
+      right: auto;
+      left: 60px;
+      bottom: -30px;
+      border: 16px solid transparent;
+      border-top: 32px solid var(--cream);
+      border-bottom: 0;
+    }
+  }
+
+  section:not(.hero) {
+    padding: 96px 0;
+  }
+  .figure-sec {
+    background: var(--wood);
+  }
+  .figure-grid {
+    display: grid;
+    grid-template-columns: minmax(260px, 420px) 1fr;
+    gap: 56px;
+    align-items: center;
+  }
+  .fig-stage {
+    aspect-ratio: 1 / 1.1;
+    border-radius: 50% 50% 24px 24px / 40% 40% 24px 24px;
+    background: radial-gradient(circle at 50% 35%, #7a4a3a 0%, #4e3121 70%);
+    overflow: hidden;
+  }
+  .fig-canvas {
+    width: 100%;
+    height: 100%;
+  }
+  .fig-controls :global(.fig-row) {
+    display: grid;
+    grid-template-columns: 90px 1fr;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .fig-controls :global(.fig-label) {
+    font-weight: 600;
+    color: var(--cream-dim);
+  }
+  .fig-controls :global(.fig-chips),
+  .fig-controls :global(.fig-swatches) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .fig-controls :global(.fig-chips button) {
+    font: 600 0.9rem var(--display);
+    background: rgba(255, 244, 224, 0.1);
+    color: var(--cream);
+    border: 0;
+    border-radius: 999px;
+    padding: 6px 12px;
+    cursor: pointer;
+  }
+  .fig-controls :global(.fig-chips button[aria-pressed='true']) {
+    background: var(--lamp);
+    color: var(--wood);
+  }
+  .fig-controls :global(.fig-swatches button) {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    box-shadow: inset 0 0 0 1px rgba(255, 244, 224, 0.35);
+    cursor: pointer;
+  }
+  .fig-controls :global(.fig-swatches button[aria-pressed='true']) {
+    border-color: var(--lamp);
+  }
+  @media (max-width: 860px) {
+    .figure-grid {
+      grid-template-columns: 1fr;
+    }
+    .fig-stage {
+      max-width: 340px;
+    }
+  }
+
+  /* The room directory looks like the brass sign by a hotel elevator. */
+  .directory {
+    margin-top: 36px;
+    background: linear-gradient(180deg, #2c1a12, #1e120c);
+    border: 6px solid var(--brass);
+    border-radius: 14px;
+    padding: 18px 28px;
+    box-shadow:
+      inset 0 0 0 2px #7a5a24,
+      0 20px 50px rgba(0, 0, 0, 0.4);
+  }
+  .directory ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .directory li {
+    display: grid;
+    grid-template-columns: 200px 1fr auto;
+    gap: 20px;
+    align-items: baseline;
+    padding: 14px 0;
+    border-bottom: 1px dashed rgba(224, 176, 74, 0.35);
+  }
+  .directory li:last-child {
+    border-bottom: 0;
+  }
+  .room-name {
+    font: 600 1.35rem var(--display);
+    color: var(--brass);
+  }
+  .room-text {
+    color: var(--cream-dim);
+  }
+  .room-floor {
+    font-family: var(--display);
+    color: var(--brass);
+    white-space: nowrap;
+  }
+  @media (max-width: 720px) {
+    .directory li {
+      grid-template-columns: 1fr auto;
+    }
+    .room-text {
+      grid-column: 1 / -1;
+      grid-row: 2;
+    }
+  }
+
+  .things {
+    list-style: none;
+    padding: 0;
+    margin: 40px 0 0;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 36px 56px;
+  }
+  .things li {
+    display: flex;
+    gap: 18px;
+  }
+  .thing-icon {
+    font-size: 2rem;
+    line-height: 1;
+    flex: none;
+    width: 56px;
+    height: 56px;
+    display: grid;
+    place-items: center;
+    background: rgba(255, 244, 224, 0.08);
+    border-radius: 18px 18px 18px 4px;
+  }
+  .things p {
+    color: var(--cream-dim);
+    margin: 0;
+  }
+  @media (max-width: 720px) {
+    .things {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .safe-sec {
+    background: var(--teal);
+    color: #10231f;
+  }
+  .safe-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.3fr;
+    gap: 48px;
+  }
+  .safe {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .safe li {
+    padding: 14px 0;
+    border-bottom: 1px solid rgba(16, 35, 31, 0.2);
+  }
+  .safe li:first-child {
+    padding-top: 0;
+  }
+  @media (max-width: 860px) {
+    .safe-grid {
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+  }
+
+  .news {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 40px;
+    margin: 32px 0 24px;
+  }
+  .news time {
+    color: var(--lamp);
+    font-weight: 600;
+  }
+  .news h3 {
+    margin-top: 6px;
+  }
+  .news ul {
+    padding-left: 0;
+    list-style: none;
+    color: var(--cream-dim);
+  }
+  .news li {
+    margin-bottom: 6px;
+  }
+  @media (max-width: 720px) {
+    .news {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .last-sec {
+    background: linear-gradient(180deg, var(--night), #6a3f45);
+    text-align: center;
+  }
+  .last-sec h2 {
+    margin-bottom: 28px;
+  }
+</style>

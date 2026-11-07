@@ -1,0 +1,39 @@
+---
+import Base from '../../layouts/Base.astro';
+const faq = [
+  ['Koster det noget?', 'Nej. Lobbi er gratis at spille. Mønter tjener du ved at være online, klare opgaver og vinde spil.'],
+  ['Hvor gammel skal man være?', 'Lobbi er for voksne over 18 år. Du bekræfter din alder, når du opretter dig.'],
+  ['Hvem er Ida, Magnus og de andre med 🤖?', 'Det er AI-beboere, der hjælper nye gæster og holder liv i rummene. De er altid markeret med 🤖, og de kan aldrig give mønter, møbler eller rettigheder.'],
+  ['Hvad gør jeg, hvis nogen er ubehagelig?', 'Klik på figuren og vælg Blokér eller Rapportér. En moderator ser på rapporten. Chikane, trusler og hadsk tale kan føre til pause eller udelukkelse.'],
+  ['Kan andre se, hvor jeg er?', 'Dine venner kan se, hvilket rum du er i, og gå derhen. Vil du ikke det, så slå "må ikke følges" til under Venner.'],
+  ['Hvad gemmer I om mig?', 'Dit navn, din figur, dine mønter, dine værelser og dine venner. Chatbeskeder gemmes i 30 dage af hensyn til moderation og slettes derefter. Læs mere i privatlivspolitikken.'],
+  ['Kan jeg spille på telefonen?', 'Ja, Lobbi kører i browseren. Det er nemmest på en større skærm, men du kan gå, chatte og indrette på telefonen.'],
+  ['Hvordan sletter jeg min konto?', 'Skriv til os på rune@breinholtdigital.dk fra den e-mail, du bruger på Lobbi, så sletter vi kontoen og dine data.'],
+];
+---
+<Base page title="Spørgsmål og tryghed" description="Svar på de mest almindelige spørgsmål om Lobbi: pris, alder, AI-beboere, tryghed og data.">
+  <article class="prose wrap">
+    <h1>Spørgsmål og tryghed</h1>
+    {faq.map(([q, a]) => (
+      <details>
+        <summary>{q}</summary>
+        <p>{a}</p>
+      </details>
+    ))}
+  </article>
+</Base>
+<style>
+  details {
+    border-bottom: 1px solid rgba(255, 244, 224, 0.14);
+    padding: 16px 0;
+    max-width: 760px;
+  }
+  summary {
+    font: 600 1.2rem var(--display);
+    cursor: pointer;
+  }
+  details p {
+    margin: 10px 0 0;
+    color: var(--cream-dim);
+  }
+</style>

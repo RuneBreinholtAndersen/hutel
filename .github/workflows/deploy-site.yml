@@ -1,0 +1,32 @@
+name: Deploy lobbi.dk
+# Builds the Astro site and uploads it to Simply (public_html) over SSH.
+# Needs the repository secret SIMPLY_SSH_KEY (a private key whose public half is added in
+# Simply's control panel under "SSH Keys"). Without the secret the upload is skipped.
+on:
+  push:
+    branches: [main]
+    paths: ['apps/site/**', 'packages/shared/**', 'apps/client/src/gfx/**', 'apps/client/src/actors.ts']
+  workflow_dispatch:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SSH_KEY: ${{ secrets.SIMPLY_SSH_KEY }}
+      PUBLIC_PLAY_URL: ${{ vars.PUBLIC_PLAY_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @hutel/site build
+      - name: Upload to Simply
+        if: env.SSH_KEY != ''
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ssh.simply.com >> ~/.ssh/known_hosts
+          rsync -az --delete -e "ssh -i ~/.ssh/id_ed25519" apps/site/dist/ lobbi.dk@ssh.simply.com:public_html/
