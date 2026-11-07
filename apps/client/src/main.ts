@@ -2894,8 +2894,10 @@ cv.addEventListener('pointerup', (e) => {
   onClick();
 });
 if (innerWidth / innerHeight < 0.8) {
-  stage.camera.zoom = 1.45;
+  stage.camera.zoom = 1.15;
   stage.camera.updateProjectionMatrix();
+  // Phones: tasks start folded up, so they don't cover the room.
+  $('quests').classList.add('min');
 }
 
 const KEYMAP: Record<string, string> = {

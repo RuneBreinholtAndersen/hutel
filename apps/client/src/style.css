@@ -1442,3 +1442,87 @@ body.junior #chatIn {
     box-shadow: none;
   }
 }
+
+/* ---------------- phones: everything fits on the screen ---------------- */
+html,
+body {
+  width: 100%;
+  overscroll-behavior: none;
+}
+@media (max-width: 760px) {
+  /* Nothing may be wider than the screen – otherwise the whole page slides sideways. */
+  #top {
+    top: calc(8px + env(safe-area-inset-top));
+    left: calc(8px + env(safe-area-inset-left));
+    right: calc(8px + env(safe-area-inset-right));
+    gap: 6px;
+  }
+  .brand {
+    min-width: 0;
+    flex: 0 1 auto;
+  }
+  .brand > div {
+    min-width: 0;
+  }
+  .brand span {
+    display: block;
+    max-width: 38vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .brand .logo {
+    font-size: 18px;
+  }
+  #coins {
+    flex: none;
+  }
+  #bSound {
+    flex: none;
+    padding: 6px 9px;
+  }
+  #bar {
+    left: 6px;
+    right: 6px;
+    width: auto;
+    transform: none;
+    bottom: calc(6px + env(safe-area-inset-bottom));
+    gap: 4px;
+    padding: 6px;
+  }
+  #chatForm {
+    min-width: 0;
+  }
+  #bar > button {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 9px 0;
+    font-size: 17px;
+  }
+  #log {
+    bottom: calc(112px + env(safe-area-inset-bottom));
+    max-height: 84px;
+    width: 70vw;
+  }
+  .panel {
+    bottom: calc(108px + env(safe-area-inset-bottom));
+    max-height: calc(100% - 190px - env(safe-area-inset-bottom));
+  }
+  /* Today's tasks: a small pill you tap to open, so the room stays visible. */
+  #quests {
+    top: calc(62px + env(safe-area-inset-top));
+    width: auto;
+    max-width: 230px;
+    padding: 6px 10px;
+  }
+  #quests h3 {
+    margin: 0;
+    gap: 8px;
+  }
+  #quests:not(.min) h3 {
+    margin-bottom: 6px;
+  }
+  #quests li.qsub {
+    display: none;
+  }
+}
