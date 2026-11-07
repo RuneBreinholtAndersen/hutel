@@ -1,4 +1,16 @@
 import { z } from 'zod';
+import {
+  ACTION_IDS,
+  BUBBLE_STYLE_IDS,
+  EMOTE_IDS,
+  NOTE_COLORS,
+  NOTE_MAX_LENGTH,
+  RELATION_IDS,
+  type ActionKind,
+  type EmoteKind,
+  type RelationKind,
+  type RoomNote,
+} from './social';
 import { FURNITURE_TYPES, type FurnitureType } from './catalog';
 import { CHAT_MAX_LENGTH, MAX_ROOM_SIZE } from './constants';
 import { LookSchema, type Look } from './look';
@@ -169,7 +181,38 @@ export const ClientMsgSchema = z.discriminatedUnion('t', [
       .min(1)
       .max(CHAT_MAX_LENGTH * 2),
   }),
-  z.object({ t: z.literal('action'), kind: z.enum(['wave', 'dance', 'stop']) }),
+  z.object({
+    t: z.literal('action'),
+    kind: z.enum(['stop', ...ACTION_IDS] as [string, ...string[]]),
+  }),
+  /** A little icon that floats up from my head. */
+  z.object({ t: z.literal('emote'), kind: z.enum(EMOTE_IDS as [string, ...string[]]) }),
+  /** Choose my chat bubble style (must be unlocked). */
+  z.object({ t: z.literal('setBubble'), style: z.enum(BUBBLE_STYLE_IDS as [string, ...string[]]) }),
+  /** Privacy: may friends follow me into my room? */
+  z.object({ t: z.literal('setPrivacy'), noFollow: z.boolean() }),
+  /** Mark a friend as ❤️ / 😊 / 💀 on my profile (null removes it). */
+  z.object({
+    t: z.literal('setRelation'),
+    userId: z.string().max(40),
+    kind: z.enum(RELATION_IDS as [string, ...string[]]).nullable(),
+  }),
+  /** Post-it notes on a room's notice board. */
+  z.object({ t: z.literal('notes') }),
+  z.object({
+    t: z.literal('noteWrite'),
+    text: z
+      .string()
+      .min(1)
+      .max(NOTE_MAX_LENGTH * 2),
+    color: z
+      .number()
+      .int()
+      .min(0)
+      .max(NOTE_COLORS.length - 1),
+  }),
+  z.object({ t: z.literal('noteApprove'), id: z.string().max(40) }),
+  z.object({ t: z.literal('noteDelete'), id: z.string().max(40) }),
   z.object({ t: z.literal('look'), look: LookSchema }),
   z.object({
     t: z.literal('buy'),
@@ -240,7 +283,7 @@ export interface PlayerView {
   pathStart: number;
   run: boolean;
   seatId: number | null;
-  action: 'wave' | 'dance' | null;
+  action: ActionKind | null;
   bot: boolean;
   /** Icon of the badge shown next to the name. */
   badge?: string;
@@ -303,6 +346,10 @@ export interface Me {
   apartment: { kind: string; id: string; name: string }[];
   /** Badge shown by my name; null = hidden, undefined = newest. */
   showBadge?: string | null;
+  bubble?: string;
+  noFollow?: boolean;
+  /** friend id → relation */
+  relations?: Record<string, RelationKind>;
 }
 
 export interface AdminReport {
@@ -411,6 +458,8 @@ export interface ProfileView {
   rooms?: { id: string; name: string; users: number }[];
   pet?: PetView;
   guestbook?: GuestbookEntry[];
+  /** Friends marked ❤️ / 😊 / 💀. */
+  relations?: { kind: RelationKind; users: { id: string; name: string }[] }[];
 }
 
 export type ServerMsg =
@@ -461,8 +510,20 @@ export type ServerMsg =
       /** Set when this is an echo of the player's own arrow-key glide. */
       glide?: boolean;
     }
-  | { t: 'chat'; id: string; name: string; text: string; bot: boolean }
-  | { t: 'action'; id: string; kind: 'wave' | 'dance' | null }
+  | {
+      t: 'chat';
+      id: string;
+      name: string;
+      text: string;
+      bot: boolean;
+      /** Bubble style id. */
+      style?: string;
+      /** A shout: bold, bigger and shown to the whole room. */
+      shout?: boolean;
+    }
+  | { t: 'emote'; id: string; kind: EmoteKind }
+  | { t: 'notes'; notes: RoomNote[]; canModerate: boolean }
+  | { t: 'action'; id: string; kind: ActionKind | null }
   | { t: 'look'; id: string; look: Look }
   | { t: 'itemPut'; item: PlacedItem }
   | { t: 'itemRemove'; id: number }

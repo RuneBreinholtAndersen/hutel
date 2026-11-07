@@ -2,6 +2,20 @@ import {
   BADGES,
   APARTMENT_ROOMS,
   levelOf,
+  ACTIONS,
+  ACTION_IDS,
+  BUBBLE_STYLES,
+  BUBBLE_STYLE_IDS,
+  EMOTES,
+  EMOTE_IDS,
+  NOTE_COLORS,
+  NOTE_MAX_LENGTH,
+  RELATIONS,
+  RELATION_IDS,
+  bubbleUnlocked,
+  type ActionKind,
+  type EmoteKind,
+  type RoomNote,
   EVENTS,
   WEEKDAYS,
   type ActiveEvent,
@@ -307,15 +321,71 @@ interface Bubble {
   off: number;
 }
 const bubbles: Bubble[] = [];
-function bubble(id: string, name: string, text: string, whisper = false) {
+function bubble(
+  id: string,
+  name: string,
+  text: string,
+  whisper = false,
+  style?: string,
+  shout = false,
+) {
   for (const b of bubbles) if (b.who === id) b.off += (b.el.offsetHeight || 30) + 6;
   const el = document.createElement('div');
-  el.className = 'bubble' + (whisper ? ' whisper' : '');
+  const st = style
+    ? (BUBBLE_STYLES as Record<string, { bg: string; fg: string; shape: string }>)[style]
+    : undefined;
+  el.className =
+    'bubble' +
+    (whisper ? ' whisper' : '') +
+    (shout ? ' shout' : '') +
+    (st ? ` shape-${st.shape}` : '');
+  if (st && !whisper) {
+    el.style.setProperty('--bb', st.bg);
+    el.style.setProperty('--bf', st.fg);
+  }
   const b = document.createElement('b');
   b.textContent = name + ':';
   el.append(b, document.createTextNode(text));
   overlay.appendChild(el);
   bubbles.push({ el, who: id, born: performance.now(), off: 0 });
+}
+
+/* ---------------- emotes over heads ---------------- */
+const floats: { el: HTMLDivElement; who: string; born: number; dx: number }[] = [];
+function floatEmote(id: string, icon: string) {
+  if (!actors.has(id)) return;
+  const el = document.createElement('div');
+  el.className = 'emote';
+  el.textContent = icon;
+  overlay.appendChild(el);
+  floats.push({ el, who: id, born: performance.now(), dx: (Math.random() - 0.5) * 24 });
+}
+/** Sleepers snore 💤 and thinkers get a 💭 now and then. */
+let lastIdleEmote = 0;
+function idleEmotes(t: number) {
+  if (t - lastIdleEmote < 2200) return;
+  lastIdleEmote = t;
+  for (const [id, a] of actors) {
+    if (a.walking) continue;
+    if (a.action === 'sleep') floatEmote(id, '💤');
+    else if (a.action === 'think') floatEmote(id, '💭');
+  }
+}
+function updateFloats(t: number) {
+  idleEmotes(t);
+  for (let i = floats.length - 1; i >= 0; i--) {
+    const f = floats[i]!;
+    const age = (t - f.born) / 1000;
+    const anchor = actors.get(f.who)?.obj;
+    if (age > 2.2 || !anchor) {
+      f.el.remove();
+      floats.splice(i, 1);
+      continue;
+    }
+    const [x, y] = screenAt(anchor, 1.9);
+    f.el.style.transform = `translate(${x + f.dx + Math.sin(age * 5) * 4}px,${y - age * 45}px) translate(-50%,-100%) scale(${Math.min(1, age * 5)})`;
+    f.el.style.opacity = String(age > 1.6 ? Math.max(0, (2.2 - age) / 0.6) : 1);
+  }
 }
 
 /* ---------------- furniture objects ---------------- */
@@ -646,9 +716,28 @@ function handle(msg: ServerMsg) {
       return;
     }
     case 'chat':
-      if (msg.id !== me?.id) audio.sfx('chat');
-      bubble(msg.id, (msg.bot ? '🤖 ' : '') + msg.name, msg.text);
-      logLine({ name: (msg.bot ? '🤖 ' : '') + msg.name, text: msg.text });
+      if (msg.id !== me?.id) audio.sfx(msg.shout ? 'go' : 'chat');
+      bubble(
+        msg.id,
+        (msg.shout ? '📢 ' : '') + (msg.bot ? '🤖 ' : '') + msg.name,
+        msg.text,
+        false,
+        msg.style,
+        msg.shout,
+      );
+      logLine({
+        name: (msg.shout ? '📢 ' : '') + (msg.bot ? '🤖 ' : '') + msg.name,
+        text: msg.text,
+        cls: msg.shout ? 'shout' : undefined,
+      });
+      return;
+    case 'emote':
+      floatEmote(msg.id, EMOTES[msg.kind]);
+      return;
+    case 'notes':
+      roomNotes = msg.notes;
+      notesMod = msg.canModerate;
+      if (panelKind === 'notes') renderNotes();
       return;
     case 'whisper': {
       const mine = msg.from === me?.id;
@@ -1341,6 +1430,80 @@ function renderMarket() {
 }
 
 /** Choose a game at a game console. */
+let roomNotes: RoomNote[] = [];
+let notesMod = false;
+let noteColor = 0;
+
+/** 😊 Actions and emotes. */
+function renderMoves() {
+  const a = myActor();
+  openPanel(
+    'moves',
+    head('😊 Handlinger', 'Tip: skriv også :sit, :kram, :sov, :heart eller :shout hej i chatten.') +
+      `<h3>Gør noget</h3><div class="chips">${ACTION_IDS.map((k) => `<button data-act="${k}" class="${a?.action === k ? 'primary' : ''}">${ACTIONS[k].icon} ${ACTIONS[k].name}</button>`).join('')}<button data-act="stop">✋ Stop</button></div>
+      <h3>Emotes</h3><div class="chips emotes">${EMOTE_IDS.map((k) => `<button data-emo="${k}" style="font-size:22px">${EMOTES[k]}</button>`).join('')}</div>`,
+  );
+  const p = $('panel');
+  p.querySelectorAll<HTMLElement>('[data-act]').forEach((b) =>
+    b.addEventListener('click', () => {
+      net?.send({ t: 'action', kind: b.dataset.act as ActionKind | 'stop' });
+      if (!ACTIONS[b.dataset.act as ActionKind]?.timed) setTimeout(renderMoves, 250);
+    }),
+  );
+  p.querySelectorAll<HTMLElement>('[data-emo]').forEach((b) =>
+    b.addEventListener('click', () => net?.send({ t: 'emote', kind: b.dataset.emo as EmoteKind })),
+  );
+}
+
+/** 📌 Notice board with post-its; the owner approves notes from guests. */
+function openNotes() {
+  roomNotes = [];
+  renderNotes();
+  net?.send({ t: 'notes' });
+}
+function renderNotes() {
+  const card = (n: RoomNote) =>
+    `<div class="postit" style="background:${NOTE_COLORS[n.color] ?? NOTE_COLORS[0]}"><p>${esc(n.text)}</p><small>– ${esc(n.fromName)}${n.approved ? '' : ' · ⏳ venter'}</small>
+      ${notesMod && !n.approved ? `<button class="small primary" data-napp="${n.id}">✅ Godkend</button>` : ''}
+      ${notesMod || n.fromId === me?.id ? `<button class="small" data-ndel="${n.id}">🗑</button>` : ''}</div>`;
+  const waiting = roomNotes.filter((n) => !n.approved);
+  const shown = roomNotes.filter((n) => n.approved);
+  openPanel(
+    'notes',
+    head(
+      '📌 Opslagstavle',
+      notesMod
+        ? 'Gæsternes sedler kommer først op, når du har godkendt dem.'
+        : 'Skriv en seddel – ejeren af rummet godkender den.',
+    ) +
+      `<div class="row"><textarea id="noteText" rows="2" maxlength="${NOTE_MAX_LENGTH}" placeholder="Skriv en hilsen…" style="width:100%"></textarea></div>
+      <div class="chips">${NOTE_COLORS.map((c, i) => `<button data-ncol="${i}" style="background:${c};width:34px;height:30px;${i === noteColor ? 'outline:3px solid #ffb347' : ''}"></button>`).join('')}<button id="noteSend" class="primary">📌 Sæt op</button></div>` +
+      (waiting.length
+        ? `<h3>${notesMod ? 'Venter på godkendelse' : 'Dine sedler der venter'}</h3><div class="postits">${waiting.map(card).join('')}</div>`
+        : '') +
+      `<h3>På tavlen</h3><div class="postits">${shown.map(card).join('') || '<p class="sub">Ingen sedler endnu.</p>'}</div>`,
+  );
+  const p = $('panel');
+  p.querySelectorAll<HTMLElement>('[data-ncol]').forEach((b) =>
+    b.addEventListener('click', () => {
+      noteColor = Number(b.dataset.ncol);
+      const keep = $<HTMLTextAreaElement>('noteText').value;
+      renderNotes();
+      $<HTMLTextAreaElement>('noteText').value = keep;
+    }),
+  );
+  $('noteSend').addEventListener('click', () => {
+    const text = $<HTMLTextAreaElement>('noteText').value.trim();
+    if (text) net?.send({ t: 'noteWrite', text, color: noteColor });
+  });
+  p.querySelectorAll<HTMLElement>('[data-napp]').forEach((b) =>
+    b.addEventListener('click', () => net?.send({ t: 'noteApprove', id: b.dataset.napp! })),
+  );
+  p.querySelectorAll<HTMLElement>('[data-ndel]').forEach((b) =>
+    b.addEventListener('click', () => net?.send({ t: 'noteDelete', id: b.dataset.ndel! })),
+  );
+}
+
 /** Jukebox: choose a tune that everyone in the room hears in sync. */
 function renderJukebox(itemId: number) {
   const it = items.get(itemId);
@@ -1520,11 +1683,34 @@ function renderFigure() {
     head('🧍 Min figur', 'Køb sejt tøj med dine mønter – nogle ting låses op med badges.') +
       `<div class="row"><label>Motto</label><input id="motto" maxlength="60" value="${esc(me.motto)}" style="width:100%"></div><div id="lookEd"></div>
     ${levelBox()}
+    <h3>💬 Chatboble</h3><div class="chips">${BUBBLE_STYLE_IDS.map((id) => {
+      const st = BUBBLE_STYLES[id] as {
+        name: string;
+        bg: string;
+        fg: string;
+        badge?: keyof typeof BADGES;
+        level?: number;
+      };
+      const open = bubbleUnlocked(id, me!.badges, levelOf(me!).level);
+      const cur = (me!.bubble ?? 'classic') === id;
+      const why = st.badge ? `badget ${BADGES[st.badge].name}` : `level ${st.level}`;
+      return `<button data-bub="${id}" ${open ? '' : 'disabled'} title="${open ? '' : 'Låses op med ' + esc(why)}" style="background:${st.bg};color:${st.fg};${cur ? 'outline:3px solid #ffb347' : ''}">${open ? '' : '🔒 '}${esc(st.name)}</button>`;
+    }).join('')}</div>
     <h3>Mine badges</h3><div class="badges">${me.badges.map((b) => `<span class="badge" title="${esc(BADGES[b].text)}">${BADGES[b].icon} ${BADGES[b].name}</span>`).join('')}</div>
     <h3>Konto</h3><button id="logout" class="small danger">Log ud på denne enhed</button>
     ${me.role !== 'user' ? `<button id="openAdmin" class="small">🛡️ Moderation</button>` : ''}
     ${canReset ? `<h3>Test</h3><p class="sub">Nulstil mønter, opgaver, badges og dit værelse, og prøv starten igen. Navn, figur og venner beholdes.</p><button id="resetMe" class="small danger">🔄 Start forfra</button>` : ''}`,
   );
+  $('panel')
+    .querySelectorAll<HTMLElement>('[data-bub]')
+    .forEach((b) =>
+      b.addEventListener('click', () => {
+        if (!me) return;
+        me.bubble = b.dataset.bub;
+        net?.send({ t: 'setBubble', style: b.dataset.bub as never });
+        renderFigure();
+      }),
+    );
   let lookT: number | undefined;
   lookEditor(
     $('lookEd'),
@@ -1740,9 +1926,15 @@ function renderFriends() {
       (requests.length
         ? `<h3>Venneanmodninger</h3><div class="list">${requests.map((r) => `<div class="li"><div class="grow"><b>${esc(r.name)}</b></div><button class="small primary" data-acc="${r.id}">Ja</button><button class="small" data-dec="${r.id}">Nej</button></div>`).join('')}</div>`
         : '') +
-      `<h3>Dine venner</h3><div class="list">${friends.map((f) => `<div class="li"><div class="grow"><b>${esc(f.name)}</b><small>${f.online ? `<span class="status-on">● Online</span>${f.roomName ? ' · ' + esc(f.roomName) : ''}` : 'Offline'}</small></div>${f.online && f.roomId ? `<button class="small" data-go="${esc(f.roomId)}">Gå til</button>` : ''}<button class="small" data-pm="${esc(f.id)}">💬 Skriv${f.unread ? ` <b class="unread">${f.unread}</b>` : ''}</button></div>`).join('') || '<p class="sub">Ingen venner endnu – klik på en figur for at tilføje.</p>'}</div>`,
+      `<label class="sub" style="display:block;margin:8px 0"><input id="noFollow" type="checkbox" ${me?.noFollow ? 'checked' : ''}> 🔒 Må ikke følges – venner kan se, at jeg er online, men ikke hvor</label>` +
+      `<h3>Dine venner</h3><div class="list">${friends.map((f) => `<div class="li"><div class="grow"><b>${me?.relations?.[f.id] ? RELATIONS[me.relations[f.id]!].icon + ' ' : ''}${esc(f.name)}</b><small>${f.online ? `<span class="status-on">● Online</span>${f.roomName ? ' · ' + esc(f.roomName) : ''}` : 'Offline'}</small></div>${f.online && f.roomId ? `<button class="small" data-go="${esc(f.roomId)}">Gå til</button>` : ''}<button class="small" data-pm="${esc(f.id)}">💬 Skriv${f.unread ? ` <b class="unread">${f.unread}</b>` : ''}</button></div>`).join('') || '<p class="sub">Ingen venner endnu – klik på en figur for at tilføje.</p>'}</div>`,
   );
   const p = $('panel');
+  $<HTMLInputElement>('noFollow').addEventListener('change', (e) => {
+    const on = (e.target as HTMLInputElement).checked;
+    if (me) me.noFollow = on;
+    net?.send({ t: 'setPrivacy', noFollow: on });
+  });
   $('frAdd').addEventListener('click', () => {
     const n = $<HTMLInputElement>('frName').value.trim();
     if (n.length >= 2) net?.send({ t: 'friendRequest', name: n });
@@ -1823,6 +2015,12 @@ function renderProfile(p: ProfileView) {
       (p.badges.length
         ? `<div class="badges">${p.badges.map((b) => `<span class="badge">${BADGES[b].icon} ${BADGES[b].name}</span>`).join('')}</div>`
         : '') +
+      (p.relations?.length
+        ? `<div class="relations">${p.relations.map((r) => `<div><b>${RELATIONS[r.kind].icon} ${RELATIONS[r.kind].name}</b> ${r.users.map((u) => `<button class="small" data-prof="${esc(u.id)}">${esc(u.name)}</button>`).join(' ')}</div>`).join('')}</div>`
+        : '') +
+      (p.friend && !self
+        ? `<div class="chips" style="margin:8px 0"><span class="sub">Marker ${esc(p.name)}:</span>${RELATION_IDS.map((k) => `<button data-rel="${k}" class="${me?.relations?.[p.id] === k ? 'primary' : ''}" title="${RELATIONS[k].name}">${RELATIONS[k].icon}</button>`).join('')}</div>`
+        : '') +
       (p.bot ? '' : profileHome(p, self)) +
       (!self && !p.bot
         ? `<div class="chips" style="margin-top:12px">
@@ -1860,6 +2058,20 @@ function renderProfile(p: ProfileView) {
         }
         if (a === 'report') $('repBox').classList.remove('hidden');
         if (a !== 'report') setTimeout(() => net?.send({ t: 'profile', userId: p.id }), 300);
+      }),
+    );
+  $('panel')
+    .querySelectorAll<HTMLElement>('[data-rel]')
+    .forEach((b) =>
+      b.addEventListener('click', () => {
+        if (!me) return;
+        const cur = me.relations?.[p.id];
+        const next = cur === b.dataset.rel ? null : (b.dataset.rel as keyof typeof RELATIONS);
+        me.relations = { ...(me.relations ?? {}) };
+        if (next) me.relations[p.id] = next;
+        else delete me.relations[p.id];
+        net?.send({ t: 'setRelation', userId: p.id, kind: next });
+        setTimeout(() => net?.send({ t: 'profile', userId: p.id }), 250);
       }),
     );
   $('panel')
@@ -2247,6 +2459,7 @@ function onClick() {
   const it = hitItem(false);
   if (it && it.type === 'gamebox') return renderGames(it.id);
   if (it && it.type === 'jukebox') return renderJukebox(it.id);
+  if (it && it.type === 'noteboard') return openNotes();
   if (
     it &&
     furniture(it.type).states &&
@@ -2481,10 +2694,7 @@ $('bBuild').addEventListener('click', () => {
   setBuild(!build);
 });
 $('bWave').addEventListener('click', () => net?.send({ t: 'action', kind: 'wave' }));
-$('bDance').addEventListener('click', () => {
-  const a = myActor();
-  net?.send({ t: 'action', kind: a?.action === 'dance' ? 'stop' : 'dance' });
-});
+$('bDance').addEventListener('click', toggle('moves', renderMoves));
 $('bbRot').addEventListener('click', rotateHeld);
 $('bbColor').addEventListener('click', recolorHeld);
 $('bbSell').addEventListener('click', sellHeld);
@@ -2519,7 +2729,7 @@ $('chatForm').addEventListener('submit', (e) => {
   if (/^\/(vink|wave)$/i.test(text)) return net.send({ t: 'action', kind: 'wave' });
   if (/^\/(hjælp|help)$/i.test(text))
     return logLine({
-      text: 'Kommandoer: /terning · /ssp sten|saks|papir · /quiz · /dans · /vink · /h navn besked (hvisk) · /w ven besked (messenger)',
+      text: 'Kommandoer: :shout tekst (råb) · :sit · :sov · :kram · :highfive · :tænk · :dans · :vink · :heart · :haha · :zzz · :zap · /terning · /ssp sten|saks|papir · /quiz · /h navn besked (hvisk) · /w ven besked (messenger)',
       cls: 'sys',
     });
   net.send({ t: 'chat', text });
@@ -2769,6 +2979,7 @@ function loop() {
     b.el.style.opacity = String(age > 5.5 ? Math.max(0, (7 - age) / 1.5) : 1);
   }
   updateJukeboxVolumes();
+  updateFloats(t);
   stage.render();
   requestAnimationFrame(loop);
 }

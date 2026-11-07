@@ -1,4 +1,6 @@
 import {
+  ACTIONS,
+  type ActionKind,
   buildGrid,
   canPlace,
   DOOR_TILE,
@@ -38,7 +40,7 @@ export interface PlayerState {
   seatId: number | null;
   /** Seat we are walking towards; becomes seatId on arrival. */
   goalSeat: number | null;
-  action: 'wave' | 'dance' | null;
+  action: ActionKind | null;
   actionUntil: number;
   send: ((msg: ServerMsg) => void) | null;
   /** Icon of the badge shown by the name. */
@@ -234,7 +236,7 @@ export class RoomInstance {
         canStep(grid, Math.round(cur.x), Math.round(cur.z), tx, tz));
     p.seatId = null;
     p.goalSeat = null;
-    if (p.action === 'dance') p.action = null;
+    if (p.action && !ACTIONS[p.action].timed) p.action = null;
     p.from = [cur.x, cur.z];
     p.path = ok ? [[x, z]] : [];
     p.pathStart = now;
@@ -261,7 +263,7 @@ export class RoomInstance {
     if (!path) return false;
     p.seatId = null;
     p.goalSeat = seatItem?.id ?? null;
-    if (p.action === 'dance') p.action = null;
+    if (p.action && !ACTIONS[p.action].timed) p.action = null;
     p.from = [start[0], start[1]];
     p.path = path.map(([x, z]) => [x, z]);
     p.pathStart = now;
@@ -318,7 +320,7 @@ export class RoomInstance {
           this.arrive(p);
         }
       }
-      if (p.action === 'wave' && now > p.actionUntil) p.action = null;
+      if (p.action && ACTIONS[p.action].timed && now > p.actionUntil) p.action = null;
     }
   }
 

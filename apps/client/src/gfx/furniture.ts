@@ -712,6 +712,36 @@ const BUILD: Record<FurnitureType, (c: number, state: number) => T.Group> = {
     g.add(f);
     return g;
   },
+  noteboard() {
+    const g = new T.Group();
+    g.add(shade(rbox(1.3, 0.85, 0.05, woodDark, 0.45, 1.8, 0.025, 0.02)));
+    const tex = canvasTex(160, 104, (x, w, h) => {
+      x.fillStyle = '#c99a62';
+      x.fillRect(0, 0, w, h);
+      x.fillStyle = 'rgba(90,55,25,.25)';
+      for (let i = 0; i < 160; i++) x.fillRect((i * 37) % w, (i * 53) % h, 2, 2);
+      const notes = ['#fff3a3', '#ffd1dc', '#c9f2d3', '#cfe4ff'];
+      notes.forEach((c, i) => {
+        x.save();
+        x.translate(22 + i * 34, 30 + (i % 2) * 26);
+        x.rotate((i % 2 ? 1 : -1) * 0.12);
+        x.fillStyle = c;
+        x.fillRect(-14, -14, 30, 30);
+        x.fillStyle = 'rgba(0,0,0,.25)';
+        x.fillRect(-9, -4, 20, 2);
+        x.fillRect(-9, 2, 14, 2);
+        x.fillStyle = '#d8433a';
+        x.beginPath();
+        x.arc(1, -12, 3, 0, 7);
+        x.fill();
+        x.restore();
+      });
+    });
+    const p = new T.Mesh(new T.PlaneGeometry(1.2, 0.76), M(0xffffff, { map: tex, roughness: 1 }));
+    p.position.set(0.45, 1.8, 0.055);
+    g.add(p);
+    return g;
+  },
   mirror() {
     const g = new T.Group();
     const frame = new T.Mesh(new T.TorusGeometry(0.32, 0.04, 10, 40), gold);

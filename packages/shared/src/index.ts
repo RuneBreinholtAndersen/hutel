@@ -15,3 +15,4 @@ export * from './layout';
 export * from './roomgames';
 export * from './releases';
 export * from './music';
+export * from './social';

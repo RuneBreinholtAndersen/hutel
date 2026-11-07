@@ -41,6 +41,7 @@ Sidst opdateret: 6. november 2026. Rækkefølge: voksen-Hutel i lukket beta før
 - ✅ Vejlednings-film på spilkonsollen ("Se hvordan det virker") tegnet live på canvas
 - ✅ Døre bruges kun, når man klikker på dem eller går ind i væggen – ikke når man bare stopper foran
 - ✅ Placering gemmes hvert 5. sekund, så man efter deploy/genstart står samme sted (op til 15 min); hurtigere genforbindelse (maks. 4 sek mellem forsøg)
+- ✅ Socialt: råb (`:shout`, 20 sek cooldown på serveren), chatbobler (låses op via level/badges, tjekkes på serveren), emotes, nye handlinger (kram, high-five, sov, tænk, sid på gulvet), "må ikke følges", relationer på profilen, opslagstavle med post-its som ejeren godkender (filtreres som chat)
 - ✅ Tapet (8 slags) og gulve (8 slags): købes én gang og bruges i alle egne rum
 - ✅ Vægmøbler: maleri, stort maleri, plakat, vindue, væghylde, vægur, spejl og neonskilt (hænges på bag- eller venstrevæg)
 - ✅ Lobbyen og caféen er nu 12×12 med ny møblering; rumstørrelse kan variere pr. rum

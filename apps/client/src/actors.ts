@@ -1,4 +1,7 @@
 import {
+  ACTIONS,
+  ACTION_MS,
+  type ActionKind,
   furniture,
   positionAt,
   RUN_MULTIPLIER,
@@ -19,7 +22,7 @@ export class Actor {
   pathStart: number;
   run: boolean;
   seatId: number | null;
-  action: 'wave' | 'dance' | null;
+  action: ActionKind | null;
   private actionAt = 0;
   private face = 0;
   private phase = Math.random() * 10;
@@ -69,11 +72,11 @@ export class Actor {
     this.run = run;
     this.seatId = path.length ? null : seatId;
     this.pendingSeat = seatId;
-    if (this.action === 'dance') this.action = null;
+    if (this.action && !ACTIONS[this.action].timed) this.action = null;
   }
   private pendingSeat: number | null = null;
 
-  setAction(kind: 'wave' | 'dance' | null) {
+  setAction(kind: ActionKind | null) {
     this.action = kind;
     this.actionAt = this.time;
   }
@@ -118,7 +121,7 @@ export class Actor {
     this.face = face;
     this.seatId = null;
     this.pendingSeat = null;
-    if (this.action === 'dance') this.action = null;
+    if (this.action && !ACTIONS[this.action].timed) this.action = null;
     this.glideAt = this.time;
   }
   private glideAt = -1;
@@ -154,7 +157,8 @@ export class Actor {
       this.face = Math.atan2(pos.dir[0], pos.dir[1]);
     const lying = !!seat && !!furniture(seat.type).lie;
     // Lie down on beds and loungers: tip the rig over, head towards the back.
-    const tilt = lying ? -Math.PI / 2 + 0.12 : 0;
+    const sleepingOnFloor = !this.walking && this.action === 'sleep' && !seat;
+    const tilt = lying ? -Math.PI / 2 + 0.12 : sleepingOnFloor ? -Math.PI / 2 + 0.25 : 0;
     u.rig.rotation.x += (tilt - u.rig.rotation.x) * Math.min(1, dt * 8);
     if (seat) this.obj.rotation.y = (seat.rot * Math.PI) / 2;
     else this.obj.rotation.y = lerpAngle(this.obj.rotation.y, this.face, Math.min(1, dt * 14));
@@ -181,11 +185,36 @@ export class Actor {
       for (const l of [u.legL, u.legR, u.armL, u.armR]) l.rotation.x *= 0.8;
       bob = Math.sin(this.time * 2) * 0.012;
     }
-    if (this.action === 'wave' && !this.walking) {
-      if (this.time - this.actionAt > 2.5) this.action = null;
+    if (this.action && ACTIONS[this.action].timed && this.time - this.actionAt > ACTION_MS / 1000)
+      this.action = null;
+    const act = this.walking ? null : this.action;
+    const floorSit = act === 'sitfloor' && !seat;
+    const asleep = act === 'sleep' && !seat;
+    if (floorSit) {
+      u.legL.rotation.x = u.legR.rotation.x = -Math.PI / 2;
+      u.armL.rotation.x = u.armR.rotation.x = -0.25;
+    }
+    if (asleep) {
+      // Curled up on the floor, gently breathing.
+      u.legL.rotation.x = u.legR.rotation.x = -Math.PI / 2;
+      u.armL.rotation.x = u.armR.rotation.x = -0.9;
+    }
+    if (act === 'hug') {
+      u.armL.rotation.x = u.armR.rotation.x = -1.35;
+      u.armL.rotation.z = -0.35;
+      u.armR.rotation.z = 0.35;
+    } else if (act === 'highfive') {
+      const k = Math.min(1, (this.time - this.actionAt) * 4);
+      u.armR.rotation.z = 2.9 * k;
+      u.armR.rotation.x = -0.3;
+    } else if (act === 'think') {
+      u.armR.rotation.x = -2.1;
+      u.armR.rotation.z = 0.5;
+      u.head.rotation.x = -0.12;
+    } else if (act === 'wave') {
       u.armR.rotation.z = 2.6 + Math.sin(this.time * 12) * 0.35;
       u.armR.rotation.x = 0;
-    } else if (this.action === 'dance' && !this.walking && !seat) {
+    } else if (act === 'dance' && !seat) {
       const d = Math.sin(this.time * 8);
       bob = Math.abs(d) * 0.08;
       u.armL.rotation.z = -2.2 - d * 0.4;
@@ -196,8 +225,9 @@ export class Actor {
       u.armL.rotation.z *= 0.8;
     }
     u.head.rotation.z = Math.sin(this.time * 1.3) * 0.05;
+    if (act !== 'think') u.head.rotation.x *= 0.9;
     this.blink -= dt;
-    const bs = this.blink < 0 ? 0.1 : 1;
+    const bs = asleep || this.blink < 0 ? 0.1 : 1;
     u.eyes.forEach((e) => (e.scale.y = bs));
     if (this.blink < -0.13) this.blink = rnd(2, 5);
     const k = this.walking ? (0.05 - bob) * 0.5 : 0;
@@ -205,7 +235,8 @@ export class Actor {
     const g = ground(this.x, this.z);
     this.hy += (g - this.hy) * Math.min(1, dt * 14);
     if (Math.abs(g - this.hy) > 1.5) this.hy = g;
-    this.obj.position.set(tw(this.x), (lying ? 0.62 : seat ? 0.27 : bob) + this.hy, tw(this.z));
+    const sitY = floorSit ? -0.28 : asleep ? 0.1 + Math.sin(this.time * 1.5) * 0.01 : bob;
+    this.obj.position.set(tw(this.x), (lying ? 0.62 : seat ? 0.27 : sitY) + this.hy, tw(this.z));
     if (lying) {
       // shift so the body lies along the bed (head on the pillow side)
       const r = (seat!.rot * Math.PI) / 2;

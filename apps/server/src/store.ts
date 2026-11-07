@@ -2,6 +2,8 @@ import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'node:crypt
 import { mkdirSync, readFileSync, renameSync, writeFileSync, existsSync } from 'node:fs';
 import { dirname } from 'node:path';
 import type {
+  RelationKind,
+  RoomNote,
   BadgeId,
   DailyId,
   Look,
@@ -71,6 +73,12 @@ export interface UserRecord {
   bannedUntil: number | null;
   /** Badge shown by the name: null = hidden, undefined = newest. */
   showBadge?: string | null;
+  /** Chat bubble style id. */
+  bubble?: string;
+  /** Friends may not follow me into rooms. */
+  noFollow?: boolean;
+  /** friend id → ❤️ / 😊 / 💀 */
+  relations?: Record<string, RelationKind>;
   /** Can't chat until this time. */
   mutedUntil?: number | null;
   createdAt: string;
@@ -91,6 +99,8 @@ export interface PetRecord {
 }
 
 export interface RoomRecord {
+  /** Post-its on the room's notice board. */
+  notes?: RoomNote[];
   id: string;
   ownerId: string;
   name: string;

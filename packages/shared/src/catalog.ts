@@ -268,6 +268,7 @@ export const FURNITURE = {
     colors: [0x8a5634, 0xf4efe6, 0x2a2a35],
   },
   clock: { name: 'Vægur', icon: '🕰️', price: 9, w: 1, d: 1, wall: true },
+  noteboard: { name: 'Opslagstavle', icon: '📌', price: 12, w: 2, d: 1, wall: true },
   mirror: { name: 'Spejl', icon: '🪞', price: 14, w: 1, d: 1, wall: true, minLevel: 2 },
   neon: {
     name: 'Neonskilt',
@@ -323,7 +324,17 @@ export const SHOP_CATEGORIES = [
     id: 'wall',
     name: 'Til væggen',
     icon: '🖼️',
-    types: ['painting', 'bigpainting', 'poster', 'window', 'wallshelf', 'clock', 'mirror', 'neon'],
+    types: [
+      'painting',
+      'bigpainting',
+      'poster',
+      'window',
+      'wallshelf',
+      'clock',
+      'mirror',
+      'neon',
+      'noteboard',
+    ],
   },
   {
     id: 'games',

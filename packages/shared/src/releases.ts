@@ -14,6 +14,17 @@ export interface ReleaseNote {
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
     date: '2026-11-07',
+    title: 'Råb, emotes og nye handlinger',
+    items: [
+      '📢 Råb med :shout – stor, fed tekst til hele rummet',
+      '😊 Ny knap med kram, high-five, sove, tænke, sid på gulvet og emotes',
+      '💬 Vælg din chatboble under Figur – flere låses op med level og badges',
+      '❤️ Marker venner som ❤️ 😊 💀 og vælg "må ikke følges" under Venner',
+      '📌 Opslagstavle med post-its, som ejeren godkender',
+    ],
+  },
+  {
+    date: '2026-11-07',
     title: 'Lyd, jukebox og spil-videoer',
     items: [
       '🔊 Lydeffekter ved mønter, døre, chat, badges og spil – slå dem til og fra under 🔊',

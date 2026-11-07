@@ -2,7 +2,7 @@
 
 Listen sammenligner Hutel med de klassiske funktioner fra Habbo Hotel. Navne, grafik og møbler kopieres ikke: vi laver vores egen version af idéen.
 
-_Senest opdateret: 7. november 2026 (lyd, jukebox og spil-videoer)._
+_Senest opdateret: 7. november 2026 (råb, chatbobler, emotes, handlinger, relationer og opslagstavle)._
 
 **Sådan læses den**
 - **Værdi**: hvor meget det betyder for spillerne (★–★★★)
@@ -25,14 +25,7 @@ Det her mener jeg giver mest spil for pengene, i den rækkefølge:
 ## 💡 Habbo-funktioner vi mangler (fuld liste)
 
 ### Chat og socialt
-- [ ] **Råbe** (`:shout`) – fed tekst alle kan se, med længere rate-limit. S
-- [ ] **Chatbobler i stilarter** – vælg boblefarve/-form (låses op med badges). S
-- [ ] **Emotes over hovedet** – ❤️ 😂 💤 ⚡ ikoner, der svæver op. S
-- [ ] **Flere handlinger** – kram, high-five, sove (zzz), "tænke", sidde på gulvet (`:sit`). S
-- [ ] **Gå hen til en ven ("follow")** – fra venne-listen direkte ind i deres rum. ✓ findes som "Gå til" – mangler privatlivsindstilling "må ikke følges". S
-- [ ] **Relationer** – marker venner som ❤️ / 😊 / 💀 på profilen. S
-- [ ] **Vægbeskeder i rum** – post-it-sedler ejeren kan godkende (gæstebog på profilen findes). M
-- [ ] **Offline-meddelelser til grupper**. M
+- [ ] **Offline-meddelelser til grupper** – venter på punkt 2 (Grupper/klubber), så der er nogen at sende til. M
 
 ### Rum og byggeri
 - [ ] **Gulvplan-editor** – tegn selv gulvets form, højde, dørens placering. L
@@ -112,6 +105,13 @@ Det her mener jeg giver mest spil for pengene, i den rækkefølge:
 - ✅ Lydeffekter lavet i kode (klik, døre, teleport, mønter, chat, badges, spil, kæledyr) med 🔊-indstillinger
 - ✅ Jukebox med 6 egne melodier, synkroniseret for alle i rummet og svagere jo længere væk man står
 - ✅ Animerede vejlednings-film til rum-spillene på spilkonsollen
+- ✅ Råbe med `:shout` / `/råb` – stor fed boble, højst én gang hvert 20. sekund
+- ✅ Chatbobler i 8 stilarter (farve og form), låses op med level og badges
+- ✅ Emotes der svæver op over hovedet (❤️ 😂 💤 ⚡ 😮 👍 😢 🎵) via 😊-knappen eller `:heart`, `:haha` …
+- ✅ Flere handlinger: kram, high-five, sove (💤), tænke (💭), sidde på gulvet (`:sit`)
+- ✅ "Må ikke følges": venner ser, at du er online, men ikke hvor
+- ✅ Relationer: marker venner som ❤️ / 😊 / 💀 – vises på profilen
+- ✅ Opslagstavle (vægmøbel) med post-it-sedler, som ejeren godkender
 - ✅ Butik med møbler og tøj, låst op med level og badges
 - ✅ Mønter (online-tid, opgaver, events, spil) – beregnet på serveren
 - ✅ Byttehandel med inventar, begge parter skal godkende, alt logges

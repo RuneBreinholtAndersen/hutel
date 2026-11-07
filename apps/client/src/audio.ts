@@ -156,8 +156,11 @@ export function sfx(name: Sfx) {
       tone(o, 520, t, 0.08, { wave: 'triangle', vol: 0.12 });
       return tone(o, 780, t + 0.05, 0.1, { wave: 'triangle', vol: 0.1 });
     case 'door':
-      noise(o, t, 0.25, 0.15, 400);
-      return tone(o, 180, t, 0.3, { wave: 'sine', vol: 0.25, slideTo: 90 });
+      // A soft, friendly "ding-dong": two gentle sine notes with a slow fade.
+      tone(o, 784, t, 0.7, { wave: 'sine', vol: 0.09, attack: 0.03 });
+      tone(o, 1568, t, 0.35, { wave: 'sine', vol: 0.02, attack: 0.03 });
+      tone(o, 587, t + 0.22, 0.9, { wave: 'sine', vol: 0.08, attack: 0.04 });
+      return;
     case 'teleport':
       tone(o, 300, t, 0.45, { wave: 'sawtooth', vol: 0.08, slideTo: 1800 });
       return tone(o, 600, t + 0.05, 0.4, { wave: 'sine', vol: 0.15, slideTo: 2400 });

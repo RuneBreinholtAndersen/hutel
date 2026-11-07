@@ -737,7 +737,7 @@ describe('multiplayer', () => {
     const owner = await login('Festabe');
     owner.c.send({ t: 'roomSettings', name: 'Diskoteket', category: 'fest' });
     await owner.c.waitFor('roomMeta', (m) => m.category === 'fest');
-    const other = await login('Gæsten');
+    const other = await login('Sedelskriver');
     other.c.send({ t: 'navigator', q: 'disko' });
     const res = await other.c.waitFor('navigator', (m) => m.q === 'disko');
     const hit = res.rooms.find((r) => r.name === 'Diskoteket')!;
@@ -932,6 +932,75 @@ describe('multiplayer', () => {
     a.c.ws.close();
     b.c.ws.close();
   }, 20_000);
+
+  it('shouts with a cooldown, does :actions and emotes, and uses unlocked bubbles only', async () => {
+    const a = await login('Råberen');
+    const b = await login('Hører');
+    const ua = app.store.getUser(a.g.userId)!;
+    b.c.send({ t: 'join', roomId: ua.homeRoomId });
+    await b.c.waitFor('room', (m) => m.room.id === ua.homeRoomId);
+    a.c.send({ t: 'chat', text: ':shout Hej allesammen' });
+    const sh = await b.c.waitFor('chat', (m) => m.shout === true);
+    expect(sh.text).toBe('Hej allesammen');
+    a.c.send({ t: 'chat', text: ':shout igen' });
+    await a.c.waitFor('toast', (m) => /råbe igen/.test(m.text));
+    a.c.send({ t: 'chat', text: ':sit' });
+    await b.c.waitFor('action', (m) => m.id === a.g.userId && m.kind === 'sitfloor');
+    a.c.send({ t: 'chat', text: ':heart' });
+    await b.c.waitFor('emote', (m) => m.id === a.g.userId && m.kind === 'heart');
+    a.c.send({ t: 'setBubble', style: 'host' });
+    await a.c.waitFor('toast', (m) => /ikke låst op/.test(m.text));
+    a.c.send({ t: 'setBubble', style: 'classic' });
+    await a.c.waitFor('toast', (m) => /Ny chatboble/.test(m.text));
+    a.c.send({ t: 'chat', text: 'hej med dig' });
+    const c = await b.c.waitFor('chat', (m) => m.text === 'hej med dig');
+    expect(c.style).toBe('classic');
+    a.c.ws.close();
+    b.c.ws.close();
+  });
+
+  it('hides your room from friends with "må ikke følges" and shows relations on the profile', async () => {
+    const a = await login('Skjuler');
+    const b = await login('Søger');
+    const ua = app.store.getUser(a.g.userId)!;
+    const ub = app.store.getUser(b.g.userId)!;
+    ua.friends.push(ub.id);
+    ub.friends.push(ua.id);
+    a.c.send({ t: 'setPrivacy', noFollow: true });
+    const fr = await b.c.waitFor('friends', (m) =>
+      m.friends.some((f) => f.id === ua.id && f.online),
+    );
+    expect(fr.friends.find((f) => f.id === ua.id)!.roomId).toBeNull();
+    b.c.send({ t: 'setRelation', userId: ua.id, kind: 'heart' });
+    b.c.send({ t: 'setRelation', userId: 'nobody', kind: 'skull' });
+    await b.c.waitFor('toast', (m) => /kun markere dine venner/.test(m.text));
+    a.c.send({ t: 'profile', userId: ub.id });
+    const prof = await a.c.waitFor('profile');
+    expect(prof.profile.relations).toEqual([
+      { kind: 'heart', users: [{ id: ua.id, name: 'Skjuler' }] },
+    ]);
+    a.c.ws.close();
+    b.c.ws.close();
+  });
+
+  it('lets guests pin post-its that only show once the owner approves them', async () => {
+    const a = await login('Tavleejer');
+    const b = await login('Postitgæst');
+    const ua = app.store.getUser(a.g.userId)!;
+    const home = app.store.getRoom(ua.homeRoomId)!;
+    home.items.push({ id: 9301, type: 'noteboard', x: 3, z: 0, rot: 0 });
+    b.c.send({ t: 'join', roomId: ua.homeRoomId });
+    await b.c.waitFor('room', (m) => m.room.id === ua.homeRoomId);
+    b.c.send({ t: 'noteWrite', text: 'Fedt værelse!', color: 1 });
+    const own = await b.c.waitFor('notes', (m) => m.notes.length === 1);
+    expect(own.notes[0]!.approved).toBe(false);
+    const pending = await a.c.waitFor('notes', (m) => m.canModerate && m.notes.length === 1);
+    a.c.send({ t: 'noteApprove', id: pending.notes[0]!.id });
+    const ok = await b.c.waitFor('notes', (m) => m.notes[0]?.approved === true);
+    expect(ok.notes[0]!.text).toBe('Fedt værelse!');
+    a.c.ws.close();
+    b.c.ws.close();
+  });
 
   it('plays a jukebox tune for everyone in the room, chosen only by the owner', async () => {
     const a = await login('Dj Ejer');

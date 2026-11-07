@@ -1,4 +1,15 @@
 import {
+  ACTION_COMMANDS,
+  ACTION_MS,
+  EMOTE_COMMANDS,
+  NOTES_PER_ROOM,
+  SHOUT_COOLDOWN_MS,
+  bubbleUnlocked,
+  shoutText,
+  type ActionKind,
+  type EmoteKind,
+  type RelationKind,
+  type RoomNote,
   BADGES,
   EVENTS,
   scheduledEvents,
@@ -139,6 +150,7 @@ interface Session {
   strikes: number;
   /** Last time this player went through an apartment door (prevents bouncing back). */
   doorAt?: number;
+  shoutAt?: number;
   /** Bumped by every new walk order, so an old "go through the door" plan is dropped. */
   doorTicket?: number;
 }
@@ -201,6 +213,14 @@ const LIMIT_FOR: Partial<Record<ClientMsg['t'], LimitKind>> = {
   hush: 'chat',
   pmHistory: 'social',
   action: 'move',
+  emote: 'social',
+  setBubble: 'social',
+  setPrivacy: 'social',
+  setRelation: 'social',
+  notes: 'nav',
+  noteWrite: 'chat',
+  noteApprove: 'build',
+  noteDelete: 'build',
   buy: 'build',
   moveItem: 'build',
   sellItem: 'build',
@@ -432,6 +452,9 @@ export class Hotel {
       apartment: this.apartment(u),
       role: u.role,
       showBadge: u.showBadge,
+      bubble: u.bubble,
+      noFollow: u.noFollow,
+      relations: u.relations ?? {},
     };
   }
 
@@ -1201,8 +1224,12 @@ export class Hotel {
 
   /* ---------------- chat ---------------- */
 
-  private sayInRoom(room: RoomInstance, p: PlayerState, text: string) {
-    room.broadcast({ t: 'chat', id: p.id, name: p.name, text, bot: p.bot }, { fromUser: p.id });
+  private sayInRoom(room: RoomInstance, p: PlayerState, text: string, shout = false) {
+    const style = p.bot ? undefined : this.store.getUser(p.id)?.bubble;
+    room.broadcast(
+      { t: 'chat', id: p.id, name: p.name, text, bot: p.bot, style, shout: shout || undefined },
+      { fromUser: p.id },
+    );
     this.store.logChat({ at: Date.now(), roomId: room.meta.id, userId: p.id, name: p.name, text });
   }
 
@@ -1291,6 +1318,23 @@ export class Hotel {
         if (!text) return;
         if (user.mutedUntil && user.mutedUntil > Date.now())
           return this.toast(s, 'Du er sat på pause i chatten et stykke tid.', 'error');
+        // ":sit", ":kram", ":heart" … do the action or emote instead of saying it.
+        const cmd = /^:([\p{L}-]+)$/u.exec(text.trim())?.[1]?.toLowerCase();
+        if (cmd && ACTION_COMMANDS[cmd]) return this.doAction(s, user, ACTION_COMMANDS[cmd]);
+        if (cmd && EMOTE_COMMANDS[cmd]) return this.emote(room, player, EMOTE_COMMANDS[cmd]);
+        const shout = shoutText(text);
+        if (shout !== null) {
+          if (s.shoutAt && Date.now() - s.shoutAt < SHOUT_COOLDOWN_MS)
+            return this.toast(
+              s,
+              `Du kan råbe igen om ${Math.ceil((SHOUT_COOLDOWN_MS - (Date.now() - s.shoutAt)) / 1000)} sek 📢`,
+              'error',
+            );
+          s.shoutAt = Date.now();
+          this.sayInRoom(room, player, shout, true);
+          this.bots.onChat(room, player, shout);
+          return;
+        }
         if (text.startsWith('/') && this.game(s, user, room, player, text)) return;
         this.sayInRoom(room, player, text);
         this.quizAnswer(s, user, room, text);
@@ -1312,11 +1356,42 @@ export class Hotel {
         return;
       }
       case 'action':
-        if (!room || !player) return;
-        player.action = msg.kind === 'stop' ? null : msg.kind;
-        player.actionUntil = Date.now() + 2500;
-        room.broadcast({ t: 'action', id: player.id, kind: player.action });
-        if (msg.kind === 'wave' && room.players.size > 1) this.daily(s, user, 'd_wave');
+        return this.doAction(s, user, msg.kind === 'stop' ? null : (msg.kind as ActionKind));
+      case 'emote':
+        if (room && player) this.emote(room, player, msg.kind as EmoteKind);
+        return;
+      case 'setBubble':
+        if (!bubbleUnlocked(msg.style, user.badges, levelOf(user).level))
+          return this.toast(s, '🔒 Den boble er ikke låst op endnu', 'error');
+        user.bubble = msg.style;
+        this.store.touch();
+        return this.toast(s, '💬 Ny chatboble valgt');
+      case 'setPrivacy':
+        user.noFollow = msg.noFollow;
+        this.store.touch();
+        this.notifyFriendsOf(user);
+        return this.toast(
+          s,
+          msg.noFollow ? '🔒 Venner kan ikke længere følge dig' : '👣 Venner kan følge dig igen',
+        );
+      case 'setRelation': {
+        if (!user.friends.includes(msg.userId))
+          return this.toast(s, 'Du kan kun markere dine venner.', 'error');
+        const rel = (user.relations ??= {});
+        if (msg.kind) rel[msg.userId] = msg.kind as RelationKind;
+        else delete rel[msg.userId];
+        this.store.touch();
+        return;
+      }
+      case 'notes':
+        if (room) this.sendNotes(s, user, room);
+        return;
+      case 'noteWrite':
+        if (room) this.noteWrite(s, user, room, msg.text, msg.color);
+        return;
+      case 'noteApprove':
+      case 'noteDelete':
+        if (room) this.noteModerate(s, user, room, msg.id, msg.t === 'noteApprove');
         return;
       case 'stash':
         return this.stash(s, user, msg.id);
@@ -2013,6 +2088,118 @@ export class Hotel {
     this.sendMarket(s, user);
   }
 
+  /* ---------------- actions, emotes, notes ---------------- */
+
+  private doAction(s: Session, user: UserRecord, kind: ActionKind | null) {
+    const room = s.room;
+    const player = s.player;
+    if (!room || !player) return;
+    // Sleeping or sitting on the floor makes no sense on a chair.
+    if (kind && (kind === 'sitfloor' || kind === 'sleep') && player.seatId !== null)
+      return this.toast(s, 'Rejs dig først 🙂');
+    if (kind && (kind === 'sitfloor' || kind === 'sleep') && player.path.length)
+      room.walk(player, room.tileOf(player));
+    player.action = kind;
+    player.actionUntil = Date.now() + ACTION_MS;
+    room.broadcast({ t: 'action', id: player.id, kind });
+    if (kind === 'wave' && room.players.size > 1) this.daily(s, user, 'd_wave');
+    if (kind === 'sleep') this.emote(room, player, 'sleep');
+    if (kind === 'hug') this.emote(room, player, 'heart');
+  }
+
+  private emote(room: RoomInstance, p: PlayerState, kind: EmoteKind) {
+    room.broadcast({ t: 'emote', id: p.id, kind });
+  }
+
+  private relationLists(u: UserRecord) {
+    const rel = u.relations ?? {};
+    return (['heart', 'smile', 'skull'] as RelationKind[])
+      .map((kind) => ({
+        kind,
+        users: Object.entries(rel)
+          .filter(([id, k]) => k === kind && u.friends.includes(id))
+          .map(([id]) => this.store.getUser(id))
+          .filter((x): x is UserRecord => !!x)
+          .slice(0, 12)
+          .map((x) => ({ id: x.id, name: x.name })),
+      }))
+      .filter((r) => r.users.length);
+  }
+
+  private canModerateRoom(user: UserRecord, room: RoomInstance) {
+    const rec = this.roomRecord(room);
+    return (
+      user.role !== 'user' || (!!rec && (rec.ownerId === user.id || rec.rights.includes(user.id)))
+    );
+  }
+
+  private sendNotes(s: Session, user: UserRecord, room: RoomInstance) {
+    const rec = this.roomRecord(room);
+    const mod = this.canModerateRoom(user, room);
+    const notes = (rec?.notes ?? []).filter((n) => n.approved || mod || n.fromId === user.id);
+    this.send(s, { t: 'notes', notes, canModerate: mod });
+  }
+
+  private refreshNotes(room: RoomInstance) {
+    for (const p of room.humans()) {
+      const ps = this.byUser.get(p.id);
+      const pu = this.store.getUser(p.id);
+      if (ps && pu && ps.room === room) this.sendNotes(ps, pu, room);
+    }
+  }
+
+  private noteWrite(s: Session, user: UserRecord, room: RoomInstance, raw: string, color: number) {
+    const rec = this.roomRecord(room);
+    if (!rec || !room.items.some((i) => i.type === 'noteboard'))
+      return this.toast(s, 'Der er ingen opslagstavle her.', 'error');
+    if (user.mutedUntil && user.mutedUntil > Date.now())
+      return this.toast(s, 'Du er sat på pause i chatten et stykke tid.', 'error');
+    const text = filterChat(sanitizeChat(raw)).slice(0, 100);
+    if (!text) return;
+    const notes = (rec.notes ??= []);
+    if (notes.filter((n) => n.fromId === user.id && !n.approved).length >= 3)
+      return this.toast(s, 'Du har allerede 3 sedler, der venter på godkendelse.', 'error');
+    const mod = this.canModerateRoom(user, room);
+    const note: RoomNote = {
+      id: newId('n'),
+      fromId: user.id,
+      fromName: user.name,
+      text,
+      color,
+      at: Date.now(),
+      approved: mod,
+    };
+    notes.unshift(note);
+    // Keep the newest; drop the oldest approved ones first.
+    while (notes.length > NOTES_PER_ROOM) notes.splice(notes.length - 1, 1);
+    this.store.touch();
+    this.toast(s, mod ? '📌 Sedlen er sat op' : '📌 Sedlen venter på, at ejeren godkender den');
+    if (!mod) {
+      const os = this.byUser.get(rec.ownerId);
+      if (os && os !== s) this.toast(os, `📌 ${user.name} har sat en seddel op i ${rec.name}`);
+    }
+    this.refreshNotes(room);
+  }
+
+  private noteModerate(
+    s: Session,
+    user: UserRecord,
+    room: RoomInstance,
+    id: string,
+    approve: boolean,
+  ) {
+    const rec = this.roomRecord(room);
+    const note = rec?.notes?.find((n) => n.id === id);
+    if (!rec || !note) return;
+    const mod = this.canModerateRoom(user, room);
+    if (!mod && !(note.fromId === user.id && !approve))
+      return this.toast(s, 'Kun ejeren kan godkende sedler.', 'error');
+    if (approve) note.approved = true;
+    else rec.notes = rec.notes!.filter((n) => n !== note);
+    this.store.touch();
+    this.refreshNotes(room);
+  }
+
   /* ---------------- guestbook ---------------- */
 
   private guestbookWrite(s: Session, user: UserRecord, targetId: string, raw: string) {
@@ -2353,8 +2540,9 @@ export class Hotel {
           id: f.id,
           name: f.name,
           online: !!fs,
-          roomId: fs?.room?.meta.id ?? null,
-          roomName: fs?.room?.meta.name ?? null,
+          // "Må ikke følges": friends see that you're online, but not where.
+          roomId: f.noFollow ? null : (fs?.room?.meta.id ?? null),
+          roomName: f.noFollow ? null : (fs?.room?.meta.name ?? null),
           unread: this.unread(user, f.id),
         };
       })
@@ -2577,6 +2765,7 @@ export class Hotel {
         rooms,
         pet: this.activePetView(target),
         guestbook: (target.guestbook ?? []).slice(0, 20),
+        relations: this.relationLists(target),
       },
     });
   }
