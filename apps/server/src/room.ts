@@ -1,6 +1,7 @@
 import {
   ACTIONS,
   type ActionKind,
+  type CarryKind,
   buildGrid,
   canPlace,
   DOOR_TILE,
@@ -42,6 +43,9 @@ export interface PlayerState {
   goalSeat: number | null;
   action: ActionKind | null;
   actionUntil: number;
+  effect?: string;
+  carry?: CarryKind | null;
+  carryUntil?: number;
   send: ((msg: ServerMsg) => void) | null;
   /** Icon of the badge shown by the name. */
   badge?: string;
@@ -124,6 +128,8 @@ export class RoomInstance {
       run: p.run,
       seatId: p.seatId,
       action: p.action,
+      effect: p.effect,
+      carry: p.carry ?? null,
       bot: p.bot,
       badge: p.badge,
       level: p.level,

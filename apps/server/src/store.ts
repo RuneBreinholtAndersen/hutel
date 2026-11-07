@@ -75,6 +75,10 @@ export interface UserRecord {
   showBadge?: string | null;
   /** Chat bubble style id. */
   bubble?: string;
+  /** Saved outfits (OUTFIT_SLOTS slots). */
+  outfits?: (Look | null)[];
+  /** Glow / shadow / aura around the figure. */
+  effect?: string;
   /** Friends may not follow me into rooms. */
   noFollow?: boolean;
   /** friend id → ❤️ / 😊 / 💀 */

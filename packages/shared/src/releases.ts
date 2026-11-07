@@ -14,6 +14,17 @@ export interface ReleaseNote {
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
     date: '2026-11-07',
+    title: 'Nyt tøj, outfits og ting i hånden',
+    items: [
+      '👗 Kjole, dunjakke, baret, solhat, nye sko og tilbehør – i flere farver',
+      '👕 Gem op til 5 outfits og skift med ét klik under Figur',
+      '✨ Effekter: farvet skygge, gyldent skær, stjernestøv og festaura',
+      '☕ Hent kaffe, is eller en blomst ved disken – og giv den til en ven',
+      '🛁 Man sidder nu ordentligt i badekarret',
+    ],
+  },
+  {
+    date: '2026-11-07',
     title: 'Råb, emotes og nye handlinger',
     items: [
       '📢 Råb med :shout – stor, fed tekst til hele rummet',

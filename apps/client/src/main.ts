@@ -16,6 +16,13 @@ import {
   type ActionKind,
   type EmoteKind,
   type RoomNote,
+  CARRY,
+  EFFECTS,
+  EFFECT_IDS,
+  OUTFIT_SLOTS,
+  effectUnlocked,
+  type CarryKind,
+  type EffectId,
   EVENTS,
   WEEKDAYS,
   type ActiveEvent,
@@ -734,6 +741,17 @@ function handle(msg: ServerMsg) {
     case 'emote':
       floatEmote(msg.id, EMOTES[msg.kind]);
       return;
+    case 'effect':
+      actors.get(msg.id)?.setEffect(msg.effect === 'none' ? undefined : msg.effect);
+      if (me && msg.id === me.id) {
+        me.effect = msg.effect === 'none' ? undefined : msg.effect;
+        if (panelKind === 'fig') renderFigure();
+      }
+      return;
+    case 'carry':
+      actors.get(msg.id)?.setCarry(msg.item);
+      if (me && msg.id === me.id && panelKind === 'moves') renderMoves();
+      return;
     case 'notes':
       roomNotes = msg.notes;
       notesMod = msg.canModerate;
@@ -891,6 +909,7 @@ const toggle = (kind: string, open: () => void) => () =>
 
 let lastRooms: NavigatorRoom[] | null = null;
 let events: ActiveEvent[] = [];
+const eventsRunning = () => events.length > 0;
 function renderEventBar() {
   const e = events[0];
   const bar = $('eventBar');
@@ -1441,6 +1460,7 @@ function renderMoves() {
     'moves',
     head('😊 Handlinger', 'Tip: skriv også :sit, :kram, :sov, :heart eller :shout hej i chatten.') +
       `<h3>Gør noget</h3><div class="chips">${ACTION_IDS.map((k) => `<button data-act="${k}" class="${a?.action === k ? 'primary' : ''}">${ACTIONS[k].icon} ${ACTIONS[k].name}</button>`).join('')}<button data-act="stop">✋ Stop</button></div>
+      ${a?.carry ? `<h3>I hånden</h3><div class="chips"><span style="font-size:22px">${CARRY[a.carry as CarryKind].icon}</span> ${CARRY[a.carry as CarryKind].name} <button data-drop>Læg den fra dig</button></div><p class="sub">Klik på en figur og vælg 🎁 Giv for at give den væk.</p>` : ''}
       <h3>Emotes</h3><div class="chips emotes">${EMOTE_IDS.map((k) => `<button data-emo="${k}" style="font-size:22px">${EMOTES[k]}</button>`).join('')}</div>`,
   );
   const p = $('panel');
@@ -1450,9 +1470,27 @@ function renderMoves() {
       if (!ACTIONS[b.dataset.act as ActionKind]?.timed) setTimeout(renderMoves, 250);
     }),
   );
+  p.querySelector('[data-drop]')?.addEventListener('click', () => net?.send({ t: 'carryDrop' }));
   p.querySelectorAll<HTMLElement>('[data-emo]').forEach((b) =>
     b.addEventListener('click', () => net?.send({ t: 'emote', kind: b.dataset.emo as EmoteKind })),
   );
+}
+
+/** Counter / machine: pick what you'd like to carry. */
+function renderDispense(itemId: number, kinds: readonly CarryKind[]) {
+  openPanel(
+    'dispense',
+    head('🍽️ Hvad skal det være?', 'Din figur går hen og henter det. Det er gratis 🙂') +
+      `<div class="chips">${kinds.map((k) => `<button data-carry="${k}" style="font-size:16px">${CARRY[k].icon} ${CARRY[k].name}</button>`).join('')}</div>`,
+  );
+  $('panel')
+    .querySelectorAll<HTMLElement>('[data-carry]')
+    .forEach((b) =>
+      b.addEventListener('click', () => {
+        net?.send({ t: 'dispense', itemId, kind: b.dataset.carry as CarryKind });
+        closePanel();
+      }),
+    );
 }
 
 /** 📌 Notice board with post-its; the owner approves notes from guests. */
@@ -1683,6 +1721,25 @@ function renderFigure() {
     head('🧍 Min figur', 'Køb sejt tøj med dine mønter – nogle ting låses op med badges.') +
       `<div class="row"><label>Motto</label><input id="motto" maxlength="60" value="${esc(me.motto)}" style="width:100%"></div><div id="lookEd"></div>
     ${levelBox()}
+    <h3>👕 Gemte outfits</h3><div class="outfits">${Array.from({ length: OUTFIT_SLOTS }, (_, i) => {
+      const o = me!.outfits?.[i];
+      return `<div class="outfit"><b>${i + 1}</b>${o ? `<button class="small primary" data-owear="${i}">Tag på</button>` : '<span class="sub">tom</span>'}<button class="small" data-osave="${i}">Gem</button></div>`;
+    }).join('')}</div>
+    <h3>✨ Effekt</h3><div class="chips">${EFFECT_IDS.map((id) => {
+      const e = EFFECTS[id] as {
+        name: string;
+        icon: string;
+        badge?: keyof typeof BADGES;
+        level?: number;
+        duringEvents?: boolean;
+      };
+      const open = effectUnlocked(id, me!.badges, levelOf(me!).level, eventsRunning());
+      const cur = (me!.effect ?? 'none') === id;
+      const why = e.badge
+        ? `badget ${BADGES[e.badge].name}${e.duringEvents ? ' (eller under events)' : ''}`
+        : `level ${e.level}`;
+      return `<button data-fx="${id}" ${open ? '' : 'disabled'} class="${cur ? 'on' : ''}" title="${open ? '' : 'Låses op med ' + esc(why)}">${open ? e.icon : '🔒'} ${esc(e.name)}</button>`;
+    }).join('')}</div>
     <h3>💬 Chatboble</h3><div class="chips">${BUBBLE_STYLE_IDS.map((id) => {
       const st = BUBBLE_STYLES[id] as {
         name: string;
@@ -1701,6 +1758,36 @@ function renderFigure() {
     ${me.role !== 'user' ? `<button id="openAdmin" class="small">🛡️ Moderation</button>` : ''}
     ${canReset ? `<h3>Test</h3><p class="sub">Nulstil mønter, opgaver, badges og dit værelse, og prøv starten igen. Navn, figur og venner beholdes.</p><button id="resetMe" class="small danger">🔄 Start forfra</button>` : ''}`,
   );
+  $('panel')
+    .querySelectorAll<HTMLElement>('[data-osave]')
+    .forEach((b) =>
+      b.addEventListener('click', () => {
+        if (!me) return;
+        const i = Number(b.dataset.osave);
+        me.outfits = [...(me.outfits ?? Array(OUTFIT_SLOTS).fill(null))];
+        me.outfits[i] = { ...me.look };
+        net?.send({ t: 'outfitSave', slot: i });
+        renderFigure();
+      }),
+    );
+  $('panel')
+    .querySelectorAll<HTMLElement>('[data-owear]')
+    .forEach((b) =>
+      b.addEventListener('click', () => {
+        const o = me?.outfits?.[Number(b.dataset.owear)];
+        if (!me || !o) return;
+        me.look = { ...o };
+        net?.send({ t: 'outfitWear', slot: Number(b.dataset.owear) });
+        renderFigure();
+      }),
+    );
+  $('panel')
+    .querySelectorAll<HTMLElement>('[data-fx]')
+    .forEach((b) =>
+      b.addEventListener('click', () =>
+        net?.send({ t: 'setEffect', effect: b.dataset.fx as EffectId }),
+      ),
+    );
   $('panel')
     .querySelectorAll<HTMLElement>('[data-bub]')
     .forEach((b) =>
@@ -2025,6 +2112,7 @@ function renderProfile(p: ProfileView) {
       (!self && !p.bot
         ? `<div class="chips" style="margin-top:12px">
           ${p.here ? `<button data-a="hush">🤫 Hvisk</button>` : ''}
+          ${p.here && myActor()?.carry ? `<button data-a="give" class="primary">🎁 Giv ${CARRY[myActor()!.carry as CarryKind].icon}</button>` : ''}
           ${p.friend ? `<button data-a="pm">💬 Messenger</button><button data-a="unfriend">Fjern ven</button>` : `<button data-a="friend" class="primary">➕ Tilføj ven</button>`}
           ${inMyRoom ? `<button data-a="rights">🔨 Giv byggerettigheder</button><button data-a="norights">Fjern rettigheder</button>` : ''}
           ${p.here && questsDone() ? `<button data-a="trade">🤝 Byt</button>` : ''}
@@ -2045,6 +2133,10 @@ function renderProfile(p: ProfileView) {
         if (a === 'block') net?.send({ t: 'block', userId: p.id, block: !p.blocked });
         if (a === 'modmute') net?.send({ t: 'admin', action: 'mute', userId: p.id, minutes: 60 });
         if (a === 'modkick') net?.send({ t: 'admin', action: 'kick', userId: p.id });
+        if (a === 'give') {
+          net?.send({ t: 'carryGive', userId: p.id });
+          return closePanel();
+        }
         if (a === 'trade') {
           closePanel();
           net?.send({ t: 'tradeStart', userId: p.id });
@@ -2460,6 +2552,11 @@ function onClick() {
   if (it && it.type === 'gamebox') return renderGames(it.id);
   if (it && it.type === 'jukebox') return renderJukebox(it.id);
   if (it && it.type === 'noteboard') return openNotes();
+  const disp = it ? furniture(it.type).dispense : undefined;
+  if (it && disp?.length) {
+    if (disp.length === 1) return net.send({ t: 'dispense', itemId: it.id, kind: disp[0]! });
+    return renderDispense(it.id, disp);
+  }
   if (
     it &&
     furniture(it.type).states &&

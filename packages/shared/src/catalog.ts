@@ -1,4 +1,5 @@
 import type { BadgeId } from './progress';
+import type { CarryKind } from './style';
 
 export interface FurnitureDef {
   name: string;
@@ -31,6 +32,8 @@ export interface FurnitureDef {
    * rot 0 = back wall, rot 1 = left wall; `x` is the tile index along that wall.
    */
   wall?: boolean;
+  /** Click it to get one of these to carry in your hand. */
+  dispense?: readonly CarryKind[];
 }
 
 const FABRIC = [
@@ -184,6 +187,7 @@ export const FURNITURE = {
     d: 1,
     minLevel: 5,
     colors: [0xe8eef0, 0xc94f3d, 0x5b8f4a],
+    dispense: ['sodavand', 'is'],
   },
   grill: {
     name: 'Grill',
@@ -283,7 +287,26 @@ export const FURNITURE = {
     colors: [0xff5ab0, 0x5ad8ff, 0xffd04a, 0x7dff8a],
   },
   desk: { name: 'Reception', icon: '🛎️', price: 0, w: 3, d: 1, noShop: true },
-  counter: { name: 'Cafédisk', icon: '🧁', price: 0, w: 3, d: 1, noShop: true },
+  counter: {
+    name: 'Cafédisk',
+    icon: '🧁',
+    price: 0,
+    w: 3,
+    d: 1,
+    noShop: true,
+    dispense: ['kaffe', 'sodavand', 'is', 'kage', 'blomst'],
+  },
+  kaffemaskine: {
+    name: 'Kaffemaskine',
+    icon: '☕',
+    price: 20,
+    w: 1,
+    d: 1,
+    dispense: ['kaffe'],
+    colors: [0x2a2a35, 0xc94f3d, 0xf0efe8],
+  },
+  isboks: { name: 'Isboks', icon: '🍦', price: 22, w: 1, d: 1, dispense: ['is'], minLevel: 2 },
+  blomstervase: { name: 'Blomstervase', icon: '💐', price: 10, w: 1, d: 1, dispense: ['blomst'] },
 } as const satisfies Record<string, FurnitureDef>;
 
 export type FurnitureType = keyof typeof FURNITURE;
@@ -307,7 +330,12 @@ export const SHOP_CATEGORIES = [
   },
   { id: 'table', name: 'Borde og opbevaring', icon: '🪑', types: ['table', 'shelf', 'nightstand'] },
   { id: 'bed', name: 'Seng og bad', icon: '🛏️', types: ['bed', 'bathtub', 'sink'] },
-  { id: 'kitchen', name: 'Køkken og have', icon: '🍳', types: ['kitchen', 'fridge', 'grill'] },
+  {
+    id: 'kitchen',
+    name: 'Køkken og have',
+    icon: '🍳',
+    types: ['kitchen', 'fridge', 'grill', 'kaffemaskine', 'isboks'],
+  },
   {
     id: 'light',
     name: 'Lys og lyd',
@@ -318,7 +346,7 @@ export const SHOP_CATEGORIES = [
     id: 'deco',
     name: 'Planter og pynt',
     icon: '🪴',
-    types: ['plant', 'cactus', 'rug', 'aquarium'],
+    types: ['plant', 'cactus', 'blomstervase', 'rug', 'aquarium'],
   },
   {
     id: 'wall',

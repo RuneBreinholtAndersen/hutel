@@ -16,3 +16,4 @@ export * from './roomgames';
 export * from './releases';
 export * from './music';
 export * from './social';
+export * from './style';

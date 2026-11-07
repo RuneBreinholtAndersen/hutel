@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { CARRY_IDS, EFFECT_IDS, OUTFIT_SLOTS, type CarryKind } from './style';
 import {
   ACTION_IDS,
   BUBBLE_STYLE_IDS,
@@ -185,6 +186,34 @@ export const ClientMsgSchema = z.discriminatedUnion('t', [
     t: z.literal('action'),
     kind: z.enum(['stop', ...ACTION_IDS] as [string, ...string[]]),
   }),
+  /** Saved outfits: store the current look in a slot, or put one on. */
+  z.object({
+    t: z.literal('outfitSave'),
+    slot: z
+      .number()
+      .int()
+      .min(0)
+      .max(OUTFIT_SLOTS - 1),
+  }),
+  z.object({
+    t: z.literal('outfitWear'),
+    slot: z
+      .number()
+      .int()
+      .min(0)
+      .max(OUTFIT_SLOTS - 1),
+  }),
+  /** Glow, coloured shadow, sparkles or a party aura around my figure. */
+  z.object({ t: z.literal('setEffect'), effect: z.enum(EFFECT_IDS as [string, ...string[]]) }),
+  /** Take something from a counter, coffee machine, vase… (walks there first). */
+  z.object({
+    t: z.literal('dispense'),
+    itemId: z.number().int(),
+    kind: z.enum(CARRY_IDS as [string, ...string[]]),
+  }),
+  z.object({ t: z.literal('carryDrop') }),
+  /** Give what I hold to someone in the same room. */
+  z.object({ t: z.literal('carryGive'), userId: z.string().max(40) }),
   /** A little icon that floats up from my head. */
   z.object({ t: z.literal('emote'), kind: z.enum(EMOTE_IDS as [string, ...string[]]) }),
   /** Choose my chat bubble style (must be unlocked). */
@@ -284,6 +313,8 @@ export interface PlayerView {
   run: boolean;
   seatId: number | null;
   action: ActionKind | null;
+  effect?: string;
+  carry?: CarryKind | null;
   bot: boolean;
   /** Icon of the badge shown next to the name. */
   badge?: string;
@@ -348,6 +379,8 @@ export interface Me {
   showBadge?: string | null;
   bubble?: string;
   noFollow?: boolean;
+  outfits?: (Look | null)[];
+  effect?: string;
   /** friend id → relation */
   relations?: Record<string, RelationKind>;
 }
@@ -522,6 +555,8 @@ export type ServerMsg =
       shout?: boolean;
     }
   | { t: 'emote'; id: string; kind: EmoteKind }
+  | { t: 'effect'; id: string; effect: string }
+  | { t: 'carry'; id: string; item: CarryKind | null }
   | { t: 'notes'; notes: RoomNote[]; canModerate: boolean }
   | { t: 'action'; id: string; kind: ActionKind | null }
   | { t: 'look'; id: string; look: Look }

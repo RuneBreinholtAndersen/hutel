@@ -2,7 +2,7 @@
 
 Listen sammenligner Hutel med de klassiske funktioner fra Habbo Hotel. Navne, grafik og møbler kopieres ikke: vi laver vores egen version af idéen.
 
-_Senest opdateret: 7. november 2026 (råb, chatbobler, emotes, handlinger, relationer og opslagstavle)._
+_Senest opdateret: 7. november 2026 (nyt tøj, gemte outfits, effekter, bære ting og biograf-idé)._
 
 **Sådan læses den**
 - **Værdi**: hvor meget det betyder for spillerne (★–★★★)
@@ -44,12 +44,9 @@ Det her mener jeg giver mest spil for pengene, i den rækkefølge:
 - [ ] **Betalt medlemskab (HC-agtigt)** – ekstra tøj, farver, ekstra rum. Kun via Stripe Checkout + webhook. L
 
 ### Figur
-- [ ] **Flere tøjdele** – jakker, kjoler, sko, accessories, hatte i flere farver. S pr. del
-- [ ] **Gemte outfits** – 3–5 pladser til at skifte hurtigt. S
-- [ ] **Effekter** – gløde, skygge-farve, lille "aura" ved events. S
-- [ ] **Bære ting i hånden** – kaffe, is, blomst (fra dispensere eller gaver). S
 
 ### Spil og aktiviteter
+- [ ] **Biograf** – et rum med lærred, hvor man sidder og ser YouTube-videoer sammen, synkroniseret for alle; ejeren vælger video. Kun officiel YouTube-indlejring, og aldrig i Junior. M
 - [ ] **Snebold/arena-spil** med hold og point. M
 - [ ] **Stoleleg** – musik, stop, sæt dig; én stol færre hver runde. M
 - [ ] **Quiz-shows / "Hvem vil være millionær"-agtigt** med en 🤖-vært. M
@@ -112,6 +109,11 @@ Det her mener jeg giver mest spil for pengene, i den rækkefølge:
 - ✅ "Må ikke følges": venner ser, at du er online, men ikke hvor
 - ✅ Relationer: marker venner som ❤️ / 😊 / 💀 – vises på profilen
 - ✅ Opslagstavle (vægmøbel) med post-it-sedler, som ejeren godkender
+- ✅ Nyt tøj: kjole, dunjakke, baret, solhat, sneakers, støvler, sandaler, halstørklæde, butterfly, rygsæk og guldkæde – hat, sko og tilbehør i 8 farver
+- ✅ 5 gemte outfits man kan skifte mellem med ét klik
+- ✅ Effekter: farvet skygge, gyldent skær, stjernestøv og festaura (gratis under events)
+- ✅ Bære ting i hånden: kaffe, is, sodavand, blomst og cupcake fra cafédisken, kaffemaskine, isboks, køleskab og blomstervase – og give dem til andre
+- ✅ Badekar: man sidder nu nede i vandet i stedet for at ligge oven på
 - ✅ Butik med møbler og tøj, låst op med level og badges
 - ✅ Mønter (online-tid, opgaver, events, spil) – beregnet på serveren
 - ✅ Byttehandel med inventar, begge parter skal godkende, alt logges

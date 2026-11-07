@@ -557,6 +557,59 @@ const BUILD: Record<FurnitureType, (c: number, state: number) => T.Group> = {
     g.add(cyl(0.12, 0.1, 0.12, M(0xc94f3d), 0.6, 0.98, -0.15));
     return g;
   },
+  kaffemaskine(c) {
+    const g = new T.Group();
+    g.add(rbox(0.6, 0.72, 0.6, wood, 0, 0.36, 0, 0.04));
+    const m = M(c, { roughness: 0.35, metalness: 0.2 });
+    g.add(rbox(0.42, 0.5, 0.36, m, 0, 0.97, -0.05, 0.05));
+    g.add(rbox(0.36, 0.08, 0.2, m, 0, 1.18, 0.15, 0.03));
+    const steel = M(0xd0d4d8, { metalness: 0.8, roughness: 0.25 });
+    g.add(cyl(0.03, 0.03, 0.08, steel, 0, 1.1, 0.2));
+    g.add(cyl(0.07, 0.06, 0.1, M(0xf4f1ea, { roughness: 0.4 }), 0, 0.79, 0.18));
+    g.add(
+      sph(0.025, M(0x7dff8a, { emissive: 0x3fbf4a, emissiveIntensity: 1.2 }), 0.14, 1.08, 0.14),
+    );
+    return g;
+  },
+  isboks() {
+    const g = new T.Group();
+    const body = M(0xf4f1ea, { roughness: 0.4 });
+    g.add(rbox(0.72, 0.8, 0.6, body, 0, 0.4, 0, 0.05));
+    g.add(
+      rbox(
+        0.66,
+        0.04,
+        0.54,
+        M(0x9fd8ff, { roughness: 0.1, transparent: true, opacity: 0.6 }),
+        0,
+        0.82,
+        0,
+      ),
+    );
+    for (const [x, col] of [
+      [-0.2, 0xffc1d9],
+      [0, 0xfff0b3],
+      [0.2, 0x8a5a34],
+    ] as const)
+      g.add(sph(0.09, M(col, { roughness: 0.7 }), x, 0.76, 0));
+    g.add(rbox(0.72, 0.1, 0.02, M(0xff8fb0), 0, 0.6, 0.31));
+    return g;
+  },
+  blomstervase() {
+    const g = new T.Group();
+    g.add(cyl(0.12, 0.16, 0.36, M(0x3f7fd6, { roughness: 0.25 }), 0, 0.18, 0, 20));
+    const stem = M(0x4f8f3a);
+    const petals = [0xd8433a, 0xff8fb0, 0xffd24a, 0xd8433a, 0xf4f1ea];
+    petals.forEach((c, i) => {
+      const a = (i / petals.length) * Math.PI * 2;
+      const x = Math.sin(a) * 0.09;
+      const z = Math.cos(a) * 0.09;
+      const st = cyl(0.012, 0.012, 0.36, stem, x * 0.6, 0.52, z * 0.6, 6);
+      st.rotation.set(z * 1.4, 0, -x * 1.4);
+      g.add(st, sph(0.065, M(c, { roughness: 0.7 }), x * 1.6, 0.72, z * 1.6));
+    });
+    return g;
+  },
   fridge(c) {
     const g = new T.Group();
     const m = M(c, { roughness: 0.3 });

@@ -7,6 +7,11 @@ import {
   bubbleUnlocked,
   shoutText,
   type ActionKind,
+  CARRY,
+  CARRY_MS,
+  OUTFIT_SLOTS,
+  effectUnlocked,
+  type CarryKind,
   type EmoteKind,
   type RelationKind,
   type RoomNote,
@@ -214,6 +219,12 @@ const LIMIT_FOR: Partial<Record<ClientMsg['t'], LimitKind>> = {
   pmHistory: 'social',
   action: 'move',
   emote: 'social',
+  outfitSave: 'build',
+  outfitWear: 'build',
+  setEffect: 'social',
+  dispense: 'move',
+  carryDrop: 'social',
+  carryGive: 'social',
   setBubble: 'social',
   setPrivacy: 'social',
   setRelation: 'social',
@@ -453,6 +464,8 @@ export class Hotel {
       role: u.role,
       showBadge: u.showBadge,
       bubble: u.bubble,
+      outfits: u.outfits ?? Array(OUTFIT_SLOTS).fill(null),
+      effect: u.effect,
       noFollow: u.noFollow,
       relations: u.relations ?? {},
     };
@@ -576,6 +589,7 @@ export class Hotel {
       badge: this.badgeIcon(user),
       level: levelOf(user).level,
       pet: this.activePetView(user),
+      effect: user.effect,
     };
     room.add(player, at);
     s.room = room;
@@ -1357,6 +1371,51 @@ export class Hotel {
       }
       case 'action':
         return this.doAction(s, user, msg.kind === 'stop' ? null : (msg.kind as ActionKind));
+      case 'outfitSave': {
+        const outfits = (user.outfits ??= Array(OUTFIT_SLOTS).fill(null));
+        outfits[msg.slot] = { ...user.look };
+        this.store.touch();
+        return this.toast(s, `👕 Outfit ${msg.slot + 1} gemt`);
+      }
+      case 'outfitWear': {
+        const look = user.outfits?.[msg.slot];
+        if (!look) return this.toast(s, 'Den plads er tom – gem et outfit først.', 'error');
+        this.handle(s, user, { t: 'look', look });
+        return;
+      }
+      case 'setEffect': {
+        const eventOn = this.currentEvents().length > 0;
+        if (!effectUnlocked(msg.effect, user.badges, levelOf(user).level, eventOn))
+          return this.toast(s, '🔒 Den effekt er ikke låst op endnu', 'error');
+        user.effect = msg.effect === 'none' ? undefined : msg.effect;
+        this.store.touch();
+        if (player) player.effect = user.effect;
+        room?.broadcast({ t: 'effect', id: user.id, effect: user.effect ?? 'none' });
+        return;
+      }
+      case 'dispense':
+        if (room && player) this.dispense(s, room, player, msg.itemId, msg.kind as CarryKind);
+        return;
+      case 'carryDrop':
+        if (room && player) this.setCarry(room, player, null);
+        return;
+      case 'carryGive': {
+        if (!room || !player?.carry) return;
+        const to = room.players.get(msg.userId);
+        if (!to || to.bot || to.id === player.id)
+          return this.toast(s, 'Personen skal være i samme rum.', 'error');
+        const what = player.carry;
+        this.setCarry(room, player, null);
+        this.setCarry(room, to, what);
+        const ts = this.byUser.get(to.id);
+        if (ts)
+          this.toast(
+            ts,
+            `${CARRY[what].icon} ${user.name} gav dig: ${CARRY[what].name.toLowerCase()}`,
+          );
+        this.emote(room, to, 'heart');
+        return this.toast(s, `${CARRY[what].icon} Du gav ${to.name} en gave`);
+      }
       case 'emote':
         if (room && player) this.emote(room, player, msg.kind as EmoteKind);
         return;
@@ -2088,6 +2147,50 @@ export class Hotel {
     this.sendMarket(s, user);
   }
 
+  /* ---------------- carrying things ---------------- */
+
+  private setCarry(room: RoomInstance, p: PlayerState, item: CarryKind | null) {
+    p.carry = item;
+    p.carryUntil = item ? Date.now() + CARRY_MS : undefined;
+    room.broadcast({ t: 'carry', id: p.id, item });
+  }
+
+  /** Walk to the counter / machine and take something; from far away we walk there first. */
+  private dispense(
+    s: Session,
+    room: RoomInstance,
+    p: PlayerState,
+    itemId: number,
+    kind: CarryKind,
+  ) {
+    const it = room.items.find((i) => i.id === itemId);
+    if (!it || !furniture(it.type).dispense?.includes(kind)) return;
+    const tiles = tilesOf(it);
+    const near = () => {
+      const [x, z] = room.tileOf(p);
+      return tiles.some(([a, b]) => Math.max(Math.abs(a - x), Math.abs(b - z)) <= 1);
+    };
+    const give = () => {
+      this.setCarry(room, p, kind);
+      this.toast(s, `${CARRY[kind].icon} Værsgo – ${CARRY[kind].name.toLowerCase()}!`);
+    };
+    if (near()) return give();
+    let walking = false;
+    for (const [x, z] of tiles) {
+      const goal = this.freeNeighbour(room, x, z);
+      if (goal && room.walk(p, goal)) {
+        walking = true;
+        break;
+      }
+    }
+    if (!walking || !p.path.length) return this.toast(s, 'Kan ikke komme derhen 🙈', 'error');
+    const ticket = (s.doorTicket = (s.doorTicket ?? 0) + 1);
+    const ms = (p.path.length / WALK_SPEED) * 1000 + 250;
+    setTimeout(() => {
+      if (s.room === room && s.player === p && s.doorTicket === ticket && near()) give();
+    }, ms);
+  }
+
   /* ---------------- actions, emotes, notes ---------------- */
 
   private doAction(s: Session, user: UserRecord, kind: ActionKind | null) {
@@ -2786,6 +2889,11 @@ export class Hotel {
     this.checkEvents();
     // Save where everyone stands every few seconds, so even a hard restart (deploy, crash)
     // puts people back on their own tile instead of at the door.
+    // Things in the hand don't last forever.
+    const now = Date.now();
+    for (const room of this.rooms.values())
+      for (const p of room.players.values())
+        if (p.carry && p.carryUntil && p.carryUntil < now) this.setCarry(room, p, null);
     if (++this.spotTick % 5 === 0 && this.sessions.size) {
       for (const s of this.sessions) this.rememberSpot(s);
       this.store.touch();

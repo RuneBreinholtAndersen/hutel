@@ -1002,6 +1002,37 @@ describe('multiplayer', () => {
     b.c.ws.close();
   });
 
+  it('saves outfits, locks effects, and fetches and gives away coffee', async () => {
+    const a = await login('Kaffehenter');
+    const b = await login('Modtageren');
+    const ua = app.store.getUser(a.g.userId)!;
+    const home = app.store.getRoom(ua.homeRoomId)!;
+    home.items.push({ id: 9401, type: 'kaffemaskine', x: 4, z: 4, rot: 0 });
+    b.c.send({ t: 'join', roomId: ua.homeRoomId });
+    await b.c.waitFor('room', (m) => m.room.id === ua.homeRoomId);
+    // Outfits
+    a.c.send({ t: 'outfitWear', slot: 0 });
+    await a.c.waitFor('toast', (m) => /tom/.test(m.text));
+    a.c.send({ t: 'outfitSave', slot: 0 });
+    await a.c.waitFor('toast', (m) => /Outfit 1 gemt/.test(m.text));
+    a.c.send({ t: 'outfitWear', slot: 0 });
+    await b.c.waitFor('look', (m) => m.id === ua.id);
+    // Effects: glow needs level 4
+    a.c.send({ t: 'setEffect', effect: 'glow' });
+    await a.c.waitFor('toast', (m) => /ikke låst op/.test(m.text));
+    a.c.send({ t: 'setEffect', effect: 'none' });
+    await b.c.waitFor('effect', (m) => m.id === ua.id && m.effect === 'none');
+    // Coffee: walk to the machine, take a cup, give it to b
+    a.c.send({ t: 'dispense', itemId: 9401, kind: 'kaffe' });
+    await b.c.waitFor('carry', (m) => m.id === ua.id && m.item === 'kaffe', 8000);
+    a.c.send({ t: 'dispense', itemId: 9401, kind: 'is' });
+    a.c.send({ t: 'carryGive', userId: b.g.userId });
+    await b.c.waitFor('carry', (m) => m.id === b.g.userId && m.item === 'kaffe');
+    await b.c.waitFor('toast', (m) => /gav dig/.test(m.text));
+    a.c.ws.close();
+    b.c.ws.close();
+  }, 15_000);
+
   it('plays a jukebox tune for everyone in the room, chosen only by the owner', async () => {
     const a = await login('Dj Ejer');
     const b = await login('Lytter');

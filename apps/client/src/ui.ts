@@ -5,6 +5,8 @@ import {
   GLASSES,
   HAIR_STYLES,
   HATS,
+  SHOES,
+  ACCESSORIES,
   PALETTE,
   TOPS,
   type BadgeId,
@@ -110,7 +112,14 @@ export function confetti() {
   f();
 }
 
-const LABELS = { skin: 'Hud', hair: 'Hår', eyes: 'Øjne', shirt: 'Trøje', pants: 'Bukser' } as const;
+const LABELS = {
+  skin: 'Hud',
+  hair: 'Hår',
+  eyes: 'Øjne',
+  shirt: 'Trøje',
+  pants: 'Bukser',
+  extra: 'Hat, sko og tilbehør',
+} as const;
 const OPTS = {
   hairStyle: {
     label: 'Frisure',
@@ -149,6 +158,8 @@ function clothesRows(look: Look, w?: Wardrobe) {
   const slots = [
     ['top', 'Overdel', TOPS, look.top ?? 'tshirt'],
     ['hat', 'Hat', HATS, look.hat ?? 'ingen'],
+    ['shoes', 'Sko', SHOES, look.shoes ?? 'standard'],
+    ['acc', 'Tilbehør', ACCESSORIES, look.acc ?? 'ingen'],
   ] as const;
   return slots
     .map(([slot, label, vals, cur]) => {
@@ -201,7 +212,7 @@ export function lookEditor(
     el.querySelectorAll<HTMLElement>('[data-cl]').forEach((b) =>
       b.addEventListener('click', () => {
         const key = b.dataset.cl!;
-        const [slot, v] = key.split(':') as ['top' | 'hat', string];
+        const [slot, v] = key.split(':') as ['top' | 'hat' | 'shoes' | 'acc', string];
         const c = CLOTHES[key]!;
         if (c.price > 0 && !wardrobe?.owned.includes(key)) {
           if (!wardrobe) return;
