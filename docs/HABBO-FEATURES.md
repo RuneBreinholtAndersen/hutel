@@ -99,7 +99,7 @@ Det her mener jeg giver mest spil for pengene, i den rækkefølge:
 - ✅ Vægmøbler: malerier, plakater, vinduer, hylder, ur, spejl, neonskilt
 - ✅ Opdateringer uden afbrydelse: knap med "Ny version" og "Se hvad der er nyt" – og man står samme sted efter en genstart
 - ✅ Butik med kategorier og søgefelt (møbler, væg, spil, tapet og gulv, inventar)
-- ✅ Lydeffekter lavet i kode (klik, døre, teleport, mønter, chat, badges, spil, kæledyr) med 🔊-indstillinger
+- ✅ Lydeffekter lavet i kode (klik, døre, teleport, mønter, chat, badges, spil, kæledyr); højttaleren øverst til højre slår al lyd til/fra (rød streg når slået fra), indstillinger under Figur
 - ✅ Jukebox med 6 egne melodier, synkroniseret for alle i rummet og svagere jo længere væk man står
 - ✅ Animerede vejlednings-film til rum-spillene på spilkonsollen
 - ✅ Råbe med `:shout` / `/råb` – stor fed boble, højst én gang hvert 20. sekund

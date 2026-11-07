@@ -1594,11 +1594,16 @@ function renderSound() {
   openPanel(
     'sound',
     head('🔊 Lyd', 'Alle lyde er lavet i kode. Indstillingerne gemmes i denne browser.') +
-      `<label class="sub" style="display:block;margin:10px 0">Lydstyrke <input id="sndVol" type="range" min="0" max="100" value="${Math.round(s.volume * 100)}" style="width:100%"></label>
+      `<label style="display:block;margin:8px 0"><input id="sndOn" type="checkbox" ${s.muted ? '' : 'checked'}> Lyd slået til</label>
+      <label class="sub" style="display:block;margin:10px 0">Lydstyrke <input id="sndVol" type="range" min="0" max="100" value="${Math.round(s.volume * 100)}" style="width:100%"></label>
       <label style="display:block;margin:8px 0"><input id="sndSfx" type="checkbox" ${s.sfx ? 'checked' : ''}> Lydeffekter (klik, mønter, døre, chat)</label>
       <label style="display:block;margin:8px 0"><input id="sndMusic" type="checkbox" ${s.music ? 'checked' : ''}> Musik fra jukebokse</label>
       <button id="sndTest">▶︎ Prøv en lyd</button>`,
   );
+  ($('sndOn') as HTMLInputElement).addEventListener('change', (e) => {
+    audio.saveSettings({ muted: !(e.target as HTMLInputElement).checked });
+    updateSoundIcon();
+  });
   ($('sndVol') as HTMLInputElement).addEventListener('input', (e) =>
     audio.saveSettings({ volume: Number((e.target as HTMLInputElement).value) / 100 }),
   );
@@ -1611,9 +1616,18 @@ function renderSound() {
   $('sndTest').addEventListener('click', () => audio.sfx('coin'));
   updateSoundIcon();
 }
+/** Speaker icon; muted shows a red line across it. */
 function updateSoundIcon() {
   const s = audio.settings;
-  $('bSound').textContent = s.volume === 0 || (!s.sfx && !s.music) ? '🔇' : '🔊';
+  const off = s.muted || s.volume === 0 || (!s.sfx && !s.music);
+  const b = $('bSound');
+  b.title = off ? 'Lyd er slået fra – klik for at slå til' : 'Klik for at slå lyden fra';
+  b.classList.toggle('muted', off);
+  b.innerHTML = `<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+    <path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/>
+    ${off ? '' : '<path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>'}
+    ${off ? '<line x1="3" y1="21" x2="21" y2="3" stroke="#e8463c" stroke-width="2.6" stroke-linecap="round"/>' : ''}
+  </svg>`;
 }
 
 function renderGames(itemId: number) {
@@ -1754,6 +1768,7 @@ function renderFigure() {
       return `<button data-bub="${id}" ${open ? '' : 'disabled'} title="${open ? '' : 'Låses op med ' + esc(why)}" style="background:${st.bg};color:${st.fg};${cur ? 'outline:3px solid #ffb347' : ''}">${open ? '' : '🔒 '}${esc(st.name)}</button>`;
     }).join('')}</div>
     <h3>Mine badges</h3><div class="badges">${me.badges.map((b) => `<span class="badge" title="${esc(BADGES[b].text)}">${BADGES[b].icon} ${BADGES[b].name}</span>`).join('')}</div>
+    <h3>Lyd</h3><button id="openSound" class="small">🔊 Lydindstillinger</button>
     <h3>Konto</h3><button id="logout" class="small danger">Log ud på denne enhed</button>
     ${me.role !== 'user' ? `<button id="openAdmin" class="small">🛡️ Moderation</button>` : ''}
     ${canReset ? `<h3>Test</h3><p class="sub">Nulstil mønter, opgaver, badges og dit værelse, og prøv starten igen. Navn, figur og venner beholdes.</p><button id="resetMe" class="small danger">🔄 Start forfra</button>` : ''}`,
@@ -1838,6 +1853,7 @@ function renderFigure() {
       if (b) b.textContent = '🔄 Start forfra';
     }, 4000);
   });
+  $('openSound').addEventListener('click', renderSound);
   $('logout').addEventListener('click', () => {
     store.set(TOKEN_KEY, null);
     void signOut(authCfg).finally(() => location.reload());
@@ -2782,7 +2798,22 @@ $('bNav').addEventListener(
 $('bFriends').addEventListener('click', toggle('friends', renderFriends));
 $('bFig').addEventListener('click', toggle('fig', renderFigure));
 $('bPets').addEventListener('click', toggle('pets', renderPets));
-$('bSound').addEventListener('click', toggle('sound', renderSound));
+$('bSound').addEventListener('click', () => {
+  const s = audio.settings;
+  // Turning sound back on should actually make sound, even if everything was off.
+  const off = s.muted || s.volume === 0 || (!s.sfx && !s.music);
+  if (off)
+    audio.saveSettings({
+      muted: false,
+      volume: s.volume || 0.7,
+      sfx: s.sfx || s.music ? s.sfx : true,
+    });
+  else audio.saveSettings({ muted: true });
+  updateSoundIcon();
+  if (off) setTimeout(() => audio.sfx('click'), 50);
+  if (panelKind === 'sound') renderSound();
+});
+updateSoundIcon();
 $('panel').addEventListener('change', () => panelKind === 'sound' && updateSoundIcon());
 $('bMarket').addEventListener('click', toggle('market', openMarket));
 $('bShop').addEventListener('click', toggle('shop', renderShop));

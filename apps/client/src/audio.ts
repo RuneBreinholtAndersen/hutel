@@ -8,12 +8,14 @@ import { MELODIES, MELODY_STEPS, noteFreq, steps, type MelodyId } from '@hutel/s
 export interface AudioSettings {
   /** 0..1 */
   volume: number;
+  /** Everything off (the speaker button top right). */
+  muted: boolean;
   sfx: boolean;
   music: boolean;
 }
 
 const KEY = 'hutel-audio';
-const DEFAULTS: AudioSettings = { volume: 0.7, sfx: true, music: true };
+const DEFAULTS: AudioSettings = { volume: 0.7, muted: false, sfx: true, music: true };
 
 function load(): AudioSettings {
   try {
@@ -39,7 +41,7 @@ export function setClock(fn: () => number) {
 function applySettings() {
   if (!ctx) return;
   const t = ctx.currentTime;
-  master.gain.setTargetAtTime(settings.volume, t, 0.05);
+  master.gain.setTargetAtTime(settings.muted ? 0 : settings.volume, t, 0.05);
   sfxBus.gain.setTargetAtTime(settings.sfx ? 0.8 : 0, t, 0.05);
   musicBus.gain.setTargetAtTime(settings.music ? 0.5 : 0, t, 0.05);
 }
@@ -142,7 +144,7 @@ export type Sfx =
 const lastSfx = new Map<Sfx, number>();
 
 export function sfx(name: Sfx) {
-  if (!ctx || !settings.sfx || ctx.state !== 'running') return;
+  if (!ctx || settings.muted || !settings.sfx || ctx.state !== 'running') return;
   // Avoid machine-gun repeats (many coins at once etc.).
   const nowMs = performance.now();
   if (nowMs - (lastSfx.get(name) ?? 0) < 60) return;

@@ -21,6 +21,7 @@ export const RELEASE_NOTES: ReleaseNote[] = [
       '✨ Effekter: farvet skygge, gyldent skær, stjernestøv og festaura',
       '☕ Hent kaffe, is eller en blomst ved disken – og giv den til en ven',
       '🛁 Man sidder nu ordentligt i badekarret',
+      '🔇 Klik på højttaleren øverst til højre for at slå lyden til og fra',
     ],
   },
   {
