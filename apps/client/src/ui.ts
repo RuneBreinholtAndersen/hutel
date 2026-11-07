@@ -121,11 +121,15 @@ const LABELS = {
   pants: 'Bukser',
   extra: 'Hat, sko og tilbehør',
 } as const;
+/** Lobbi Junior says "pige/dreng" instead of "kvinde/mand". */
+export function useJuniorWords() {
+  Object.assign(OPTS.gender.names, { kvinde: 'Pige', mand: 'Dreng' });
+}
 const OPTS = {
   gender: {
     label: 'Køn',
     vals: GENDERS,
-    names: { kvinde: 'Kvinde', mand: 'Mand', andet: 'Vil ikke sige' },
+    names: { kvinde: 'Kvinde', mand: 'Mand', andet: 'Vil ikke sige' } as Record<string, string>,
   },
   hairStyle: {
     label: 'Frisure',

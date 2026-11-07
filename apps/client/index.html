@@ -64,80 +64,83 @@
         <p class="sub"><a href="#login" id="toPwLogin">Log ind med navn og adgangskode</a></p>
       </div>
       <form id="signupForm" class="card signup">
-        <div class="logo" aria-hidden="true">
-          <svg viewBox="0 0 32 32">
-            <path d="M6 23h20a10 10 0 0 0-20 0Z" fill="#ffb347" />
-            <rect x="4" y="23" width="24" height="3" rx="1.5" fill="#e0b04a" />
-            <circle cx="16" cy="11" r="2" fill="#ffb347" /></svg
-          ><span>Lobbi</span>
-        </div>
-        <h1>Lav din figur</h1>
-        <p class="sub">Vælg et navn og et udseende. Du kan altid ændre det senere.</p>
-        <label
-          >Dit navn<span class="namepick"
-            ><input
-              id="suName"
-              maxlength="16"
-              required
-              autocomplete="off"
-              placeholder="Fx Rune"
-            /><button type="button" id="suDice" class="jr-only small" title="Find på et nyt navn">
-              🎲
-            </button></span
-          ></label
-        >
-        <p class="sub jr-only">
-          Brug aldrig dit rigtige navn – tryk på terningen og find et sjovt navn.
-        </p>
-        <label id="suPwRow"
-          ><span id="suPwLabel">Adgangskode</span
-          ><input
-            id="suPw"
-            type="password"
-            minlength="8"
-            maxlength="72"
-            required
-            autocomplete="new-password"
-            placeholder="Mindst 8 tegn"
-        /></label>
-        <label
-          >Invitationskode<input
-            id="suInvite"
-            maxlength="40"
-            autocomplete="off"
-            placeholder="Fra den, der inviterede dig"
-        /></label>
-        <div id="suLook"></div>
-        <label class="check adult-only"
-          ><input type="checkbox" id="suAdult" /> Jeg er fyldt 18 år</label
-        >
-        <div class="jr-only parent">
-          <p class="sub">
-            <b>Til en voksen:</b> Lobbi Junior er for børn på 8–12 år. Man kan kun chatte med
-            færdige sætninger, og man bliver kun venner med nogen, man giver sin vennekode.
-          </p>
+        <div id="suPreview" class="su-preview" aria-hidden="true"></div>
+        <div class="su-fields">
+          <div class="logo" aria-hidden="true">
+            <svg viewBox="0 0 32 32">
+              <path d="M6 23h20a10 10 0 0 0-20 0Z" fill="#ffb347" />
+              <rect x="4" y="23" width="24" height="3" rx="1.5" fill="#e0b04a" />
+              <circle cx="16" cy="11" r="2" fill="#ffb347" /></svg
+            ><span>Lobbi</span>
+          </div>
+          <h1>Lav din figur</h1>
+          <p class="sub">Vælg et navn og et udseende. Du kan altid ændre det senere.</p>
           <label
-            >Forælders e-mail<input
-              id="suParent"
-              type="email"
-              maxlength="120"
-              autocomplete="email"
-              placeholder="forælder@eksempel.dk"
-          /></label>
-          <label class="check"
-            ><input type="checkbox" id="suConsent" /> Jeg er forælder og siger ja til, at mit barn
-            spiller Lobbi Junior</label
+            >Dit navn<span class="namepick"
+              ><input
+                id="suName"
+                maxlength="16"
+                required
+                autocomplete="off"
+                placeholder="Fx Rune"
+              /><button type="button" id="suDice" class="jr-only small" title="Find på et nyt navn">
+                🎲
+              </button></span
+            ></label
           >
+          <p class="sub jr-only">
+            Brug aldrig dit rigtige navn – tryk på terningen og find et sjovt navn.
+          </p>
+          <label id="suPwRow"
+            ><span id="suPwLabel">Adgangskode</span
+            ><input
+              id="suPw"
+              type="password"
+              minlength="8"
+              maxlength="72"
+              required
+              autocomplete="new-password"
+              placeholder="Mindst 8 tegn"
+          /></label>
+          <label id="suInviteRow" class="hidden"
+            >Invitationskode<input
+              id="suInvite"
+              maxlength="40"
+              autocomplete="off"
+              placeholder="Fra den, der inviterede dig"
+          /></label>
+          <div id="suLook"></div>
+          <label class="check adult-only"
+            ><input type="checkbox" id="suAdult" /> Jeg er fyldt 18 år</label
+          >
+          <div class="jr-only parent">
+            <p class="sub">
+              <b>Til en voksen:</b> Lobbi Junior er for børn på 8–12 år. Man kan kun chatte med
+              færdige sætninger, og man bliver kun venner med nogen, man giver sin vennekode.
+            </p>
+            <label
+              >Forælders e-mail<input
+                id="suParent"
+                type="email"
+                maxlength="120"
+                autocomplete="email"
+                placeholder="forælder@eksempel.dk"
+            /></label>
+            <label class="check"
+              ><input type="checkbox" id="suConsent" /> Jeg er forælder og siger ja til, at mit barn
+              spiller Lobbi Junior</label
+            >
+          </div>
+          <label class="check"
+            ><input type="checkbox" id="suTerms" /> Jeg accepterer
+            <a href="#vilkaar" id="termsLink">vilkår og privatlivspolitik</a></label
+          >
+          <p id="suError" class="error"></p>
+          <button type="submit" class="primary">Tjek ind</button>
+          <p class="sub" id="toLoginRow">
+            Har du allerede en konto? <a href="#login" id="toLogin">Log ind</a>
+          </p>
         </div>
-        <label class="check"
-          ><input type="checkbox" id="suTerms" /> Jeg accepterer
-          <a href="#vilkaar" id="termsLink">vilkår og privatlivspolitik</a></label
-        >
-        <p id="suError" class="error"></p>
-        <button type="submit" class="primary">Tjek ind</button>
-        <p class="sub" id="toLoginRow">
-          Har du allerede en konto? <a href="#login" id="toLogin">Log ind</a>
-        </p>
       </form>
       <form id="loginForm" class="card signup hidden">
         <div class="logo" aria-hidden="true">

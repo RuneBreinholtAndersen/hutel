@@ -116,6 +116,7 @@ import {
   randomJuniorName,
 } from '@hutel/shared';
 import { Actor } from './actors';
+import { figurePreview } from './gfx/preview';
 import { Pet } from './gfx/pets';
 import {
   accessToken,
@@ -133,7 +134,18 @@ import { createStage } from './gfx/scene';
 import { Net } from './net';
 import * as audio from './audio';
 import { hasTutorial, playTutorial } from './tutorial';
-import { $, COIN, confetti, setCoinText, esc, logLine, lookEditor, pop, toast } from './ui';
+import {
+  $,
+  COIN,
+  confetti,
+  setCoinText,
+  esc,
+  logLine,
+  lookEditor,
+  pop,
+  toast,
+  useJuniorWords,
+} from './ui';
 
 const envServer = (import.meta.env.VITE_SERVER_URL as string | undefined) || '';
 // Dev (Vite on :5173) talks to the server on :2567; in production the server serves the client itself.
@@ -3101,6 +3113,7 @@ let authCfg: AuthConfig = {
 };
 let authMode: AuthMode = 'signup';
 let signupLook: Look = { ...DEFAULT_LOOK };
+let preview: ReturnType<typeof figurePreview> | null = null;
 const social = () => authCfg.auth === 'supabase';
 const junior = () => authCfg.edition === 'junior';
 let myFriendCode: string | null = null;
@@ -3165,6 +3178,7 @@ $('pwResend').addEventListener('click', async () => {
 
 function setupJunior() {
   document.body.classList.add('junior');
+  useJuniorWords();
   document.title = 'Lobbi Junior';
   $('brand').textContent = 'Lobbi Junior';
   document.querySelectorAll('.logo span').forEach((el) => (el.textContent = 'Lobbi Junior'));
@@ -3210,7 +3224,12 @@ function showSignup(error = '', mode: AuthMode = social() ? 'social' : 'signup')
   $('authError').textContent = mode === 'social' ? error : '';
   $('suError').textContent = mode === 'signup' || profile ? error : '';
   $('liError').textContent = mode === 'login' ? error : '';
-  lookEditor($('suLook'), signupLook, (l) => (signupLook = l));
+  $('suInviteRow').classList.toggle('hidden', !authCfg.inviteRequired);
+  preview ??= figurePreview($('suPreview'), signupLook);
+  lookEditor($('suLook'), signupLook, (l) => {
+    signupLook = l;
+    preview?.update(l);
+  });
 }
 /** Trade a Supabase login for a Lobbi game token (and create the figure the first time). */
 async function exchange(profile?: object): Promise<boolean> {
