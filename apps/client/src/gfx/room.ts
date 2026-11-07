@@ -329,7 +329,7 @@ function decor(theme: RoomTheme): { group: T.Group; lights: T.Light[]; windowLig
     const sign = new T.Mesh(
       new T.PlaneGeometry(2.4, 0.6),
       new T.MeshBasicMaterial({
-        map: textTex('HUTEL', 'bold 92px Georgia, serif', '#f2c25a'),
+        map: textTex('LOBBI', 'bold 92px Georgia, serif', '#f2c25a'),
         transparent: true,
       }),
     );

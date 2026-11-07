@@ -1055,7 +1055,7 @@ export function drawTv(
     g.fillRect(0, 0, w, h);
     g.fillStyle = '#f2c25a';
     g.font = 'bold 22px sans-serif';
-    g.fillText('HUTEL NYT', 14, 30);
+    g.fillText('LOBBI NYT', 14, 30);
     g.fillStyle = '#f6efe0';
     g.font = '14px sans-serif';
     g.fillText('Direkte fra lobbyen', 14, 50);
@@ -1113,7 +1113,7 @@ export function drawTv(
     }
     g.fillStyle = '#fff';
     g.font = 'bold 14px sans-serif';
-    g.fillText('♪ HUTEL FM', 10, 20);
+    g.fillText('♪ LOBBI FM', 10, 20);
   }
   tv.tex.needsUpdate = true;
 }
