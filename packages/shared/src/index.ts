@@ -13,3 +13,4 @@ export * from './decor';
 export * from './pets';
 export * from './layout';
 export * from './roomgames';
+export * from './releases';

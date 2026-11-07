@@ -1028,3 +1028,26 @@ button.badge.on {
   align-items: center;
   border: 1px solid rgba(122, 200, 255, 0.6);
 }
+#updateBar {
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  right: auto;
+  z-index: 9;
+  padding: 8px 12px;
+  border-radius: 14px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 14px;
+  border: 1px solid rgba(255, 179, 71, 0.7);
+  max-width: min(560px, calc(100vw - 28px));
+  transform: translateY(64px);
+}
+#updateBar span {
+  opacity: 0.85;
+}
+ul.notes {
+  margin: 8px 0 12px 18px;
+  line-height: 1.7;
+}

@@ -14,6 +14,9 @@ import {
   DEFAULT_LOOK,
   footprint,
   isWallItem,
+  PROTOCOL_VERSION,
+  RELEASE_NOTES,
+  type ReleaseNote,
   SHOP_CATEGORIES,
   ROOM_GAMES,
   ROOM_GAME_IDS,
@@ -110,20 +113,55 @@ const SERVER =
 const WS_URL = SERVER.replace(/^http/, 'ws') + '/ws';
 const TOKEN_KEY = 'hutel-token';
 /**
- * A tab opened before a deploy reconnects to the new server with old code. Reload once to
- * fetch the new client (guarded so a stale cache can never cause a reload loop).
+ * After a deploy an open tab keeps playing on the new server. Small updates only show a button;
+ * an incompatible protocol asks the player to reload (otherwise things break).
  */
-function reloadForUpdate(): boolean {
-  try {
-    const last = Number(sessionStorage.getItem('hutel-reload') ?? 0);
-    if (Date.now() - last < 60_000) return false;
-    sessionStorage.setItem('hutel-reload', String(Date.now()));
-  } catch {
-    return false;
+let updateShown = false;
+function offerUpdate(notes: ReleaseNote | undefined, must: boolean) {
+  if (updateShown) return;
+  updateShown = true;
+  const bar = $('updateBar');
+  const what = notes ? esc(notes.title) : 'Nye forbedringer';
+  bar.innerHTML = must
+    ? `<b>✨ Hutel er blevet opdateret</b><span>${what}</span><button id="upGo" class="small primary">Opdater nu</button>`
+    : `<b>✨ Ny version</b><span>${what}</span><button id="upNews" class="small">Se nyt</button><button id="upGo" class="small primary">Opdater</button><button id="upLater" class="small" title="Senere">✕</button>`;
+  bar.classList.remove('hidden');
+  $('upGo').addEventListener('click', () => location.reload());
+  $('upLater')?.addEventListener('click', () => bar.classList.add('hidden'));
+  $('upNews')?.addEventListener('click', () => showNotes(notes, true));
+  if (must) {
+    // Give the player a moment, then fetch the new version for them.
+    showNotes(notes, true, true);
+    setTimeout(() => location.reload(), 20_000);
   }
-  toast('🔄 Hutel er blevet opdateret – henter den nye version…');
-  setTimeout(() => location.reload(), 600);
-  return true;
+}
+
+/** "What's new" panel. */
+function showNotes(notes: ReleaseNote | undefined, pending: boolean, must = false) {
+  if (!notes) return;
+  openPanel(
+    'notes',
+    head(
+      `✨ ${must ? 'Hutel er blevet opdateret' : pending ? 'Ny version klar' : 'Nyt i Hutel'}`,
+      esc(notes.title),
+    ) +
+      `<ul class="notes">${notes.items.map((i) => `<li>${esc(i)}</li>`).join('')}</ul>` +
+      (pending
+        ? `<p class="sub">${must ? 'Siden opdaterer om lidt, så du kan fortsætte.' : 'Du kan blive ved med at spille og opdatere, når det passer dig.'}</p><button class="primary" id="notesGo">Opdater nu</button>`
+        : ''),
+  );
+  $('notesGo')?.addEventListener('click', () => location.reload());
+}
+
+/** Shows "what's new" once after the page loaded a new version. */
+function maybeShowNews() {
+  try {
+    const seen = localStorage.getItem('hutel-seen-build');
+    localStorage.setItem('hutel-seen-build', __BUILD_ID__);
+    if (seen && seen !== __BUILD_ID__) setTimeout(() => showNotes(RELEASE_NOTES[0], false), 1500);
+  } catch {
+    /* private mode */
+  }
 }
 const store = {
   get: (k: string) => {
@@ -442,7 +480,9 @@ function setOnline(sec: number) {
 function handle(msg: ServerMsg) {
   switch (msg.t) {
     case 'welcome':
-      if (msg.build && msg.build !== __BUILD_ID__ && reloadForUpdate()) return;
+      if (msg.protocol && msg.protocol !== PROTOCOL_VERSION) offerUpdate(msg.notes, true);
+      else if (msg.build && msg.build !== __BUILD_ID__) offerUpdate(msg.notes, false);
+      else if (!updateShown) maybeShowNews();
       me = msg.me;
       onboardingLock = msg.onboardingLock;
       canReset = msg.canReset;
@@ -2519,7 +2559,14 @@ function start(token: string) {
   net?.close();
   net = new Net(WS_URL, token);
   net.onMessage = handle;
-  net.onStatus = (s) => $('conn').classList.toggle('hidden', s !== 'offline');
+  // A short drop (a deploy or a hiccup) goes unnoticed: only say something after a few seconds.
+  let offlineTimer = 0;
+  net.onStatus = (s) => {
+    clearTimeout(offlineTimer);
+    if (s === 'offline')
+      offlineTimer = window.setTimeout(() => $('conn').classList.remove('hidden'), 4000);
+    else $('conn').classList.add('hidden');
+  };
   net.onFatal = (code) => {
     if (code === 4001) {
       store.set(TOKEN_KEY, null);

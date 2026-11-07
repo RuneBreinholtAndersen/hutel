@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import {
   DEFAULT_LOOK,
   DOOR_TILE as DOOR_TILE_FOR_TEST,
+  PROTOCOL_VERSION,
   QUESTS,
   ROOM_CAPACITY,
   type ServerMsg,
@@ -127,6 +128,9 @@ describe('client updates', () => {
       });
     });
     expect(welcome.t === 'welcome' && welcome.build).toBe('abc123');
+    // Old tabs learn the protocol version and what's new, so they can offer an update.
+    expect(welcome.t === 'welcome' && welcome.protocol).toBe(PROTOCOL_VERSION);
+    expect(welcome.t === 'welcome' && welcome.notes?.items.length).toBeGreaterThan(0);
     ws.close();
     app2.close();
   });

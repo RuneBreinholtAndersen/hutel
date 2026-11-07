@@ -46,7 +46,8 @@ export interface UserRecord {
   blocked: string[];
   stats: { chats: number; buys: number; moves: number };
   /** Room the user was last in (to come back after a reconnect or update). */
-  lastRoom?: { id: string; at: number };
+  /** Where you were when you left (back there after a reconnect or a deploy). */
+  lastRoom?: { id: string; at: number; tile?: [number, number] };
   /** Clothes bought in the shop. */
   wardrobe?: string[];
   /** Extra apartment rooms: kind → room id. */

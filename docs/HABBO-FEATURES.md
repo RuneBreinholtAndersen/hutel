@@ -2,7 +2,7 @@
 
 Listen sammenligner Hutel med de klassiske funktioner fra Habbo Hotel. Navne, grafik og møbler kopieres ikke: vi laver vores egen version af idéen.
 
-_Senest opdateret: 7. november 2026 (butik med kategorier og søgning)._
+_Senest opdateret: 7. november 2026 (opdateringer uden afbrydelse)._
 
 **Sådan læses den**
 - **Værdi**: hvor meget det betyder for spillerne (★–★★★)
@@ -108,6 +108,7 @@ Det her mener jeg giver mest spil for pengene, i den rækkefølge:
 - ✅ Kæledyr (hund, kat, drage) med mad, tricks og level
 - ✅ Tapet og gulve man køber og skifter selv
 - ✅ Vægmøbler: malerier, plakater, vinduer, hylder, ur, spejl, neonskilt
+- ✅ Opdateringer uden afbrydelse: knap med "Ny version" og "Se hvad der er nyt"
 - ✅ Butik med kategorier og søgefelt (møbler, væg, spil, tapet og gulv, inventar)
 - ✅ Butik med møbler og tøj, låst op med level og badges
 - ✅ Mønter (online-tid, opgaver, events, spil) – beregnet på serveren

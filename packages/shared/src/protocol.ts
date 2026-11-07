@@ -21,6 +21,7 @@ import {
   type TileHeights,
 } from './layout';
 import { ROOM_GAME_IDS, type RoomGameView } from './roomgames';
+import type { ReleaseNote } from './releases';
 import { PET_KIND_IDS, PET_TRICK_IDS, type PetAct, type PetInfo, type PetView } from './pets';
 
 const tileCoord = z.number().int().min(0).max(31);
@@ -412,8 +413,12 @@ export type ServerMsg =
       serverTime: number;
       onboardingLock: boolean;
       canReset: boolean;
-      /** Build id of the client the server ships; an older open tab reloads itself. */
+      /** Build id of the client the server ships; an older open tab offers an update. */
       build?: string;
+      /** Old tabs with another protocol version must reload. */
+      protocol?: number;
+      /** What's new in the server's version (old tabs don't know it yet). */
+      notes?: ReleaseNote;
     }
   | { t: 'resetDone' }
   | { t: 'apartment'; rooms: { kind: string; id: string; name: string }[] }

@@ -46,6 +46,8 @@ import {
   canPlace,
   isFloorTile,
   WALK_SPEED,
+  PROTOCOL_VERSION,
+  RELEASE_NOTES,
   ROOM_GAMES,
   GAME_COUNTDOWN_MS,
   TEAM_NAMES,
@@ -277,6 +279,8 @@ export class Hotel {
   stop() {
     clearInterval(this.ticker);
     clearInterval(this.secondTicker);
+    // Remember where everyone is, so a deploy feels like a short hiccup.
+    for (const s of this.sessions) this.rememberSpot(s);
     this.store.flush();
   }
 
@@ -335,9 +339,16 @@ export class Hotel {
     this.handle(s, s.user, msg);
   }
 
+  private rememberSpot(s: Session) {
+    if (!s.user || !s.room) return;
+    const t = s.player ? s.room.tileOf(s.player) : undefined;
+    const tile: [number, number] | undefined = t ? [t[0], t[1]] : undefined;
+    s.user.lastRoom = { id: s.room.meta.id, at: Date.now(), tile };
+  }
+
   private onClose(s: Session) {
     this.sessions.delete(s);
-    if (s.user && s.room) s.user.lastRoom = { id: s.room.meta.id, at: Date.now() };
+    this.rememberSpot(s);
     if (s.user && this.byUser.get(s.user.id) === s) {
       this.byUser.delete(s.user.id);
       s.user.lastSeen = new Date().toISOString();
@@ -372,6 +383,8 @@ export class Hotel {
       onboardingLock: this.cfg.onboardingLock,
       canReset: this.cfg.allowReset ?? false,
       build: this.cfg.clientBuild,
+      protocol: PROTOCOL_VERSION,
+      notes: RELEASE_NOTES[0],
     });
     this.sendFriends(user);
     this.notifyFriendsOf(user);
@@ -379,14 +392,17 @@ export class Hotel {
     const last = user.lastRoom;
     const exists = (id: string) =>
       PUBLIC_ROOMS.some((r) => r.id === id) || !!this.store.getRoom(id);
-    if (
-      last &&
-      Date.now() - last.at < 15 * 60_000 &&
-      last.id !== user.homeRoomId &&
-      exists(last.id)
-    )
-      this.join(s, last.id);
-    if (!s.room) this.join(s, user.homeRoomId);
+    const recent = last && Date.now() - last.at < 15 * 60_000 && exists(last.id);
+    // Back on the same tile if you were only gone a moment.
+    const tile = recent && Date.now() - last.at < 2 * 60_000 ? last.tile : undefined;
+    if (recent && last.id !== user.homeRoomId) this.join(s, last.id, undefined, tile);
+    if (!s.room)
+      this.join(
+        s,
+        user.homeRoomId,
+        undefined,
+        recent && last.id === user.homeRoomId ? tile : undefined,
+      );
     this.daily(s, user, 'd_login');
     this.send(s, { t: 'events', events: this.currentEvents() });
   }
