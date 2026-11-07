@@ -110,6 +110,7 @@ import {
   type ServerMsg,
   type AdminReport,
   type AdminStats,
+  type ChestView,
   type AdminUser,
   type ClientMsg,
   type TradeOfferView,
@@ -119,6 +120,7 @@ import {
 } from '@hutel/shared';
 import { Actor } from './actors';
 import { figurePreview } from './gfx/preview';
+import { buildChest } from './gfx/furniture';
 import { Pet } from './gfx/pets';
 import {
   accessToken,
@@ -444,6 +446,23 @@ function placeObj(it: PlacedItem, lift = 0) {
   g.rotation.y = (it.rot * Math.PI) / 2;
   return g;
 }
+/* ---------------- golden chest ---------------- */
+let chest: { view: ChestView; obj: T.Group } | null = null;
+function showChest(view: ChestView | null) {
+  if (chest) furnRoot.remove(chest.obj);
+  chest = null;
+  if (!view) return;
+  const obj = buildChest();
+  obj.position.set(tw(view.x), groundAt(view.x, view.z), tw(view.z));
+  obj.rotation.y = Math.PI / 4;
+  furnRoot.add(obj);
+  chest = { view, obj };
+  audio.sfx('coin');
+}
+function hitChest(): boolean {
+  return !!chest && ray.intersectObject(chest.obj, true).length > 0;
+}
+
 function removeObj(id: number) {
   const g = objs.get(id);
   if (g) furnRoot.remove(g);
@@ -452,6 +471,7 @@ function removeObj(id: number) {
 
 /* ---------------- room ---------------- */
 function setRoom(view: RoomView) {
+  showChest(null);
   cancelHeld();
   setBuild(false);
   room = view;
@@ -714,6 +734,8 @@ function handle(msg: ServerMsg) {
       return renderAdmin(msg.reports);
     case 'adminUsers':
       return renderAdminUsers(msg.stats, msg.users);
+    case 'chest':
+      return showChest(msg.chest);
     case 'apartment':
       if (!me) return;
       me.apartment = msg.rooms;
@@ -2130,12 +2152,13 @@ function renderAdminUsers(stats: AdminStats, users: AdminUser[]) {
     'adminUsers',
     head('🛡️ Admin') +
       `<div class="astats"><div><b>${stats.total}</b><small>brugere i alt</small></div><div><b>${stats.today}</b><small>nye i dag</small></div><div><b>${stats.week}</b><small>nye på 7 dage</small></div><div><b>${stats.online}</b><small>online nu</small></div></div>` +
-      `<div class="chips" style="margin-bottom:10px"><button id="adRefresh" class="small">🔄 Opdatér</button><button id="adReports" class="small">⚠️ Rapporter</button></div>` +
+      `<div class="chips" style="margin-bottom:10px"><button id="adRefresh" class="small">🔄 Opdatér</button><button id="adReports" class="small">⚠️ Rapporter</button><button id="adChest" class="small">✨ Gem en guldkiste her</button></div>` +
       `<h3>Nyeste brugere</h3><div class="list">${users.map(row).join('') || '<p class="sub">Ingen brugere endnu.</p>'}</div>` +
       (users.length >= 100 ? '<p class="sub">Viser de 100 nyeste.</p>' : ''),
   );
   $('adRefresh').addEventListener('click', () => net?.send({ t: 'admin', action: 'users' }));
   $('adReports').addEventListener('click', () => net?.send({ t: 'admin', action: 'reports' }));
+  $('adChest').addEventListener('click', () => net?.send({ t: 'admin', action: 'chestSpawn' }));
   $('panel')
     .querySelectorAll<HTMLElement>('[data-prof]')
     .forEach((b) =>
@@ -2823,6 +2846,11 @@ function onClick() {
   if (build) {
     const it = hitItem(true);
     if (it) pickUp(it);
+    return;
+  }
+  if (chest && hitChest()) {
+    // The server walks us there and opens it on arrival – first come, first served.
+    net?.send({ t: 'chestOpen', id: chest.view.id });
     return;
   }
   const petHit = ray.intersectObjects(
@@ -3532,6 +3560,16 @@ function loop() {
   updateFloats(t);
   updateSnowballs(t);
   updateCinema();
+  (chest?.obj.userData.tick as ((t: number) => void) | undefined)?.(time);
+  // Rares that change colour all the time.
+  for (const g of objs.values())
+    if (g.userData.type === 'regnbuekugle')
+      g.traverse((m) => {
+        if (!m.userData.rainbow) return;
+        const c = new T.Color().setHSL((time * 0.12) % 1, 0.9, 0.6);
+        if (m instanceof T.Mesh) (m.material as T.MeshStandardMaterial).emissive.copy(c);
+        if (m instanceof T.PointLight) m.color.copy(c);
+      });
   stage.render();
   requestAnimationFrame(loop);
 }

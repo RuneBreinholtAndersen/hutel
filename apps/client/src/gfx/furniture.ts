@@ -595,6 +595,125 @@ const BUILD: Record<FurnitureType, (c: number, state: number) => T.Group> = {
     g.add(rbox(0.72, 0.1, 0.02, M(0xff8fb0), 0, 0.6, 0.31));
     return g;
   },
+  // ---------------- rares (golden chests) ----------------
+  guldtrone() {
+    const g = new T.Group();
+    const goldM = M(0xf2c14e, {
+      metalness: 0.9,
+      roughness: 0.22,
+      emissive: 0x6a4a10,
+      emissiveIntensity: 0.25,
+    });
+    const red = M(0xb3262e, { roughness: 0.6 });
+    g.add(rbox(0.86, 0.32, 0.82, goldM, 0, 0.26, 0));
+    g.add(rbox(0.7, 0.1, 0.62, red, 0, 0.47, 0.04));
+    g.add(rbox(0.86, 1.15, 0.16, goldM, 0, 0.86, -0.34));
+    g.add(rbox(0.62, 0.86, 0.04, red, 0, 0.86, -0.25));
+    g.add(rbox(0.14, 0.4, 0.78, goldM, -0.38, 0.6, 0), rbox(0.14, 0.4, 0.78, goldM, 0.38, 0.6, 0));
+    // A little crown on top, with gems.
+    for (let i = -1; i <= 1; i++) {
+      const sp = cyl(0, 0.07, 0.2, goldM, i * 0.22, 1.52, -0.34, 4);
+      g.add(
+        sp,
+        sph(
+          0.045,
+          M(i ? 0x3fa7ff : 0xff3b5c, {
+            roughness: 0.1,
+            emissive: i ? 0x1050a0 : 0x901030,
+            emissiveIntensity: 0.6,
+          }),
+          i * 0.22,
+          1.66,
+          -0.34,
+        ),
+      );
+    }
+    legs(g, 0.36, 0.33);
+    return g;
+  },
+  krystallampe(_c, on) {
+    const g = new T.Group();
+    const goldM = M(0xf2c14e, { metalness: 0.9, roughness: 0.25 });
+    g.add(cyl(0.2, 0.24, 0.06, goldM, 0, 0.03, 0), cyl(0.03, 0.03, 1.2, goldM, 0, 0.66, 0));
+    const crystal = new T.MeshStandardMaterial({
+      color: 0xdff4ff,
+      roughness: 0.05,
+      metalness: 0.1,
+      transparent: true,
+      opacity: 0.85,
+      emissive: new T.Color(0x9ad8ff),
+      emissiveIntensity: on ? 1.1 : 0.05,
+    });
+    const top = new T.Mesh(new T.OctahedronGeometry(0.2, 0), crystal);
+    top.position.y = 1.45;
+    top.scale.y = 1.6;
+    g.add(top);
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      const d = new T.Mesh(new T.OctahedronGeometry(0.05, 0), crystal);
+      d.position.set(Math.sin(a) * 0.2, 1.22, Math.cos(a) * 0.2);
+      d.scale.y = 1.8;
+      g.add(d);
+    }
+    if (on) {
+      const pl = new T.PointLight(0x9ad8ff, 1.1, 5, 2);
+      pl.position.y = 1.45;
+      g.add(pl);
+    }
+    return g;
+  },
+  guldand() {
+    const g = new T.Group();
+    const goldM = M(0xf2c14e, {
+      metalness: 0.95,
+      roughness: 0.18,
+      emissive: 0x6a4a10,
+      emissiveIntensity: 0.3,
+    });
+    g.add(rbox(0.5, 0.3, 0.5, M(0x3a2618, { roughness: 0.5 }), 0, 0.15, 0));
+    const body = sph(0.24, goldM, 0, 0.5, 0);
+    body.scale.set(1, 0.8, 1.25);
+    g.add(body, sph(0.15, goldM, 0, 0.78, 0.16));
+    const beak = cyl(
+      0.03,
+      0.07,
+      0.12,
+      M(0xff9a2a, { metalness: 0.6, roughness: 0.3 }),
+      0,
+      0.76,
+      0.32,
+      10,
+    );
+    beak.rotation.x = Math.PI / 2;
+    g.add(
+      beak,
+      sph(0.025, M(0x1a1a1a), -0.07, 0.82, 0.28),
+      sph(0.025, M(0x1a1a1a), 0.07, 0.82, 0.28),
+    );
+    return g;
+  },
+  regnbuekugle(_c, on) {
+    const g = new T.Group();
+    g.add(cyl(0.16, 0.22, 0.3, M(0x2a1f33, { roughness: 0.4, metalness: 0.4 }), 0, 0.15, 0));
+    const orbM = new T.MeshStandardMaterial({
+      color: 0xffffff,
+      roughness: 0.1,
+      metalness: 0.2,
+      emissive: new T.Color(0xff6ad5),
+      emissiveIntensity: on ? 0.9 : 0.1,
+    });
+    const orb = new T.Mesh(new T.SphereGeometry(0.26, 32, 22), orbM);
+    orb.position.y = 0.58;
+    orb.userData.rainbow = true;
+    g.add(orb);
+    if (on) {
+      const pl = new T.PointLight(0xff6ad5, 1, 4.5, 2);
+      pl.position.y = 0.6;
+      pl.userData.rainbow = true;
+      g.add(pl);
+    }
+    return g;
+  },
   blomstervase() {
     const g = new T.Group();
     g.add(cyl(0.12, 0.16, 0.36, M(0x3f7fd6, { roughness: 0.25 }), 0, 0.18, 0, 20));
@@ -1116,4 +1235,85 @@ export function drawTv(
     g.fillText('♪ LOBBI FM', 10, 20);
   }
   tv.tex.needsUpdate = true;
+}
+
+/* ---------------- the golden chest ---------------- */
+
+/** A glittering golden chest that hops a little and throws off sparkles. */
+export function buildChest(): T.Group {
+  const g = new T.Group();
+  const goldM = M(0xf2c14e, {
+    metalness: 0.9,
+    roughness: 0.2,
+    emissive: 0x8a5a10,
+    emissiveIntensity: 0.45,
+  });
+  const woodM = M(0xc98a1c, {
+    metalness: 0.7,
+    roughness: 0.3,
+    emissive: 0x6a3a05,
+    emissiveIntensity: 0.35,
+  });
+  const inner = new T.Group();
+  inner.scale.setScalar(1.25);
+  inner.add(rbox(0.62, 0.34, 0.44, woodM, 0, 0.17, 0));
+  inner.add(rbox(0.66, 0.06, 0.48, goldM, 0, 0.03, 0), rbox(0.66, 0.06, 0.48, goldM, 0, 0.33, 0));
+  inner.add(
+    rbox(0.07, 0.36, 0.48, goldM, -0.24, 0.18, 0),
+    rbox(0.07, 0.36, 0.48, goldM, 0.24, 0.18, 0),
+  );
+  const lid = new T.Mesh(new T.CylinderGeometry(0.22, 0.22, 0.62, 24, 1, false, 0, Math.PI), woodM);
+  lid.rotation.z = Math.PI / 2;
+  lid.position.y = 0.36;
+  inner.add(lid);
+  const band = new T.Mesh(
+    new T.CylinderGeometry(0.225, 0.225, 0.08, 24, 1, false, 0, Math.PI),
+    goldM,
+  );
+  band.rotation.z = Math.PI / 2;
+  band.position.y = 0.36;
+  inner.add(band);
+  inner.add(rbox(0.1, 0.12, 0.04, goldM, 0, 0.32, 0.24));
+  inner.add(
+    sph(
+      0.035,
+      M(0xff3b5c, { roughness: 0.1, emissive: 0x901030, emissiveIntensity: 0.8 }),
+      0,
+      0.33,
+      0.27,
+    ),
+  );
+  g.add(inner);
+  const light = new T.PointLight(0xffd27a, 2, 5, 2);
+  light.position.y = 0.7;
+  g.add(light);
+  // Sparkles: small bright points that rise and fade around the chest.
+  const sparkM = new T.MeshBasicMaterial({ color: 0xfff3c0, transparent: true });
+  const sparks: T.Mesh[] = [];
+  for (let i = 0; i < 22; i++) {
+    const sp = new T.Mesh(new T.OctahedronGeometry(0.05, 0), sparkM.clone());
+    sp.userData.seed = Math.random() * 10;
+    sparks.push(sp);
+    g.add(sp);
+  }
+  g.userData.chest = true;
+  g.traverse((m) => (m.userData.chest = true));
+  g.userData.tick = (t: number) => {
+    inner.position.y = Math.abs(Math.sin(t * 2.2)) * 0.06;
+    inner.rotation.y = Math.sin(t * 0.8) * 0.12;
+    light.intensity = 1.7 + Math.sin(t * 5) * 0.5;
+    for (const sp of sparks) {
+      const k = (t * 0.6 + (sp.userData.seed as number)) % 1;
+      const a = (sp.userData.seed as number) * 2.4;
+      sp.position.set(
+        Math.sin(a) * (0.3 + k * 0.15),
+        0.2 + k * 1.1,
+        Math.cos(a) * (0.3 + k * 0.15),
+      );
+      sp.rotation.y = t * 3;
+      (sp.material as T.MeshBasicMaterial).opacity = Math.sin(k * Math.PI);
+      sp.scale.setScalar(0.6 + Math.sin(k * Math.PI) * 0.8);
+    }
+  };
+  return g;
 }

@@ -207,6 +207,10 @@ Samme kodebase og grafik som Hutel, men en helt separat verden for børn. Børn 
 
 ## Færdigt ✅
 
+### 7. november
+
+- ✅ Guldkister med sjældne ting: i snit én kiste hver 4. time i et offentligt rum med gæster, den forsvinder efter 8 min, og den første, der når den, får Guldanden, Krystallampen, Guldtronen eller Regnbuekuglen (kan ikke købes, kan byttes og sælges på markedet). Knappen "✨ Gem en guldkiste her" i Admin-panelet bruges til test
+
 ### Multiplayer-fundament
 
 - ✅ Realtidsserver (WebSocket) med rum: Lobbyen, Caféen og et eget værelse til hver gæst

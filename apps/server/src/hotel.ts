@@ -36,6 +36,9 @@ import {
   furniture,
   isGreeting,
   PUBLIC_ROOMS,
+  CHEST,
+  pickLoot,
+  type ChestView,
   DAILY_BONUS,
   DAILY_POOL,
   dailyQuestsFor,
@@ -150,6 +153,8 @@ export interface HotelConfig {
   junior?: boolean;
   /** Look up video titles at YouTube (off in tests). */
   videoTitles?: boolean;
+  /** Golden chests appear by themselves (off in tests). */
+  chests?: boolean;
 }
 
 export interface Connection {
@@ -196,6 +201,7 @@ const LIMIT_FOR: Partial<Record<ClientMsg['t'], LimitKind>> = {
   glide: 'glide',
   reset: 'build',
   deleteAccount: 'build',
+  chestOpen: 'move',
   buyRoom: 'build',
   decor: 'build',
   buyPet: 'build',
@@ -621,6 +627,10 @@ export class Hotel {
     user.lastRoom = { id: room.meta.id, at: Date.now() };
     s.player = player;
     this.send(s, { t: 'room', room: room.roomView(user.id), serverTime: Date.now() });
+    this.send(s, {
+      t: 'chest',
+      chest: this.chest?.roomId === room.meta.id ? this.chest.view : null,
+    });
     if (room.meta.id === user.homeRoomId && !this.onboarded(user))
       this.bots.startGuide(room, () => this.nextTip(user));
     this.bots.onHumanJoin(room, player);
@@ -797,6 +807,11 @@ export class Hotel {
     switch (msg.action) {
       case 'reports':
         return this.send(s, { t: 'adminReports', reports: this.adminReports() });
+      case 'chestSpawn':
+        if (user.role !== 'admin') return;
+        return this.spawnChest(s.room ?? undefined)
+          ? done('Der er gemt en guldkiste ✨')
+          : done('Kunne ikke gemme en kiste her (kun i offentlige rum).');
       case 'users': {
         // Only admins see the whole list (moderators handle reports).
         if (user.role !== 'admin') return this.toast(s, 'Kun for administratorer.', 'error');
@@ -1410,6 +1425,8 @@ export class Hotel {
         s.doorTicket = (s.doorTicket ?? 0) + 1;
         if (room && player) room.walk(player, [msg.x, msg.z], msg.run);
         return;
+      case 'chestOpen':
+        return this.chestOpen(s, user, msg.id);
       case 'deleteAccount':
         return this.deleteAccount(s, user, msg.confirm);
       case 'reset': {
@@ -2925,6 +2942,95 @@ export class Hotel {
       this.send(sess, { t: 'tradeEnd', text: '🤝 Byttet er gennemført!', done: true });
   }
 
+  /* ---------------- golden chests ---------------- */
+
+  private chest: { roomId: string; view: ChestView } | null = null;
+  private chestSeq = 1;
+  /** Players walking towards the chest: they open it when they get there. */
+  private chestWalkers = new Map<string, number>();
+
+  /** Hides a chest on a free tile in a busy public room (or `inRoom`). */
+  private spawnChest(inRoom?: RoomInstance): boolean {
+    if (this.chest) return false;
+    const publicIds = new Set(PUBLIC_ROOMS.map((r) => r.id));
+    const candidates = inRoom
+      ? [inRoom].filter((r) => publicIds.has(r.meta.id))
+      : [...this.rooms.values()].filter((r) => publicIds.has(r.meta.id) && r.humans().length > 0);
+    if (!candidates.length) return false;
+    const room = candidates[Math.floor(Math.random() * candidates.length)]!;
+    const grid = buildGrid(room.floor(), room.items);
+    const taken = new Set(room.occupiedTiles().map((t) => t.join()));
+    const free: [number, number][] = [];
+    for (let x = 1; x < grid.cells.length - 1; x++)
+      for (let z = 1; z < (grid.cells[x]?.length ?? 0) - 1; z++)
+        if (
+          isFree(grid, x, z) &&
+          !taken.has(`${x},${z}`) &&
+          !(x === DOOR_TILE[0] && z === DOOR_TILE[1])
+        )
+          free.push([x, z]);
+    if (!free.length) return false;
+    const [x, z] = free[Math.floor(Math.random() * free.length)]!;
+    const view: ChestView = { id: this.chestSeq++, x, z, until: Date.now() + CHEST.lifetimeMs };
+    this.chest = { roomId: room.meta.id, view };
+    room.broadcast({ t: 'chest', chest: view });
+    this.sys(room, '✨ Noget glimter i rummet … Hvem finder guldkisten først?');
+    return true;
+  }
+
+  private clearChest(text?: string) {
+    if (!this.chest) return;
+    const room = this.rooms.get(this.chest.roomId);
+    this.chest = null;
+    this.chestWalkers.clear();
+    if (!room) return;
+    room.broadcast({ t: 'chest', chest: null });
+    if (text) this.sys(room, text);
+  }
+
+  private chestOpen(s: Session, user: UserRecord, id: number) {
+    const c = this.chest;
+    const room = s.room;
+    const p = s.player;
+    if (!c || c.view.id !== id || !room || !p || room.meta.id !== c.roomId) return;
+    const [tx, tz] = room.tileOf(p);
+    if (Math.max(Math.abs(tx - c.view.x), Math.abs(tz - c.view.z)) > 1) {
+      // Too far away: walk there first, then open it on arrival.
+      if (room.walk(p, [c.view.x, c.view.z], true)) this.chestWalkers.set(user.id, id);
+      return;
+    }
+    const type = pickLoot();
+    (user.inventory ??= []).push({ type });
+    this.store.touch();
+    this.sendInventory(s, user);
+    const def = furniture(type);
+    this.toast(s, `🎉 Du fandt ${def.icon} ${def.name} i guldkisten! Den ligger i din taske.`);
+    this.clearChest(`🎉 ${user.name} fandt guldkisten og fik ${def.icon} ${def.name}!`);
+  }
+
+  /** Once a second: chests appear now and then, vanish after a while, and walkers arrive. */
+  private chestTick(now: number) {
+    if (this.chest) {
+      if (now > this.chest.view.until)
+        return this.clearChest('Guldkisten forsvandt igen … måske næste gang ✨');
+      for (const [userId, id] of this.chestWalkers) {
+        const ps = this.byUser.get(userId);
+        const u = ps && this.store.getUser(userId);
+        if (!ps || !u || ps.room?.meta.id !== this.chest.roomId) {
+          this.chestWalkers.delete(userId);
+          continue;
+        }
+        const [tx, tz] = ps.room.tileOf(ps.player!, now);
+        if (Math.max(Math.abs(tx - this.chest.view.x), Math.abs(tz - this.chest.view.z)) <= 1)
+          return this.chestOpen(ps, u, id);
+      }
+      return;
+    }
+    // On average once every `meanMinutes` (checked every second).
+    if (this.cfg.chests !== false && Math.random() < 1 / (CHEST.meanMinutes * 60))
+      this.spawnChest();
+  }
+
   /** The player deletes their own account: rooms, listings, friends and all. Can't be undone. */
   private deleteAccount(s: Session, user: UserRecord, confirm: string) {
     if (confirm.trim().toLowerCase() !== user.name.toLowerCase())
@@ -3347,6 +3453,7 @@ export class Hotel {
   private everySecond() {
     this.expireQuizzes();
     this.checkEvents();
+    this.chestTick(Date.now());
     // Save where everyone stands every few seconds, so even a hard restart (deploy, crash)
     // puts people back on their own tile instead of at the door.
     // Things in the hand don't last forever.

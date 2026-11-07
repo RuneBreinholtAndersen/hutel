@@ -8,6 +8,7 @@ import {
   DEFAULT_LOOK,
   DOOR_TILE as DOOR_TILE_FOR_TEST,
   PROTOCOL_VERSION,
+  furniture,
   QUESTS,
   ROOM_CAPACITY,
   type ServerMsg,
@@ -26,6 +27,7 @@ const cfg = {
   botMaxCallsPerDay: 0,
   signupsPerHour: 1000,
   videoTitles: false,
+  chests: false,
 };
 const app = createApp(cfg);
 let base = '';
@@ -1267,4 +1269,37 @@ describe('admin user list', () => {
     boss.c.ws.close();
     guest.c.ws.close();
   });
+});
+
+describe('golden chest', () => {
+  it('an admin can hide one; the first guest to reach it gets a rare', async () => {
+    const res = (await (
+      await fetch(`http://${base}/api/login`, {
+        method: 'POST',
+        body: JSON.stringify({ name: 'Chefen', password: 'hemmelig123' }),
+      })
+    ).json()) as { token: string };
+    const boss = new TestClient();
+    await boss.open();
+    boss.send({ t: 'auth', token: res.token });
+    await boss.waitFor('welcome');
+    await boss.waitFor('room');
+    boss.send({ t: 'join', roomId: 'cafe' });
+    await boss.waitFor('room', (m) => m.room.id === 'cafe');
+    const finder = await login('Skattejaeger');
+    finder.c.send({ t: 'join', roomId: 'cafe' });
+    await finder.c.waitFor('room', (m) => m.room.id === 'cafe');
+    boss.send({ t: 'admin', action: 'chestSpawn' });
+    const shown = await finder.c.waitFor('chest', (m) => !!m.chest);
+    finder.c.send({ t: 'chestOpen', id: shown.chest!.id });
+    const inv = await finder.c.waitFor(
+      'inventory',
+      (m) => m.items.some((i) => furniture(i.type).rare),
+      8000,
+    );
+    expect(inv.items.some((i) => furniture(i.type).rare)).toBe(true);
+    await finder.c.waitFor('chest', (m) => m.chest === null);
+    boss.ws.close();
+    finder.c.ws.close();
+  }, 15000);
 });

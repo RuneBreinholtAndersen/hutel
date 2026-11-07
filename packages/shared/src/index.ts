@@ -18,3 +18,4 @@ export * from './music';
 export * from './social';
 export * from './style';
 export * from './junior';
+export * from './chest';

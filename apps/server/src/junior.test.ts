@@ -27,6 +27,7 @@ const app = createApp({
   botMaxCallsPerDay: 0,
   signupsPerHour: 1000,
   videoTitles: false,
+  chests: false,
   junior: true,
 });
 let base = '';

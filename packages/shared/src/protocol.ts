@@ -17,6 +17,7 @@ import { FURNITURE_TYPES, type FurnitureType } from './catalog';
 import { CHAT_MAX_LENGTH, MAX_ROOM_SIZE } from './constants';
 import { LookSchema, type Look } from './look';
 import type { PlacedItem } from './placement';
+import type { ChestView } from './chest';
 import {
   ROOM_CATEGORY_IDS,
   type AptDoor,
@@ -169,6 +170,7 @@ export const ClientMsgSchema = z.discriminatedUnion('t', [
       'kick',
       'eventStart',
       'eventStop',
+      'chestSpawn',
     ]),
     reportId: z.string().max(40).optional(),
     userId: z.string().max(40).optional(),
@@ -190,6 +192,8 @@ export const ClientMsgSchema = z.discriminatedUnion('t', [
   }),
   /** Test phase: wipe my progress (coins, quests, badges, room) and start over. */
   z.object({ t: z.literal('reset') }),
+  /** Walk to the golden chest and open it. */
+  z.object({ t: z.literal('chestOpen'), id: z.number().int() }),
   /** Delete my own account for good. `confirm` must be my name, typed by hand. */
   z.object({ t: z.literal('deleteAccount'), confirm: z.string().max(40) }),
   z.object({
@@ -552,6 +556,8 @@ export type ServerMsg =
   | { t: 'tag'; id: string; badge?: string; shown?: string | null; level?: number }
   | { t: 'adminReports'; reports: AdminReport[] }
   | { t: 'adminUsers'; stats: AdminStats; users: AdminUser[] }
+  /** The golden chest in this room, or null when there is none. */
+  | { t: 'chest'; chest: ChestView | null }
   | { t: 'events'; events: ActiveEvent[] }
   /** A system line in the room (game results etc.); shown over `id` if given. */
   | { t: 'sys'; text: string; id?: string }

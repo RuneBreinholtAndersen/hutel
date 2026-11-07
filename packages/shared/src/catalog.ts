@@ -14,6 +14,8 @@ export interface FurnitureDef {
   walk?: boolean;
   /** Not sold in the shop (fixtures in public rooms). */
   noShop?: boolean;
+  /** Only found in golden chests – very rare. */
+  rare?: boolean;
   /** Only for sale once you have this badge. */
   unlock?: BadgeId;
   /** Colour choices for the main fabric/paint (first is the default). */
@@ -326,6 +328,40 @@ export const FURNITURE = {
   },
   isboks: { name: 'Isboks', icon: '🍦', price: 22, w: 1, d: 1, dispense: ['is'], minLevel: 2 },
   blomstervase: { name: 'Blomstervase', icon: '💐', price: 10, w: 1, d: 1, dispense: ['blomst'] },
+  // ---- Rares: only from golden chests (see chest.ts). `price` is what they're worth.
+  guldtrone: {
+    name: 'Guldtrone',
+    icon: '👑',
+    price: 600,
+    w: 1,
+    d: 1,
+    seat: true,
+    noShop: true,
+    rare: true,
+  },
+  krystallampe: {
+    name: 'Krystallampe',
+    icon: '💎',
+    price: 450,
+    w: 1,
+    d: 1,
+    noShop: true,
+    rare: true,
+    states: 2,
+    defaultState: 1,
+  },
+  guldand: { name: 'Guldanden', icon: '🦆', price: 350, w: 1, d: 1, noShop: true, rare: true },
+  regnbuekugle: {
+    name: 'Regnbuekugle',
+    icon: '🌈',
+    price: 800,
+    w: 1,
+    d: 1,
+    noShop: true,
+    rare: true,
+    states: 2,
+    defaultState: 1,
+  },
 } as const satisfies Record<string, FurnitureDef>;
 
 export type FurnitureType = keyof typeof FURNITURE;
