@@ -1,27 +1,16 @@
 ---
 import '../styles.css';
 import { JUNIOR_URL, PLAY_URL } from '../config';
-import { JUNIOR_PHRASES } from '@hutel/shared';
 interface Props {
   title: string;
   description: string;
   page?: boolean;
   /** Lobbi Junior pages: brighter colours and the Junior play button. */
   junior?: boolean;
+  /** Which hotel room peeks out at the top of a sub-page. */
+  scene?: string;
 }
-const { title, description, page = false, junior = false } = Astro.props;
-const ADULT_LINES = [
-  'Nogen med i biografen? 🎬',
-  'Flot værelse! 😍',
-  'Sneboldkamp om 5 min ❄️',
-  'Hvem vil bytte en lampe? 💡',
-  'Godaften lobbyen 🌙',
-  'Min hund kan nu sidde 🐶',
-  'Kaffe i caféen? ☕',
-  'Haha 😂',
-];
-const lines = junior ? Object.values(JUNIOR_PHRASES).flatMap((c) => c.lines) : ADULT_LINES;
-const names = junior ? ['Glad Odder 12', 'Kvik Ræv 7', 'Sød Panda 33', 'Modig Ugle 5', 'Sjov Lama 41'] : [];
+const { title, description, page = false, junior = false, scene } = Astro.props;
 const full = title === 'Lobbi' ? 'Lobbi – et hyggeligt chat-hotel i browseren' : `${title} – Lobbi`;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 ---
@@ -58,8 +47,12 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     </nav>
     {page && (
       <div class="page-head" aria-hidden="true">
-        <div class="sparkles"></div>
-        <div class="chatter" data-lines={lines.join('|')} data-names={names.join('|')}></div>
+        <div
+          class="room-scene"
+          data-room={scene ?? (junior ? 'pool' : 'cafe')}
+          data-crowd={junior ? 'junior' : 'adult'}
+          data-view="2.6"
+        ></div>
       </div>
     )}
     <main><slot /></main>
@@ -82,7 +75,9 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     </footer>
     <script>
       import { startMotion } from '../scripts/motion';
+      import { startScenes } from '../scripts/scenes';
       startMotion();
+      startScenes();
     </script>
   </body>
 </html>

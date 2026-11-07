@@ -92,11 +92,13 @@ const things = [
     </div>
   </section>
 
-  <section class="jr-last has-chatter">
-    <div class="chatter" aria-hidden="true" data-lines={demo.join('|')} data-names="Glad Odder 12|Kvik Ræv 7|Sød Panda 33|Modig Ugle 5"></div>
+  <section class="jr-last">
+    <div class="room-scene jr-scene" data-room="pool" data-crowd="junior" data-view="3.4" aria-hidden="true"></div>
     <div class="wrap">
-      <h2>Kom og leg med!</h2>
-      <a class="btn" href={JUNIOR_URL}>Spil Lobbi Junior</a>
+      <div class="last-inner">
+        <h2>Kom og leg med!</h2>
+        <a class="btn" href={JUNIOR_URL}>Spil Lobbi Junior</a>
+      </div>
     </div>
   </section>
 </Base>
@@ -405,9 +407,31 @@ const things = [
     padding-top: 0;
   }
   .jr-last {
+    position: relative;
+    min-height: 560px;
     background: linear-gradient(180deg, #7cc6e8, #bfe6d6);
     color: var(--wood);
     text-align: center;
+    overflow: hidden;
+  }
+  .jr-scene {
+    position: absolute;
+    inset: 0;
+  }
+  .jr-last .wrap {
+    position: relative;
+    z-index: 1;
+    pointer-events: none;
+  }
+  .jr-last .btn {
+    pointer-events: auto;
+  }
+  .last-inner {
+    display: inline-block;
+    background: var(--cream);
+    border-radius: 28px;
+    padding: 24px 34px 28px;
+    box-shadow: 0 24px 50px -18px rgba(30, 60, 80, 0.5);
   }
   @media (max-width: 900px) {
     .jr-grid,

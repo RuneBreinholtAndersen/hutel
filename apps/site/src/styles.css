@@ -374,12 +374,13 @@ p {
 /* Sub-pages: a little sky with chat above the text. */
 .page-head {
   position: relative;
-  height: 170px;
+  height: 300px;
   background: linear-gradient(180deg, #2a1b33 0%, #6a3f45 100%);
   overflow: hidden;
 }
-.page-head .chatter .chat-pop {
-  font-size: 13px;
+.page-head .room-scene {
+  position: absolute;
+  inset: 0;
 }
 .page-head::after {
   /* The hotel's roofline. */

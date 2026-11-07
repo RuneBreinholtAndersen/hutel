@@ -20,11 +20,12 @@ import { createRoom } from '@game/gfx/room';
 import { T, tw } from '@game/gfx/helpers';
 import { miniStage } from './stage';
 
-interface Guest {
+export interface Guest {
   name: string;
   bot?: boolean;
   look: Partial<Look>;
-  start: [number, number];
+  /** Starting tile; a random free one when left out or blocked. */
+  start?: [number, number];
   lines: string[];
 }
 
@@ -88,14 +89,41 @@ const GUESTS: Guest[] = [
 ];
 
 export function startLobby(el: HTMLElement) {
+  const wide = el.clientWidth > 860;
+  startRoomScene(el, {
+    roomId: 'lobby',
+    guests: GUESTS,
+    view: 6.2,
+    target: [-0.2, 0.6, -0.2],
+    shiftX: wide ? 0.17 : 0,
+  });
+}
+
+export interface SceneOpts {
+  roomId: string;
+  guests: Guest[];
+  /** Half the visible height in tiles – smaller is closer. */
+  view: number;
+  target?: [number, number, number];
+  shiftX?: number;
+  /** Seconds between speech bubbles. */
+  talkEvery?: number;
+}
+
+/** One of the hotel's public rooms, drawn with the game's own code, with guests who walk and talk. */
+export function startRoomScene(el: HTMLElement, opts: SceneOpts) {
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const wide = () => el.clientWidth > 860;
-  const stage = miniStage(el, { view: 6.2, target: [-0.2, 0.6, -0.2], shiftX: wide() ? 0.17 : 0 });
-  const lobby = PUBLIC_ROOMS.find((r) => r.id === 'lobby')!;
+  const stage = miniStage(el, {
+    view: opts.view,
+    target: opts.target ?? [-0.2, 0.6, -0.2],
+    shiftX: opts.shiftX ?? 0,
+  });
+  const lobby = PUBLIC_ROOMS.find((r) => r.id === opts.roomId)!;
   const size = typeof lobby.size === 'number' ? lobby.size : 12;
   const room = createRoom(stage.scene);
   room.setSize(size);
-  room.setTheme('lobby');
+  room.setTheme(lobby.theme);
+  const GUESTS = opts.guests;
 
   const items = new Map<number, PlacedItem>();
   for (const it of lobby.items) {
@@ -124,13 +152,34 @@ export function startLobby(el: HTMLElement) {
   const grid = buildGrid(size, [...items.values()]);
   const now = () => Date.now();
 
+  // A free tile for guests without a fixed starting place.
+  const taken = new Set<string>();
+  const freeTile = (want?: [number, number]): [number, number] => {
+    if (want && grid.cells[want[0]]?.[want[1]] === 0 && !taken.has(want.join())) {
+      taken.add(want.join());
+      return want;
+    }
+    for (let i = 0; i < 200; i++) {
+      const t: [number, number] = [
+        1 + Math.floor(Math.random() * (size - 2)),
+        1 + Math.floor(Math.random() * (size - 2)),
+      ];
+      if (grid.cells[t[0]]?.[t[1]] === 0 && !taken.has(t.join())) {
+        taken.add(t.join());
+        return t;
+      }
+    }
+    return [Math.floor(size / 2), Math.floor(size / 2)];
+  };
+
   const actors = GUESTS.map((g, i) => {
+    const [sx0, sz0] = freeTile(g.start);
     const view: PlayerView = {
       id: `g${i}`,
       name: g.name,
       look: { ...DEFAULT_LOOK, ...g.look } as Look,
-      x: g.start[0],
-      z: g.start[1],
+      x: sx0,
+      z: sz0,
       path: [],
       pathStart: now(),
       run: false,
@@ -191,7 +240,7 @@ export function startLobby(el: HTMLElement) {
         say(s.a, (s.g.bot ? '🤖 ' : '') + s.g.name, s.g.lines[s.line % s.g.lines.length]!);
         s.line++;
         speaker++;
-        nextLine = t + 2600;
+        nextLine = t + (opts.talkEvery ?? 2.6) * 1000;
       }
     }
     room.update(dt, t / 1000);
