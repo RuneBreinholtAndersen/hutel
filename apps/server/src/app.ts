@@ -374,7 +374,7 @@ export function createApp(
 <p>Lobbi Junior er et hotel-spil for børn på 8–12 år. Børnene laver en figur, indretter et værelse og leger med andre.</p>
 <ul><li>Man chatter kun med færdige sætninger – ingen kan skrive egen tekst.</li><li>Man bliver kun venner med nogen, man giver sin vennekode.</li><li>Ingen reklamer, ingen køb med rigtige penge, og vi beder aldrig om barnets rigtige navn.</li><li>Vi gemmer kun figuren, værelset, din e-mail og chatten i 30 dage (til moderation).</li></ul>
 <form method="post"><input type="hidden" name="t" value="${escHtml(secret)}"><button class="yes" name="svar" value="ja">Ja, mit barn må spille</button><button class="no" name="svar" value="nej">Nej, slet kontoen</button></form>
-<p><small>Læs <a href="/#vilkaar">vilkår og privatlivspolitik</a>.</small></p>`,
+<p><small>Læs <a href="https://lobbi.dk/junior/privatliv/">vilkår og privatlivspolitik</a>.</small></p>`,
         ),
       );
     }

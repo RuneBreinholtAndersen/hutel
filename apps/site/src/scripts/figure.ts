@@ -31,7 +31,12 @@ const NAMES: Record<string, string> = {
   cowboy: 'Cowboyhat',
 };
 
-export function startFigure(el: HTMLElement, controls: HTMLElement) {
+export function startFigure(
+  el: HTMLElement,
+  controls: HTMLElement,
+  opts: { junior?: boolean } = {},
+) {
+  const names = opts.junior ? { ...NAMES, kvinde: 'Pige', mand: 'Dreng' } : NAMES;
   const stage = miniStage(el, { view: 1.25, target: [0, 0.75, 0], transparent: true });
   let look: Look = {
     ...DEFAULT_LOOK,
@@ -88,7 +93,7 @@ export function startFigure(el: HTMLElement, controls: HTMLElement) {
           if (r.color) {
             b.style.background = hex(v as number);
             b.setAttribute('aria-label', `${r.label} ${hex(v as number)}`);
-          } else b.textContent = NAMES[v as string] ?? String(v);
+          } else b.textContent = names[v as string] ?? String(v);
           b.onclick = () => {
             look = { ...look, [r.key]: v } as Look;
             buildParts(fig, look);

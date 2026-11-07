@@ -1,12 +1,27 @@
 ---
 import '../styles.css';
-import { PLAY_URL } from '../config';
+import { JUNIOR_URL, PLAY_URL } from '../config';
+import { JUNIOR_PHRASES } from '@hutel/shared';
 interface Props {
   title: string;
   description: string;
   page?: boolean;
+  /** Lobbi Junior pages: brighter colours and the Junior play button. */
+  junior?: boolean;
 }
-const { title, description, page = false } = Astro.props;
+const { title, description, page = false, junior = false } = Astro.props;
+const ADULT_LINES = [
+  'Nogen med i biografen? 🎬',
+  'Flot værelse! 😍',
+  'Sneboldkamp om 5 min ❄️',
+  'Hvem vil bytte en lampe? 💡',
+  'Godaften lobbyen 🌙',
+  'Min hund kan nu sidde 🐶',
+  'Kaffe i caféen? ☕',
+  'Haha 😂',
+];
+const lines = junior ? Object.values(JUNIOR_PHRASES).flatMap((c) => c.lines) : ADULT_LINES;
+const names = junior ? ['Glad Odder 12', 'Kvik Ræv 7', 'Sød Panda 33', 'Modig Ugle 5', 'Sjov Lama 41'] : [];
 const full = title === 'Lobbi' ? 'Lobbi – et hyggeligt chat-hotel i browseren' : `${title} – Lobbi`;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 ---
@@ -25,7 +40,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     <meta name="theme-color" content="#241730" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   </head>
-  <body class={page ? 'page' : ''}>
+  <body class:list={[{ page, 'junior-site': junior }]}>
     <nav class="nav" aria-label="Hovedmenu">
       <div class="wrap">
         <a class="logo" href="/">
@@ -34,18 +49,25 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
         </a>
         <ul>
           <li><a href="/saadan-spiller-du/">Sådan spiller du</a></li>
+          <li><a href="/junior/">Lobbi Junior</a></li>
           <li><a href="/nyheder/">Nyheder</a></li>
           <li><a href="/spoergsmaal/">Spørgsmål</a></li>
         </ul>
-        <a class="btn" href={PLAY_URL}>Spil gratis</a>
+        {junior ? <a class="btn" href={JUNIOR_URL}>Spil Junior</a> : <a class="btn" href={PLAY_URL}>Spil gratis</a>}
       </div>
     </nav>
+    {page && (
+      <div class="page-head" aria-hidden="true">
+        <div class="sparkles"></div>
+        <div class="chatter" data-lines={lines.join('|')} data-names={names.join('|')}></div>
+      </div>
+    )}
     <main><slot /></main>
     <footer class="foot">
       <div class="wrap">
         <div>
           <strong style="font-family:var(--display);font-size:1.3rem;color:var(--cream)">Lobbi</strong>
-          <p style="margin:.4em 0 0">Et dansk chat-hotel for voksne. Lavet af Breinholt Digital.</p>
+          <p style="margin:.4em 0 0">Et dansk chat-hotel: Lobbi for voksne og Lobbi Junior for børn. Lavet af Breinholt Digital.</p>
         </div>
         <ul>
           <li><a href="/saadan-spiller-du/">Sådan spiller du</a></li>
@@ -53,8 +75,14 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
           <li><a href="/spoergsmaal/">Spørgsmål og tryghed</a></li>
           <li><a href="/vilkaar/">Vilkår</a></li>
           <li><a href="/privatliv/">Privatlivspolitik</a></li>
+          <li><a href="/junior/">Lobbi Junior</a></li>
+          <li><a href="/junior/privatliv/">Junior: vilkår og privatliv</a></li>
         </ul>
       </div>
     </footer>
+    <script>
+      import { startMotion } from '../scripts/motion';
+      startMotion();
+    </script>
   </body>
 </html>

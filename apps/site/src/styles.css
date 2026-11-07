@@ -251,3 +251,162 @@ p {
     transition: none !important;
   }
 }
+
+/* ---------------- motion: everything feels a little alive ---------------- */
+.reveal {
+  opacity: 0;
+  transform: translateY(26px) scale(0.98);
+  transition:
+    opacity 0.6s ease var(--d, 0ms),
+    transform 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.25) var(--d, 0ms);
+}
+.reveal.in {
+  opacity: 1;
+  transform: none;
+}
+
+/* Floating speech bubbles, like in the game. */
+.chatter {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+.chat-pop {
+  position: absolute;
+  background: #fffaf0;
+  color: #3a2618;
+  font-size: 14px;
+  line-height: 1.25;
+  padding: 7px 12px;
+  border-radius: 14px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  white-space: nowrap;
+  animation: chatPop 6.5s ease-out forwards;
+}
+.chat-pop b {
+  color: #c4621a;
+}
+.chat-pop::after {
+  content: '';
+  position: absolute;
+  left: 18px;
+  bottom: -7px;
+  border: 7px solid transparent;
+  border-top-color: #fffaf0;
+  border-bottom: 0;
+}
+.chat-pop.still {
+  animation: none;
+  opacity: 0.9;
+}
+@keyframes chatPop {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.6);
+  }
+  8% {
+    opacity: 1;
+    transform: translateY(0) scale(1.06);
+  }
+  13% {
+    transform: scale(1);
+  }
+  75% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-70px);
+  }
+}
+.has-chatter {
+  position: relative;
+  overflow: hidden;
+}
+.has-chatter > .wrap {
+  position: relative;
+  z-index: 1;
+}
+
+/* Buttons get a little shine, like a lamp being switched on. */
+.btn {
+  position: relative;
+  overflow: hidden;
+}
+.btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.45) 50%, transparent 70%);
+  transform: translateX(-120%);
+  transition: transform 0.6s ease;
+}
+.btn:hover::before {
+  transform: translateX(120%);
+}
+
+/* Fireflies / dust in the air behind sections. */
+.sparkles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(2px 2px at 12% 30%, rgba(255, 210, 140, 0.9), transparent),
+    radial-gradient(2px 2px at 68% 18%, rgba(255, 210, 140, 0.8), transparent),
+    radial-gradient(1.5px 1.5px at 40% 70%, rgba(255, 230, 180, 0.8), transparent),
+    radial-gradient(2px 2px at 86% 62%, rgba(255, 210, 140, 0.7), transparent),
+    radial-gradient(1.5px 1.5px at 24% 86%, rgba(255, 230, 180, 0.7), transparent),
+    radial-gradient(2px 2px at 54% 44%, rgba(255, 210, 140, 0.6), transparent);
+  animation: drift 14s linear infinite alternate;
+  opacity: 0.8;
+}
+@keyframes drift {
+  from {
+    transform: translate3d(0, 10px, 0);
+  }
+  to {
+    transform: translate3d(-24px, -26px, 0);
+  }
+}
+
+/* Sub-pages: a little sky with chat above the text. */
+.page-head {
+  position: relative;
+  height: 170px;
+  background: linear-gradient(180deg, #2a1b33 0%, #6a3f45 100%);
+  overflow: hidden;
+}
+.page-head .chatter .chat-pop {
+  font-size: 13px;
+}
+.page-head::after {
+  /* The hotel's roofline. */
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 18px;
+  background: repeating-linear-gradient(90deg, var(--wood) 0 38px, var(--wood-2) 38px 42px);
+}
+body.junior-site .page-head {
+  background: linear-gradient(180deg, #7cc6e8 0%, #bfe6d6 100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
+  .sparkles {
+    animation: none;
+  }
+}
+
+/* Junior pages sit on a light sky: dark text in the menu. */
+body.junior-site:not(.page) .nav .logo,
+body.junior-site:not(.page) .nav ul a {
+  color: var(--wood);
+}

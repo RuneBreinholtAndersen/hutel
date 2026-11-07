@@ -1,0 +1,439 @@
+---
+import Base from '../../layouts/Base.astro';
+import { JUNIOR_URL } from '../../config';
+import { JUNIOR_PHRASES } from '@hutel/shared';
+const cats = Object.entries(JUNIOR_PHRASES).slice(0, 4);
+const demo = Object.values(JUNIOR_PHRASES).flatMap((c) => c.lines);
+
+const steps = [
+  { icon: '🎲', title: 'Find et sjovt navn', text: 'Tryk på terningen og få et hemmeligt navn som "Glad Odder 12". Dit rigtige navn bruger du aldrig.' },
+  { icon: '📬', title: 'En voksen siger ja', text: 'Din forælder får en mail og trykker Ja. Så er du klar til at spille.' },
+  { icon: '🧍', title: 'Lav din figur', text: 'Vælg hår, tøj, farver, hat og briller – og skift så tit, du vil.' },
+  { icon: '🤝', title: 'Byt vennekoder', text: 'Giv din vennekode til dine venner fra skolen eller klubben, så kan I finde hinanden.' },
+];
+const things = [
+  { icon: '🛋️', title: 'Dit eget værelse', text: 'Køb møbler for mønter, du tjener ved at spille, og indret præcis som du vil.' },
+  { icon: '❄️', title: 'Spil sammen', text: 'Sneboldkamp, Farvekamp og Kapløb – vinderne får mønter.' },
+  { icon: '🐶', title: 'Kæledyr', text: 'En hund, en kat eller en lille drage, der følger efter dig og lærer tricks.' },
+  { icon: '🏊', title: 'Hele hotellet', text: 'Lobbyen, caféen, spillehallen, poolen og taget – der er altid nogen at lege med.' },
+];
+---
+<Base junior title="Lobbi Junior" description="Lobbi Junior er et trygt hotel-spil i browseren for børn på 8–12 år. Chat kun med færdige sætninger, venner kun via vennekode, og en voksen siger ja først.">
+  <section class="jr-hero has-chatter" aria-labelledby="jr-title">
+    <div class="clouds" aria-hidden="true"><span></span><span></span><span></span></div>
+    <div class="wrap jr-grid">
+      <div class="jr-speech">
+        <span class="badge">For børn på 8–12 år</span>
+        <h1 id="jr-title">Lobbi Junior</h1>
+        <p>Et hotel fuld af leg! Lav din egen figur, indret dit værelse, få et kæledyr og spil med andre børn – helt trygt.</p>
+        <div class="cta">
+          <a class="btn" href={JUNIOR_URL}>Spil Lobbi Junior</a>
+          <a class="btn ghost" href="#foraeldre">Til forældre</a>
+        </div>
+      </div>
+      <div class="jr-stage">
+        <div id="jr-figure" class="jr-canvas" aria-hidden="true"></div>
+        <div class="jr-bubble" id="jr-bubble" aria-hidden="true">Hej! 👋</div>
+        <div class="menu-demo" aria-label="Sådan ser chat-menuen ud">
+          <div class="tabs">{cats.map(([k, c], i) => <span class={i === 0 ? 'on' : ''}>{c.icon} {k[0]!.toUpperCase() + k.slice(1)}</span>)}</div>
+          <div class="lines" id="jr-lines">{demo.slice(0, 5).map((l) => <span>{l}</span>)}</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="jr-steps" aria-labelledby="steps-title">
+    <div class="wrap">
+      <h2 id="steps-title">Sådan kommer du i gang</h2>
+      <ol class="steps">
+        {steps.map((s, i) => (
+          <li>
+            <span class="step-n">{i + 1}</span>
+            <span class="step-icon" aria-hidden="true">{s.icon}</span>
+            <h3>{s.title}</h3>
+            <p>{s.text}</p>
+          </li>
+        ))}
+      </ol>
+    </div>
+  </section>
+
+  <section class="jr-things" aria-labelledby="jr-things-title">
+    <div class="wrap">
+      <h2 id="jr-things-title">Det kan du lave</h2>
+      <ul class="things">
+        {things.map((t) => (
+          <li>
+            <span class="thing-icon" aria-hidden="true">{t.icon}</span>
+            <div>
+              <h3>{t.title}</h3>
+              <p>{t.text}</p>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </section>
+
+  <section id="foraeldre" class="jr-parents" aria-labelledby="parents-title">
+    <div class="wrap parents-grid">
+      <div>
+        <h2 id="parents-title">Til forældre</h2>
+        <p>Lobbi Junior er bygget til børn fra starten. Reglerne tjekkes på serveren, så de kan ikke snydes udenom.</p>
+        <p><a href="/junior/privatliv/">Læs vilkår og privatlivspolitik</a></p>
+      </div>
+      <ul class="safe">
+        <li><strong>Ingen fri tekst.</strong> Børn chatter kun med færdige sætninger fra en menu. Ingen private beskeder, intet motto og ingen gæstebog.</li>
+        <li><strong>Venner kun via vennekode.</strong> Man kan ikke søge efter andre børn – man skal have fået koden af barnet selv.</li>
+        <li><strong>Du siger ja først.</strong> Barnet kan først spille, når du har trykket Ja i mailen. Siger du nej, slettes kontoen.</li>
+        <li><strong>Helt adskilt fra voksne.</strong> Lobbi Junior har sin egen server og database. Voksne fra Lobbi kan ikke komme ind.</li>
+        <li><strong>Ingen reklamer og ingen rigtige penge.</strong> Mønter tjenes ved at spille. Figurer med 🤖 er computer-figurer med faste replikker.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="jr-last has-chatter">
+    <div class="chatter" aria-hidden="true" data-lines={demo.join('|')} data-names="Glad Odder 12|Kvik Ræv 7|Sød Panda 33|Modig Ugle 5"></div>
+    <div class="wrap">
+      <h2>Kom og leg med!</h2>
+      <a class="btn" href={JUNIOR_URL}>Spil Lobbi Junior</a>
+    </div>
+  </section>
+</Base>
+
+<script>
+  import { JUNIOR_PHRASES } from '@hutel/shared';
+  import { startFigure } from '../../scripts/figure';
+  const supportsGL = (() => {
+    try {
+      return !!document.createElement('canvas').getContext('webgl');
+    } catch {
+      return false;
+    }
+  })();
+  if (supportsGL) startFigure(document.getElementById('jr-figure')!, document.createElement('div'), { junior: true });
+
+  // The menu chat "plays itself": a sentence is picked and pops up as a bubble.
+  const lines = Object.values(JUNIOR_PHRASES).flatMap((c) => c.lines);
+  const box = document.getElementById('jr-lines')!;
+  const bubble = document.getElementById('jr-bubble')!;
+  let i = 0;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const tick = () => {
+    const chips = [...box.children] as HTMLElement[];
+    const pick = chips[Math.floor(Math.random() * chips.length)]!;
+    pick.classList.add('tap');
+    setTimeout(() => {
+      pick.classList.remove('tap');
+      bubble.textContent = pick.textContent;
+      bubble.classList.remove('show');
+      void bubble.offsetWidth;
+      bubble.classList.add('show');
+      // Swap in new sentences now and then so it doesn't repeat.
+      pick.textContent = lines[(i += 7) % lines.length]!;
+    }, 350);
+  };
+  if (!reduce) setInterval(tick, 2600);
+</script>
+
+<style>
+  .jr-hero {
+    position: relative;
+    padding: 70px 0 90px;
+    background: linear-gradient(180deg, #7cc6e8 0%, #bfe6d6 75%, #f6e7c8 100%);
+    color: var(--wood);
+  }
+  .clouds span {
+    position: absolute;
+    width: 180px;
+    height: 54px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.85);
+    box-shadow:
+      40px -22px 0 6px rgba(255, 255, 255, 0.85),
+      90px -6px 0 0 rgba(255, 255, 255, 0.85);
+    animation: cloud 48s linear infinite;
+  }
+  .clouds span:nth-child(1) {
+    top: 60px;
+    left: -220px;
+  }
+  .clouds span:nth-child(2) {
+    top: 200px;
+    left: -220px;
+    transform: scale(0.7);
+    animation-duration: 64s;
+    animation-delay: -30s;
+  }
+  .clouds span:nth-child(3) {
+    top: 120px;
+    left: -220px;
+    transform: scale(0.5);
+    animation-duration: 80s;
+    animation-delay: -55s;
+  }
+  @keyframes cloud {
+    to {
+      translate: calc(100vw + 440px) 0;
+    }
+  }
+  .jr-grid {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    align-items: center;
+  }
+  .jr-speech {
+    background: var(--cream);
+    border-radius: 32px;
+    padding: 36px 40px 30px;
+    box-shadow: 0 24px 50px -20px rgba(30, 60, 80, 0.5);
+  }
+  .jr-speech h1 {
+    color: var(--wood);
+  }
+  .badge {
+    display: inline-block;
+    background: #3f8f86;
+    color: #fff;
+    font: 600 0.85rem var(--display);
+    padding: 4px 12px;
+    border-radius: 999px;
+    margin-bottom: 12px;
+  }
+  .jr-speech .btn.ghost {
+    color: var(--wood);
+    box-shadow: inset 0 0 0 2px rgba(58, 36, 24, 0.35);
+  }
+  .cta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .jr-stage {
+    position: relative;
+    min-height: 440px;
+  }
+  .jr-canvas {
+    position: absolute;
+    inset: 0 0 110px 0;
+  }
+  .jr-bubble {
+    position: absolute;
+    left: 50%;
+    top: 4%;
+    transform: translateX(-50%);
+    background: #fffaf0;
+    color: #3a2618;
+    font-weight: 600;
+    padding: 8px 14px;
+    border-radius: 14px;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+    white-space: nowrap;
+  }
+  .jr-bubble::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: -7px;
+    margin-left: -7px;
+    border: 7px solid transparent;
+    border-top-color: #fffaf0;
+    border-bottom: 0;
+  }
+  .jr-bubble.show {
+    animation: pop 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.5);
+  }
+  @keyframes pop {
+    from {
+      transform: translateX(-50%) scale(0.4);
+      opacity: 0;
+    }
+  }
+  .menu-demo {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(40, 24, 14, 0.92);
+    color: #fff3e0;
+    border-radius: 16px;
+    padding: 10px;
+    font-size: 0.85rem;
+  }
+  .menu-demo .tabs,
+  .menu-demo .lines {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+  .menu-demo .tabs {
+    margin-bottom: 8px;
+  }
+  .menu-demo span {
+    background: rgba(255, 244, 224, 0.12);
+    border-radius: 999px;
+    padding: 3px 10px;
+    font-family: var(--display);
+    transition: transform 0.2s, background 0.2s;
+  }
+  .menu-demo .tabs .on {
+    background: var(--lamp);
+    color: var(--wood);
+  }
+  .menu-demo .lines .tap {
+    background: var(--lamp);
+    color: var(--wood);
+    transform: scale(0.9);
+  }
+  section:not(.jr-hero) {
+    padding: 90px 0;
+  }
+  .jr-steps {
+    background: #f6e7c8;
+    color: var(--wood);
+  }
+  .steps {
+    list-style: none;
+    padding: 0;
+    margin: 36px 0 0;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 22px;
+  }
+  .steps li {
+    position: relative;
+    background: #fff;
+    border-radius: 24px;
+    padding: 26px 22px 20px;
+    box-shadow: 0 10px 24px -16px rgba(58, 36, 24, 0.5);
+  }
+  .steps li.in .step-icon {
+    animation: bob 3s ease-in-out infinite;
+    animation-delay: var(--d, 0ms);
+  }
+  .step-n {
+    position: absolute;
+    top: -14px;
+    left: 20px;
+    width: 32px;
+    height: 32px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: #3f8f86;
+    color: #fff;
+    font: 700 1rem var(--display);
+  }
+  .step-icon {
+    display: block;
+    font-size: 2.2rem;
+    margin-bottom: 6px;
+  }
+  .steps p {
+    margin: 0;
+    font-size: 0.95rem;
+  }
+  .jr-things {
+    background: var(--wood);
+  }
+  .things {
+    list-style: none;
+    padding: 0;
+    margin: 36px 0 0;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 32px 56px;
+  }
+  .things li {
+    display: flex;
+    gap: 18px;
+  }
+  .thing-icon {
+    font-size: 2rem;
+    line-height: 1;
+    flex: none;
+    width: 56px;
+    height: 56px;
+    display: grid;
+    place-items: center;
+    background: rgba(255, 244, 224, 0.08);
+    border-radius: 18px 18px 18px 4px;
+  }
+  .things li.in .thing-icon {
+    animation: bob 3.2s ease-in-out infinite;
+    animation-delay: var(--d, 0ms);
+  }
+  .things p {
+    color: var(--cream-dim);
+    margin: 0;
+  }
+  @keyframes bob {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-6px);
+    }
+  }
+  .jr-parents {
+    background: var(--teal);
+    color: #10231f;
+  }
+  .jr-parents a {
+    color: #10231f;
+    font-weight: 700;
+  }
+  .parents-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.3fr;
+    gap: 48px;
+  }
+  .safe {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .safe li {
+    padding: 14px 0;
+    border-bottom: 1px solid rgba(16, 35, 31, 0.2);
+  }
+  .safe li:first-child {
+    padding-top: 0;
+  }
+  .jr-last {
+    background: linear-gradient(180deg, #7cc6e8, #bfe6d6);
+    color: var(--wood);
+    text-align: center;
+  }
+  @media (max-width: 900px) {
+    .jr-grid,
+    .parents-grid {
+      grid-template-columns: 1fr;
+    }
+    .steps {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .things {
+      grid-template-columns: 1fr;
+    }
+  }
+  @media (max-width: 520px) {
+    .steps {
+      grid-template-columns: 1fr;
+    }
+    .jr-speech {
+      padding: 26px 24px 22px;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .clouds span,
+    .steps li.in .step-icon,
+    .things li.in .thing-icon {
+      animation: none;
+    }
+  }
+</style>

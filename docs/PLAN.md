@@ -52,6 +52,7 @@ Sidst opdateret: 7. november 2026. Rækkefølge: voksen-Hutel i lukket beta før
 - ✅ Lyd: slå lyd fra i én fane slår den også fra i andre åbne Lobbi-faner
 - ✅ Hjemmeside lobbi.dk i Astro (`apps/site`): levende lobby i hero, figur-bygger, hotel-oversigt, sikkerhed, nyheder fra RELEASE_NOTES, Sådan spiller du, Spørgsmål, Vilkår/Privatliv (kladder), 404, .htaccess; deploy-workflow til Simply via SSH-nøgle
 - ✅ DNS: CNAME `spil.lobbi.dk` → hutel.fly.dev oprettet hos Simply; CLIENT_ORIGIN opdateret; `CANONICAL_URL` sender gamle adresser videre med login i behold; hjemmesidens knapper peger på spil.lobbi.dk
+- ✅ Hjemmesiden: valg mellem Lobbi (18+) og Lobbi Junior (8–12) på forsiden, Junior-side og Junior vilkår/privatliv, animationer på alle sider
 - ✅ Køn på figuren (kvinde/mand/vil ikke sige: vipper, skuldre, bryn, mund) i spil og på hjemmesiden; nyt tjek-ind-design (cremefarvet reception-kort); ingen lyd fra baggrundsfaner; auto-deploy af hjemmesiden via FTPS-secret
 - ✅ Biograf 2.0: lærred 4 felter bredt, video mappes affint på den skrå flade, kø/skip/stop/fjern på serveren, pris 5 mønter i offentlig biograf, titel og indlejrings-tjek via YouTube oEmbed (PROTOCOL_VERSION 3)
 - ✅ Tapet (8 slags) og gulve (8 slags): købes én gang og bruges i alle egne rum

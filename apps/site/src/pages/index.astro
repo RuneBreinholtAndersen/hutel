@@ -1,6 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
-import { PLAY_URL } from '../config';
+import { JUNIOR_URL, PLAY_URL } from '../config';
 import { PUBLIC_ROOMS, RELEASE_NOTES } from '@hutel/shared';
 
 const FLOORS: Record<string, string> = {
@@ -35,11 +35,26 @@ const things = [
       <div class="speech">
         <h1 id="hero-title">Tjek ind på Lobbi.</h1>
         <p>Et hyggeligt chat-hotel lige i browseren. Lav din figur, indret dit eget værelse og mød nye mennesker – gratis og uden at downloade noget.</p>
-        <div class="cta">
-          <a class="btn" href={PLAY_URL}>Spil gratis</a>
-          <a class="btn ghost" href="/saadan-spiller-du/">Sådan spiller du</a>
+        <p class="pick">Hvilken dør skal du ind ad?</p>
+        <div class="choices">
+          <a class="choice adult" href={PLAY_URL}>
+            <span class="door" aria-hidden="true"><span class="knob"></span><span class="sign">18+</span></span>
+            <span class="choice-text">
+              <strong>Lobbi</strong>
+              <span>For voksne. Fri chat, biograf, fester og byttehandel.</span>
+              <span class="go">Spil gratis →</span>
+            </span>
+          </a>
+          <a class="choice junior" href="/junior/">
+            <span class="door" aria-hidden="true"><span class="knob"></span><span class="sign">8–12</span></span>
+            <span class="choice-text">
+              <strong>Lobbi Junior</strong>
+              <span>For børn. Sikker chat med færdige sætninger og en voksen, der siger ja.</span>
+              <span class="go">Til Junior →</span>
+            </span>
+          </a>
         </div>
-        <p class="small">Kun for voksne over 18 år.</p>
+        <p class="small"><a href="/saadan-spiller-du/">Sådan spiller du</a> · Børn og voksne mødes aldrig – det er to helt adskilte hoteller.</p>
       </div>
     </div>
   </section>
@@ -75,7 +90,13 @@ const things = [
     </div>
   </section>
 
-  <section class="things-sec" aria-labelledby="things-title">
+  <section class="things-sec has-chatter" aria-labelledby="things-title">
+    <div class="sparkles" aria-hidden="true"></div>
+    <div
+      class="chatter"
+      aria-hidden="true"
+      data-lines="Vil nogen bytte en lampe? 💡|Farvekamp nu! 🎨|Min drage er level 5 🐉|Biograf kl. 20 🎬|Se mit nye tapet 😍"
+    ></div>
     <div class="wrap">
       <h2 id="things-title">Det kan du lave på Lobbi</h2>
       <ul class="things">
@@ -123,10 +144,19 @@ const things = [
     </div>
   </section>
 
-  <section class="last-sec">
+  <section class="last-sec has-chatter">
+    <div class="sparkles" aria-hidden="true"></div>
+    <div
+      class="chatter"
+      aria-hidden="true"
+      data-lines="Hej! 👋|Er der nogen i caféen? ☕|Velkommen til! 🛎️|Fedt værelse 😍|Kom med til poolen 🏊|Godnat alle 🌙"
+    ></div>
     <div class="wrap">
       <h2>Der er altid nogen i lobbyen.</h2>
-      <a class="btn" href={PLAY_URL}>Spil gratis</a>
+      <div class="cta" style="justify-content:center">
+        <a class="btn" href={PLAY_URL}>Spil Lobbi (18+)</a>
+        <a class="btn ghost" href="/junior/">Lobbi Junior (8–12)</a>
+      </div>
     </div>
   </section>
 </Base>
@@ -150,6 +180,7 @@ const things = [
 <style>
   .hero {
     position: relative;
+    padding: 110px 0 60px;
     min-height: min(92vh, 900px);
     display: flex;
     align-items: center;
@@ -203,6 +234,102 @@ const things = [
     color: var(--wood);
     box-shadow: inset 0 0 0 2px rgba(58, 36, 24, 0.35);
   }
+  .pick {
+    font: 600 1.05rem var(--display) !important;
+    margin: 18px 0 10px;
+  }
+  .choices {
+    display: grid;
+    gap: 12px;
+  }
+  .choice {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    text-decoration: none;
+    color: var(--wood);
+    background: #fff;
+    border-radius: 20px;
+    padding: 12px 16px 12px 12px;
+    box-shadow: 0 2px 0 rgba(58, 36, 24, 0.12);
+    transition:
+      transform 0.25s cubic-bezier(0.2, 0.9, 0.3, 1.4),
+      box-shadow 0.25s ease;
+  }
+  .choice:hover {
+    transform: translateY(-3px) rotate(-0.5deg);
+    box-shadow: 0 14px 28px -12px rgba(58, 36, 24, 0.45);
+  }
+  .choice strong {
+    display: block;
+    font: 600 1.25rem var(--display);
+  }
+  .choice-text > span {
+    display: block;
+    font-size: 0.92rem;
+    line-height: 1.35;
+  }
+  .choice .go {
+    margin-top: 4px;
+    font-weight: 700;
+    color: #c4621a;
+  }
+  /* A little hotel door that swings open when you point at it. */
+  .door {
+    flex: none;
+    position: relative;
+    width: 58px;
+    height: 78px;
+    border-radius: 10px 10px 4px 4px;
+    background: #2a1b33;
+    perspective: 200px;
+    overflow: hidden;
+  }
+  .door::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 50% 70%, #ffd38a, #ffb347 40%, transparent 75%);
+  }
+  .door .sign {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    font: 700 0.85rem var(--display);
+    color: var(--cream);
+    background: linear-gradient(180deg, #8a4f2a, #6a3a1e);
+    border: 3px solid #4e2a14;
+    border-radius: inherit;
+    transform-origin: left center;
+    transition: transform 0.5s cubic-bezier(0.3, 0.9, 0.3, 1.2);
+  }
+  .junior .door .sign {
+    background: linear-gradient(180deg, #5bb7a6, #3f8f86);
+    border-color: #2f6b64;
+  }
+  .door .knob {
+    position: absolute;
+    right: 9px;
+    top: 44px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--brass);
+    z-index: 2;
+    transition: opacity 0.2s;
+  }
+  .choice:hover .door .sign,
+  .choice:focus-visible .door .sign {
+    transform: rotateY(-62deg);
+  }
+  .choice:hover .door .knob {
+    opacity: 0;
+  }
+  .speech .small a {
+    color: var(--wood);
+    font-weight: 600;
+  }
   .cta {
     display: flex;
     flex-wrap: wrap;
@@ -213,7 +340,7 @@ const things = [
     .hero {
       flex-direction: column;
       align-items: stretch;
-      padding-top: 84px;
+      padding: 84px 0 0;
     }
     .hero-scene {
       position: relative;
@@ -382,6 +509,53 @@ const things = [
   .things p {
     color: var(--cream-dim);
     margin: 0;
+  }
+  .things li.in .thing-icon {
+    animation: bob 3.2s ease-in-out infinite;
+    animation-delay: var(--d, 0ms);
+  }
+  .things li:hover .thing-icon {
+    animation: wiggle 0.5s ease;
+  }
+  @keyframes bob {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-5px);
+    }
+  }
+  @keyframes wiggle {
+    25% {
+      transform: rotate(-10deg) scale(1.1);
+    }
+    75% {
+      transform: rotate(8deg) scale(1.1);
+    }
+  }
+  /* The directory lights up floor by floor, like an elevator panel. */
+  .directory li.in .room-floor {
+    animation: lamp 0.8s ease var(--d, 0ms) both;
+  }
+  @keyframes lamp {
+    0% {
+      text-shadow: none;
+      opacity: 0.3;
+    }
+    60% {
+      text-shadow: 0 0 14px rgba(255, 196, 90, 0.95);
+      opacity: 1;
+    }
+    100% {
+      text-shadow: 0 0 6px rgba(255, 196, 90, 0.5);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .things li.in .thing-icon,
+    .directory li.in .room-floor {
+      animation: none;
+    }
   }
   @media (max-width: 720px) {
     .things {
