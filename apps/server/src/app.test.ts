@@ -25,6 +25,7 @@ const cfg = {
   botModel: 'test',
   botMaxCallsPerDay: 0,
   signupsPerHour: 1000,
+  videoTitles: false,
 };
 const app = createApp(cfg);
 let base = '';
@@ -1033,23 +1034,41 @@ describe('multiplayer', () => {
     b.c.ws.close();
   }, 15_000);
 
-  it('plays a YouTube video on the cinema screen, chosen by the owner', async () => {
+  it('runs the cinema: owner plays free, a queue, skip votes and the public price', async () => {
     const a = await login('Filmejer');
     const b = await login('Filmgæst');
     const ua = app.store.getUser(a.g.userId)!;
+    const ub = app.store.getUser(b.g.userId)!;
     const home = app.store.getRoom(ua.homeRoomId)!;
     home.items.push({ id: 9501, type: 'laerred', x: 2, z: 0, rot: 0 });
     b.c.send({ t: 'join', roomId: ua.homeRoomId });
     await b.c.waitFor('room', (m) => m.room.id === ua.homeRoomId);
-    b.c.send({ t: 'cinema', itemId: 9501, video: 'dQw4w9WgXcQ' });
+    // A guest may not choose in someone's own room.
+    b.c.send({ t: 'cinemaAdd', itemId: 9501, video: 'dQw4w9WgXcQ' });
     await b.c.waitFor('toast', (m) => /Kun ejeren/.test(m.text));
-    a.c.send({ t: 'cinema', itemId: 9501, video: 'not a video id' } as never);
-    a.c.send({ t: 'cinema', itemId: 9501, video: 'dQw4w9WgXcQ' });
-    const put = await b.c.waitFor('itemPut', (m) => m.item.id === 9501 && !!m.item.video);
-    expect(put.item.video).toBe('dQw4w9WgXcQ');
+    // The owner plays one and queues another, for free.
+    const coins = ua.coins;
+    a.c.send({ t: 'cinemaAdd', itemId: 9501, video: 'dQw4w9WgXcQ' });
+    const put = await b.c.waitFor(
+      'itemPut',
+      (m) => m.item.id === 9501 && m.item.video === 'dQw4w9WgXcQ',
+    );
     expect(Math.abs(put.item.videoAt! - Date.now())).toBeLessThan(5000);
-    a.c.send({ t: 'cinema', itemId: 9501, video: null });
-    await b.c.waitFor('itemPut', (m) => m.item.id === 9501 && !m.item.video);
+    a.c.send({ t: 'cinemaAdd', itemId: 9501, video: 'aaaaaaaaaaa' });
+    const v = await b.c.waitFor('cinema', (m) => m.view.queue.length === 1);
+    expect(v.view.canManage).toBe(false);
+    expect(ua.coins).toBe(coins);
+    // Skip: the owner skips at once, and the queued video starts.
+    a.c.send({ t: 'cinemaSkip', itemId: 9501 });
+    await b.c.waitFor('itemPut', (m) => m.item.id === 9501 && m.item.video === 'aaaaaaaaaaa');
+    // Public cinema: anyone may add, for a few coins.
+    b.c.send({ t: 'join', roomId: 'cinema' });
+    await b.c.waitFor('room', (m) => m.room.id === 'cinema');
+    ub.coins = 20;
+    b.c.send({ t: 'cinemaAdd', itemId: 6001, video: 'bbbbbbbbbbb' });
+    const pub = await b.c.waitFor('cinema', (m) => m.view.itemId === 6001 && !!m.view.now);
+    expect(pub.view.price).toBe(5);
+    expect(ub.coins).toBe(15);
     a.c.ws.close();
     b.c.ws.close();
   });

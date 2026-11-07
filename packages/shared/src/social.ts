@@ -144,3 +144,38 @@ export interface RoomNote {
   at: number;
   approved: boolean;
 }
+
+/* ---------------- cinema ---------------- */
+
+export const CINEMA = {
+  /** Longest time one video gets before the next in the queue starts. */
+  slotMs: 10 * 60_000,
+  queueMax: 10,
+  /** Coins to put a video in the queue in a public cinema (free in your own room). */
+  publicPrice: 5,
+  /** Share of the viewers that must vote to skip. */
+  skipShare: 0.5,
+} as const;
+
+export interface CinemaEntry {
+  id: string;
+  video: string;
+  title: string;
+  byId: string;
+  byName: string;
+}
+
+/** What everyone sees in the cinema panel. */
+export interface CinemaView {
+  itemId: number;
+  now: (CinemaEntry & { startedAt: number; until: number }) | null;
+  queue: CinemaEntry[];
+  skips: number;
+  needed: number;
+  /** This player may stop, skip at once and remove any entry. */
+  canManage: boolean;
+  /** Coins it costs this player to add a video (0 = free). */
+  price: number;
+  /** This player may add videos at all. */
+  canAdd: boolean;
+}

@@ -68,6 +68,9 @@ import {
   GAME_COUNTDOWN_MS,
   TEAM_NAMES,
   SNOW,
+  CINEMA,
+  type CinemaEntry,
+  type CinemaView,
   type RoomGameKind,
   MARKET_FEE,
   MARKET_MAX_LISTINGS,
@@ -142,6 +145,8 @@ export interface HotelConfig {
   adminNames?: string[];
   /** Lobbi Junior: no free text between strangers and no cinema (open YouTube). */
   junior?: boolean;
+  /** Look up video titles at YouTube (off in tests). */
+  videoTitles?: boolean;
 }
 
 export interface Connection {
@@ -198,7 +203,11 @@ const LIMIT_FOR: Partial<Record<ClientMsg['t'], LimitKind>> = {
   aptDoor: 'move',
   gameStart: 'build',
   jukebox: 'build',
-  cinema: 'build',
+  cinemaAdd: 'build',
+  cinemaGet: 'nav',
+  cinemaSkip: 'social',
+  cinemaStop: 'build',
+  cinemaRemove: 'build',
   snowThrow: 'move',
   market: 'nav',
   marketSell: 'build',
@@ -1563,42 +1572,23 @@ export class Hotel {
         return this.guestbookDelete(s, user, msg.userId, msg.id);
       case 'teleport':
         return this.teleport(s, user, msg.itemId);
-      case 'cinema': {
-        if (!room) return;
-        if (this.cfg.junior) return this.toast(s, 'Biografen findes ikke i Lobbi Junior.', 'error');
-        const it = room.items.find((i) => i.id === msg.itemId && i.type === 'laerred');
-        if (!it) return;
-        const rec = this.roomRecord(room);
-        const owner =
-          user.role !== 'user' ||
-          (rec && (rec.ownerId === user.id || rec.rights.includes(user.id)));
-        // In the public cinema anyone may start a film when nothing is playing.
-        const allowed = owner || (room.meta.isPublic && !it.video);
-        if (!allowed)
-          return this.toast(
-            s,
-            room.meta.isPublic
-              ? 'Der kører allerede en video – vent til den er slut 🎬'
-              : 'Kun ejeren kan vælge video her 🎬',
-            'error',
-          );
-        if (msg.video) {
-          it.video = msg.video;
-          it.videoAt = Date.now();
-          it.state = 1;
-          this.sys(room, `🎬 ${user.name} starter en video på lærredet.`);
-        } else {
-          delete it.video;
-          delete it.videoAt;
-          it.state = 0;
-        }
-        const saved = rec?.items.find((i) => i.id === it.id);
-        if (saved && saved !== it)
-          Object.assign(saved, { state: it.state, video: it.video, videoAt: it.videoAt });
-        this.store.touch();
-        room.broadcast({ t: 'itemPut', item: it });
+      case 'cinemaAdd':
+        if (room) void this.cinemaAdd(s, user, room, msg.itemId, msg.video);
+        return;
+      case 'cinemaGet': {
+        const it = room?.items.find((i) => i.id === msg.itemId && i.type === 'laerred');
+        if (room && it) this.send(s, { t: 'cinema', view: this.cinemaView(room, it, user) });
         return;
       }
+      case 'cinemaSkip':
+        if (room) this.cinemaSkip(s, user, room, msg.itemId);
+        return;
+      case 'cinemaStop':
+        if (room) this.cinemaStop(s, user, room, msg.itemId);
+        return;
+      case 'cinemaRemove':
+        if (room) this.cinemaRemove(s, user, room, msg.itemId, msg.id);
+        return;
       case 'snowThrow':
         if (room && player) this.snowThrow(s, room, player, msg.targetId);
         return;
@@ -2259,6 +2249,222 @@ export class Hotel {
     this.store.touch();
     this.sendInventory(s, user);
     this.sendMarket(s, user);
+  }
+
+  /* ---------------- cinema ---------------- */
+
+  private cinemas = new Map<
+    string,
+    {
+      queue: (CinemaEntry & { paid: number })[];
+      skips: Set<string>;
+      current: (CinemaEntry & { startedAt: number; until: number }) | null;
+    }
+  >();
+
+  private screen(room: RoomInstance, itemId: number) {
+    return room.items.find((i) => i.id === itemId && i.type === 'laerred');
+  }
+
+  private cinemaState(room: RoomInstance, it: PlacedItem) {
+    const key = `${room.meta.id}:${it.id}`;
+    let st = this.cinemas.get(key);
+    if (!st) {
+      st = { queue: [], skips: new Set(), current: null };
+      // A video that was playing before a restart keeps playing.
+      if (it.video && it.videoAt && it.videoAt + CINEMA.slotMs > Date.now())
+        st.current = {
+          id: 'resume',
+          video: it.video,
+          title: 'YouTube-video',
+          byId: '',
+          byName: '',
+          startedAt: it.videoAt,
+          until: it.videoAt + CINEMA.slotMs,
+        };
+      this.cinemas.set(key, st);
+    }
+    return st;
+  }
+
+  private cinemaView(room: RoomInstance, it: PlacedItem, user: UserRecord): CinemaView {
+    const st = this.cinemaState(room, it);
+    const manage = this.canModerateRoom(user, room);
+    const viewers = room.humans().length;
+    return {
+      itemId: it.id,
+      now: st.current,
+      queue: st.queue.map((e) => ({
+        id: e.id,
+        video: e.video,
+        title: e.title,
+        byId: e.byId,
+        byName: e.byName,
+      })),
+      skips: st.skips.size,
+      needed: Math.max(1, Math.ceil(viewers * CINEMA.skipShare)),
+      canManage: manage,
+      canAdd: !this.cfg.junior && (manage || room.meta.isPublic),
+      price: room.meta.isPublic && !manage ? CINEMA.publicPrice : 0,
+    };
+  }
+
+  private cinemaBroadcast(room: RoomInstance, it: PlacedItem) {
+    for (const p of room.humans()) {
+      const ps = this.byUser.get(p.id);
+      const pu = this.store.getUser(p.id);
+      if (ps && pu && ps.room === room)
+        this.send(ps, { t: 'cinema', view: this.cinemaView(room, it, pu) });
+    }
+  }
+
+  /** The video's title from YouTube; null if it doesn't exist or may not be embedded. */
+  private async videoTitle(video: string): Promise<string | null> {
+    if (this.cfg.videoTitles === false) return 'YouTube-video';
+    try {
+      const r = await fetch(
+        `https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(`https://www.youtube.com/watch?v=${video}`)}`,
+        { signal: AbortSignal.timeout(3000) },
+      );
+      if (r.status === 401 || r.status === 403 || r.status === 404 || r.status === 400) return null;
+      if (!r.ok) return 'YouTube-video';
+      const j = (await r.json()) as { title?: string };
+      return sanitizeChat(j.title ?? 'YouTube-video').slice(0, 90) || 'YouTube-video';
+    } catch {
+      return 'YouTube-video';
+    }
+  }
+
+  private async cinemaAdd(
+    s: Session,
+    user: UserRecord,
+    room: RoomInstance,
+    itemId: number,
+    video: string,
+  ) {
+    if (this.cfg.junior) return this.toast(s, 'Biografen findes ikke i Lobbi Junior.', 'error');
+    const it = this.screen(room, itemId);
+    if (!it) return;
+    const manage = this.canModerateRoom(user, room);
+    if (!room.meta.isPublic && !manage)
+      return this.toast(s, 'Kun ejeren og dem med rettigheder kan vælge video her 🎬', 'error');
+    const st = this.cinemaState(room, it);
+    if (st.queue.length >= CINEMA.queueMax)
+      return this.toast(s, 'Køen er fuld – vent lidt 🍿', 'error');
+    if (!manage && st.queue.some((e) => e.byId === user.id))
+      return this.toast(s, 'Du har allerede en video i køen.', 'error');
+    const price = room.meta.isPublic && !manage ? CINEMA.publicPrice : 0;
+    if (user.coins < price)
+      return this.toast(s, `Det koster ${price} 🪙 at vælge en video her.`, 'error');
+    const title = await this.videoTitle(video);
+    if (s.room !== room) return;
+    if (title === null)
+      return this.toast(
+        s,
+        'Den video findes ikke, eller den må ikke vises uden for YouTube.',
+        'error',
+      );
+    if (price) this.coins(s, user, -price, 'cinema');
+    const entry = { id: newId('v'), video, title, byId: user.id, byName: user.name, paid: price };
+    if (!st.current) this.cinemaStart(room, it, entry);
+    else {
+      st.queue.push(entry);
+      this.toast(s, `🎬 Sat i køen som nr. ${st.queue.length}`);
+    }
+    this.cinemaBroadcast(room, it);
+  }
+
+  private cinemaStart(room: RoomInstance, it: PlacedItem, entry: CinemaEntry | null) {
+    const st = this.cinemaState(room, it);
+    st.skips.clear();
+    const now = Date.now();
+    st.current = entry ? { ...entry, startedAt: now, until: now + CINEMA.slotMs } : null;
+    if (entry) {
+      it.video = entry.video;
+      it.videoAt = now;
+      it.state = 1;
+      this.sys(room, `🎬 Nu på lærredet: "${entry.title}" – valgt af ${entry.byName}`);
+    } else {
+      delete it.video;
+      delete it.videoAt;
+      it.state = 0;
+    }
+    const saved = this.roomRecord(room)?.items.find((i) => i.id === it.id);
+    if (saved && saved !== it)
+      Object.assign(saved, { state: it.state, video: it.video, videoAt: it.videoAt });
+    this.store.touch();
+    room.broadcast({ t: 'itemPut', item: it });
+  }
+
+  private cinemaNext(room: RoomInstance, it: PlacedItem) {
+    const st = this.cinemaState(room, it);
+    const next = st.queue.shift() ?? null;
+    this.cinemaStart(room, it, next);
+    this.cinemaBroadcast(room, it);
+  }
+
+  private cinemaSkip(s: Session, user: UserRecord, room: RoomInstance, itemId: number) {
+    const it = this.screen(room, itemId);
+    if (!it) return;
+    const st = this.cinemaState(room, it);
+    if (!st.current) return;
+    if (this.canModerateRoom(user, room) || st.current.byId === user.id)
+      return this.cinemaNext(room, it);
+    st.skips.add(user.id);
+    const needed = Math.max(1, Math.ceil(room.humans().length * CINEMA.skipShare));
+    if (st.skips.size >= needed) {
+      this.sys(room, '⏭️ Flertallet ville springe videoen over.');
+      return this.cinemaNext(room, it);
+    }
+    this.cinemaBroadcast(room, it);
+  }
+
+  private cinemaStop(s: Session, user: UserRecord, room: RoomInstance, itemId: number) {
+    const it = this.screen(room, itemId);
+    if (!it) return;
+    if (!this.canModerateRoom(user, room))
+      return this.toast(s, 'Kun ejeren kan stoppe videoen.', 'error');
+    this.cinemaNext(room, it);
+  }
+
+  private cinemaRemove(
+    s: Session,
+    user: UserRecord,
+    room: RoomInstance,
+    itemId: number,
+    id: string,
+  ) {
+    const it = this.screen(room, itemId);
+    if (!it) return;
+    const st = this.cinemaState(room, it);
+    const e = st.queue.find((q) => q.id === id);
+    if (!e) return;
+    if (!this.canModerateRoom(user, room) && e.byId !== user.id) return;
+    st.queue = st.queue.filter((q) => q !== e);
+    // Money back for a video that never played.
+    const owner = this.store.getUser(e.byId);
+    const os = this.byUser.get(e.byId);
+    if (e.paid && owner && os) this.coins(os, owner, e.paid, 'cinema-refund');
+    else if (e.paid && owner) owner.coins += e.paid;
+    this.cinemaBroadcast(room, it);
+  }
+
+  /** Called every second: a video that has had its time gives way to the next. */
+  private cinemaTick(now: number) {
+    for (const [key, st] of this.cinemas) {
+      if (!st.current || now < st.current.until) continue;
+      const [roomId, itemIdStr] = [
+        key.slice(0, key.lastIndexOf(':')),
+        key.slice(key.lastIndexOf(':') + 1),
+      ];
+      const room = this.rooms.get(roomId);
+      const it = room && this.screen(room, Number(itemIdStr));
+      if (!room || !it) {
+        this.cinemas.delete(key);
+        continue;
+      }
+      this.cinemaNext(room, it);
+    }
   }
 
   /* ---------------- carrying things ---------------- */
@@ -3005,6 +3211,7 @@ export class Hotel {
     // puts people back on their own tile instead of at the door.
     // Things in the hand don't last forever.
     const now = Date.now();
+    this.cinemaTick(now);
     for (const room of this.rooms.values())
       for (const p of room.players.values())
         if (p.carry && p.carryUntil && p.carryUntil < now) this.setCarry(room, p, null);

@@ -798,19 +798,19 @@ const BUILD: Record<FurnitureType, (c: number, state: number) => T.Group> = {
   laerred(_c, on) {
     const g = new T.Group();
     const frame = M(0x1a1a20, { roughness: 0.5 });
-    g.add(shade(rbox(2.7, 1.55, 0.06, frame, 0, 1.75, 0.03, 0.02)));
-    // The canvas glows softly while a film is playing (the video itself is shown on top).
-    const screen = M(on ? 0xdfe8ff : 0xf2efe8, {
+    // 16:9 canvas, 3.6 × 2.025 at height 1.6 (main.ts lays the video exactly onto it).
+    g.add(shade(rbox(3.8, 2.2, 0.06, frame, 0, 1.6, 0.03, 0.02)));
+    const screen = M(on ? 0x101018 : 0xf2efe8, {
       roughness: 0.9,
-      emissive: on ? 0x6f8fd8 : 0x000000,
-      emissiveIntensity: on ? 0.9 : 0,
+      emissive: on ? 0x3a4a78 : 0x000000,
+      emissiveIntensity: on ? 0.6 : 0,
     });
-    const p = new T.Mesh(new T.PlaneGeometry(2.5, 1.4), screen);
-    p.position.set(0, 1.75, 0.065);
+    const p = new T.Mesh(new T.PlaneGeometry(3.6, 2.025), screen);
+    p.position.set(0, 1.6, 0.065);
     g.add(p);
     const curtain = M(0x8a1f2a, { roughness: 0.85 });
     for (const sx of [-1, 1])
-      g.add(shade(rbox(0.22, 1.8, 0.08, curtain, sx * 1.45, 1.7, 0.06, 0.04)));
+      g.add(shade(rbox(0.24, 2.4, 0.08, curtain, sx * 2.0, 1.5, 0.06, 0.04)));
     return g;
   },
   biografstol(c) {

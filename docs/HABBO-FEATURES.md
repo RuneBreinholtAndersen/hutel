@@ -2,7 +2,7 @@
 
 Listen sammenligner Lobbi (tidligere Hutel) med de klassiske funktioner fra Habbo Hotel. Navne, grafik og møbler kopieres ikke: vi laver vores egen version af idéen.
 
-_Senest opdateret: 7. november 2026 (køn på figuren)._
+_Senest opdateret: 7. november 2026 (køn på figuren og bedre biograf)._
 
 **Sådan læses den**
 - **Værdi**: hvor meget det betyder for spillerne (★–★★★)
@@ -112,7 +112,7 @@ Det her mener jeg giver mest spil for pengene, i den rækkefølge:
 - ✅ Effekter: farvet skygge, gyldent skær, stjernestøv og festaura (gratis under events)
 - ✅ Bære ting i hånden: kaffe, is, sodavand, blomst og cupcake fra cafédisken, kaffemaskine, isboks, køleskab og blomstervase – og give dem til andre
 - ✅ Badekar: man sidder nu nede i vandet i stedet for at ligge oven på
-- ✅ Biograf: offentligt rum "Biografen" + lærred og biografstole til eget værelse; YouTube-video (officiel indlejring) synkroniseret for alle, ejeren vælger – slået fra i Junior
+- ✅ Biograf: offentligt rum "Biografen" + lærred (stort, 16:9) og biografstole til eget værelse; YouTube-video (officiel indlejring) ligger skråt på lærredet og er synkroniseret for alle; kø med op til 10 videoer, højst 10 min pr. video, skip ved flertal; i Biografen koster en video 5 mønter (refunderes hvis fjernet før visning), i eget rum gratis for ejer og dem med rettigheder; ejer/moderator kan stoppe og fjerne; titlen hentes fra YouTube og ikke-indlejrbare videoer afvises; slået fra i Junior
 - ✅ Sneboldkamp: to hold, klik for at kaste (højst 5 felter), 5 snebolde der fyldes op ved snedriven, ramte fryses 1,5 sek, flest træffere vinder
 - ✅ Butik med møbler og tøj, låst op med level og badges
 - ✅ Mønter (online-tid, opgaver, events, spil) – beregnet på serveren

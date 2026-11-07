@@ -16,6 +16,7 @@ import {
   type ActionKind,
   type EmoteKind,
   type RoomNote,
+  type CinemaView,
   CARRY,
   EFFECTS,
   EFFECT_IDS,
@@ -749,6 +750,10 @@ function handle(msg: ServerMsg) {
         me.effect = msg.effect === 'none' ? undefined : msg.effect;
         if (panelKind === 'fig') renderFigure();
       }
+      return;
+    case 'cinema':
+      cinemaView = msg.view;
+      if (panelKind === 'cinema') renderCinema(msg.view.itemId);
       return;
     case 'snowball':
       throwSnowball(msg.from, msg.to, msg.hit);
@@ -1484,33 +1489,70 @@ function renderMoves() {
 
 /* ---------------- cinema ---------------- */
 
-/** 🎬 Choose a YouTube video for the screen (official embed player only). */
+/** 🎬 The cinema panel: what's playing, the queue, skip votes and adding a video. */
+let cinemaView: CinemaView | null = null;
 function renderCinema(itemId: number) {
-  const it = items.get(itemId);
-  if (!it) return;
-  const owner = room?.canBuild || me?.role !== 'user';
-  const mayStart = owner || (!room?.ownerId && !it.video);
+  if (cinemaView?.itemId !== itemId) {
+    cinemaView = null;
+    net?.send({ t: 'cinemaGet', itemId });
+  }
+  const v = cinemaView;
+  const nowMs = net ? net.now() : Date.now();
+  const left = v?.now ? Math.max(0, Math.ceil((v.now.until - nowMs) / 60000)) : 0;
+  const mine = me?.id;
+  const nowHtml = v?.now
+    ? `<div class="petcard"><b>▶︎ ${esc(v.now.title)}</b><p class="sub">${v.now.byName ? `Valgt af ${esc(v.now.byName)} · ` : ''}højst ${left} min mere</p>
+        <div class="chips">
+          ${v.canManage || v.now.byId === mine ? '<button data-cine="next">⏭️ Spring over</button>' : `<button data-cine="vote">⏭️ Stem for at springe over (${v.skips}/${v.needed})</button>`}
+          ${v.canManage ? '<button data-cine="stop" class="danger">⏹ Stop</button>' : ''}
+        </div></div>`
+    : '<p class="sub">Lærredet er tomt lige nu.</p>';
+  const queueHtml = v?.queue.length
+    ? `<h3>Næste i køen</h3><div class="list">${v.queue
+        .map(
+          (e, i) =>
+            `<div class="li"><div class="grow"><b>${i + 1}. ${esc(e.title)}</b><small>Valgt af ${esc(e.byName)}</small></div>${v.canManage || e.byId === mine ? `<button class="small" data-rm="${esc(e.id)}">Fjern</button>` : ''}</div>`,
+        )
+        .join('')}</div>`
+    : '';
+  const addHtml = !v
+    ? '<p class="sub">Henter…</p>'
+    : v.canAdd
+      ? `<h3>Vælg en video</h3><div class="row" style="display:flex;gap:6px"><input id="ytUrl" placeholder="Link til en YouTube-video" style="flex:1"><button id="ytPlay" class="primary">${v.now ? '＋ Sæt i kø' : '▶︎ Afspil'}${v.price ? ` · ${v.price} ${COIN}` : ''}</button></div>
+         <p class="sub">${v.price ? `Det koster ${v.price} mønter at vælge en video her – du får dem tilbage, hvis den fjernes, før den vises. Hver video får højst 10 minutter.` : 'Gratis i dit eget rum. Hver video får højst 10 minutter, så kommer den næste.'}</p>`
+      : '<p class="sub">Kun ejeren og dem med byggerettigheder kan vælge video her. Sæt dig og se med 🍿</p>';
   openPanel(
     'cinema',
-    head(
-      '🎬 Biograf',
-      mayStart
-        ? 'Sæt et link til en YouTube-video ind. Alle i rummet ser den samtidig på lærredet.'
-        : 'Der kører allerede en video. Sæt dig i en stol og se med 🍿',
-    ) +
-      (mayStart
-        ? `<div class="row" style="display:flex;gap:6px"><input id="ytUrl" placeholder="https://www.youtube.com/watch?v=…" style="flex:1"><button id="ytPlay" class="primary">▶︎ Afspil</button></div>`
-        : '') +
-      (it.video && owner ? '<button id="ytStop">⏹ Stop videoen</button>' : '') +
-      `<p class="sub">Videoen afspilles med YouTubes egen afspiller. Skru op og ned for lyden i afspilleren.${cinemaHidden ? ' Du har skjult lærredet – <a href="#" id="ytShow">vis det igen</a>.' : ''}</p>`,
+    head('🎬 Biograf', 'Alle i rummet ser det samme på samme tid.') +
+      nowHtml +
+      queueHtml +
+      addHtml +
+      (cinemaHidden
+        ? '<p class="sub">Du har skjult lærredet – <a href="#" id="ytShow">vis det igen</a>.</p>'
+        : ''),
   );
   $('ytPlay')?.addEventListener('click', () => {
     const id = youtubeId($<HTMLInputElement>('ytUrl').value);
-    if (!id) return toast('Det ligner ikke et YouTube-link 🤔', 'error');
+    if (!id) return toast('Det ligner ikke et link til en YouTube-video 🤔', 'error');
     cinemaHidden = false;
-    net?.send({ t: 'cinema', itemId, video: id });
+    net?.send({ t: 'cinemaAdd', itemId, video: id });
   });
-  $('ytStop')?.addEventListener('click', () => net?.send({ t: 'cinema', itemId, video: null }));
+  $('panel')
+    .querySelectorAll<HTMLElement>('[data-cine]')
+    .forEach((b) =>
+      b.addEventListener('click', () => {
+        const a = b.dataset.cine;
+        if (a === 'stop') net?.send({ t: 'cinemaStop', itemId });
+        else net?.send({ t: 'cinemaSkip', itemId });
+      }),
+    );
+  $('panel')
+    .querySelectorAll<HTMLElement>('[data-rm]')
+    .forEach((b) =>
+      b.addEventListener('click', () =>
+        net?.send({ t: 'cinemaRemove', itemId, id: b.dataset.rm! }),
+      ),
+    );
   $('ytShow')?.addEventListener('click', (e) => {
     e.preventDefault();
     cinemaHidden = false;
@@ -1518,10 +1560,21 @@ function renderCinema(itemId: number) {
   });
 }
 
-/** The playing YouTube player, laid over the screen in the room. */
+/** The playing YouTube player, laid exactly onto the (slanted) screen on the wall. */
 let cinemaKey = '';
 let cinemaHidden = false;
 let cinemaBig = false;
+/** Size of the screen in the 3D model (see gfx/furniture.ts → laerred). */
+const SCREEN_W = 3.6;
+const SCREEN_H = 2.025;
+const SCREEN_Y = 1.6;
+const IFRAME_W = 640;
+const IFRAME_H = 360;
+const corner = new T.Vector3();
+function projectLocal(o: T.Object3D, x: number, y: number, z: number): [number, number] {
+  corner.set(x, y, z).applyMatrix4(o.matrixWorld).project(stage.camera);
+  return [((corner.x + 1) / 2) * innerWidth, ((1 - corner.y) / 2) * innerHeight];
+}
 function updateCinema() {
   const box = $('cinema');
   const it = [...items.values()].find((i) => i.type === 'laerred' && i.video && i.videoAt);
@@ -1547,7 +1600,7 @@ function updateCinema() {
     bar.className = 'cbar';
     const big = document.createElement('button');
     big.textContent = '⤢';
-    big.title = 'Større / mindre';
+    big.title = 'Se i stor størrelse';
     big.onclick = () => {
       cinemaBig = !cinemaBig;
     };
@@ -1567,17 +1620,17 @@ function updateCinema() {
     box.style.cssText = '';
     return;
   }
-  // Follow the screen on the wall: project its left and right edge.
-  const left = new T.Vector3(-1.25, 1.75, 0.08).applyMatrix4(o.matrixWorld).project(stage.camera);
-  const right = new T.Vector3(1.25, 1.75, 0.08).applyMatrix4(o.matrixWorld).project(stage.camera);
-  const lx = ((left.x + 1) / 2) * innerWidth;
-  const rx = ((right.x + 1) / 2) * innerWidth;
-  const ly = ((1 - left.y) / 2) * innerHeight;
-  const ry = ((1 - right.y) / 2) * innerHeight;
-  const w = Math.max(220, Math.hypot(rx - lx, ry - ly));
-  const cx = (lx + rx) / 2;
-  const cy = (ly + ry) / 2;
-  box.style.cssText = `width:${w}px;height:${(w * 9) / 16}px;transform:translate(${cx - w / 2}px,${cy - (w * 9) / 32}px)`;
+  // The camera is orthographic, so the screen is a parallelogram on the page: an affine map from
+  // the 640×360 player onto three of its corners puts the video right on the slanted canvas.
+  const z = 0.08;
+  const [tlx, tly] = projectLocal(o, -SCREEN_W / 2, SCREEN_Y + SCREEN_H / 2, z);
+  const [trx, try_] = projectLocal(o, SCREEN_W / 2, SCREEN_Y + SCREEN_H / 2, z);
+  const [blx, bly] = projectLocal(o, -SCREEN_W / 2, SCREEN_Y - SCREEN_H / 2, z);
+  const a = (trx - tlx) / IFRAME_W;
+  const b = (try_ - tly) / IFRAME_W;
+  const c = (blx - tlx) / IFRAME_H;
+  const d = (bly - tly) / IFRAME_H;
+  box.style.cssText = `width:${IFRAME_W}px;height:${IFRAME_H}px;transform-origin:0 0;transform:matrix(${a},${b},${c},${d},${tlx},${tly})`;
 }
 
 /* ---------------- snowballs ---------------- */

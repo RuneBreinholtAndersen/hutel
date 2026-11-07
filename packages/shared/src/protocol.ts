@@ -11,6 +11,7 @@ import {
   type EmoteKind,
   type RelationKind,
   type RoomNote,
+  type CinemaView,
 } from './social';
 import { FURNITURE_TYPES, type FurnitureType } from './catalog';
 import { CHAT_MAX_LENGTH, MAX_ROOM_SIZE } from './constants';
@@ -78,15 +79,17 @@ export const ClientMsgSchema = z.discriminatedUnion('t', [
     itemId: z.number().int(),
     song: z.enum(MELODY_IDS as [string, ...string[]]).nullable(),
   }),
-  /** Cinema screen: play a YouTube video (11-character id) or stop it (null). */
+  /** Cinema: put a YouTube video (11-character id) in the queue (plays at once if empty). */
   z.object({
-    t: z.literal('cinema'),
+    t: z.literal('cinemaAdd'),
     itemId: z.number().int(),
-    video: z
-      .string()
-      .regex(/^[A-Za-z0-9_-]{11}$/)
-      .nullable(),
+    video: z.string().regex(/^[A-Za-z0-9_-]{11}$/),
   }),
+  /** Cinema: ask for the queue, vote to skip, stop the current video, remove from the queue. */
+  z.object({ t: z.literal('cinemaGet'), itemId: z.number().int() }),
+  z.object({ t: z.literal('cinemaSkip'), itemId: z.number().int() }),
+  z.object({ t: z.literal('cinemaStop'), itemId: z.number().int() }),
+  z.object({ t: z.literal('cinemaRemove'), itemId: z.number().int(), id: z.string().max(40) }),
   /** Sneboldkamp: throw at a player from the other team. */
   z.object({ t: z.literal('snowThrow'), targetId: z.string().max(40) }),
   /** Start a room game from a game console. */
@@ -569,6 +572,7 @@ export type ServerMsg =
   | { t: 'effect'; id: string; effect: string }
   | { t: 'carry'; id: string; item: CarryKind | null }
   | { t: 'snowball'; from: string; to: string; hit: boolean }
+  | { t: 'cinema'; view: CinemaView }
   | { t: 'notes'; notes: RoomNote[]; canModerate: boolean }
   | { t: 'action'; id: string; kind: ActionKind | null }
   | { t: 'look'; id: string; look: Look }

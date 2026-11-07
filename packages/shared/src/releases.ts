@@ -2,7 +2,7 @@
  * Bump when old clients can no longer talk to the new server (they must reload).
  * Small changes keep the number, and players just see an "update available" button.
  */
-export const PROTOCOL_VERSION = 2;
+export const PROTOCOL_VERSION = 3;
 
 export interface ReleaseNote {
   date: string;
@@ -14,8 +14,11 @@ export interface ReleaseNote {
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
     date: '2026-11-07',
-    title: 'Ny indgang og vælg køn',
+    title: 'Ny indgang, vælg køn og en bedre biograf',
     items: [
+      '🎬 Større lærred – videoen ligger nu skråt lige på lærredet',
+      '🍿 Kø i biografen: sæt en video i kø, og stem for at springe over',
+      '🪙 I Biografen koster det 5 mønter at vælge en video (gratis i dit eget rum)',
       '🛎️ Nyt og pænere tjek-ind-skærm',
       '🧍 Vælg kvinde, mand eller "vil ikke sige" til din figur under Figur',
       '🔇 Ingen lyde fra faner i baggrunden, og lyd slået fra gælder alle faner',

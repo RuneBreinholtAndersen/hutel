@@ -277,7 +277,7 @@ export const FURNITURE = {
     name: 'Biograflærred',
     icon: '🎬',
     price: 40,
-    w: 3,
+    w: 4,
     d: 1,
     wall: true,
     minLevel: 3,

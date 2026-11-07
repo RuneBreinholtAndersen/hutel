@@ -1142,8 +1142,6 @@ ul.notes {
   top: 0;
   z-index: 4;
   background: #000;
-  border-radius: 6px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
   overflow: hidden;
 }
 #cinema iframe {
@@ -1153,6 +1151,8 @@ ul.notes {
   display: block;
 }
 #cinema.big {
+  border-radius: 10px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
   left: 50%;
   top: 50%;
   width: min(90vw, 1100px);
