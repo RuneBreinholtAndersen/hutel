@@ -2,7 +2,7 @@
 
 Status opdateres løbende. Åbne punkter står øverst, færdige punkter (✅) står nederst.
 
-Sidst opdateret: 6. november 2026. Rækkefølge: voksen-Hutel i lukket beta først, derefter Hutel Junior.
+Sidst opdateret: 7. november 2026. Rækkefølge: voksen-Hutel i lukket beta først, derefter Hutel Junior.
 
 ---
 
@@ -91,29 +91,29 @@ Samme kodebase og grafik som Hutel, men en helt separat verden for børn. Børn 
 
 **Adskillelse**
 
-- [ ] `EDITION=adult|junior` styrer regler, tekster og funktioner i både klient og server
-- [ ] Junior kører på egen server og egen database (fx `junior.hutel.dk`), så ingen data eller rum deles med voksen-Hutel
+- [x] ✅ `HUTEL_JUNIOR=true` styrer regler, tekster og funktioner i både klient og server (`/api/config` siger `edition: junior`)
+- [ ] Junior kører på egen server og egen database (`fly.junior.toml`: appen `lobbi-junior` med eget volume, fx `junior.lobbi.dk`) – filen er klar, Rune skal oprette appen og volumet
 
 **Sikker chat**
 
-- [ ] Menu-chat: kategorier med færdige sætninger (hilsner, spørgsmål, ros, leg, følelser) og emojis – standard for alle børn
+- [x] ✅ Menu-chat: kategorier med færdige sætninger (hilsner, spørgsmål, svar, ros, leg, følelser) og emojis
 - [ ] Ordliste-chat: kun godkendte ord, tal og specialtegn spærret – kan slås til af en forælder (fx fra 10 år)
-- [ ] Ingen fri chat og ingen private beskeder med fremmede
-- [ ] Serveren afviser al tekst, der ikke er en godkendt sætning eller består af godkendte ord
+- [x] ✅ Ingen fri chat, hvisken, messenger, motto, gæstebog, sedler, kæledyrsnavne, rumnavne eller biograf
+- [x] ✅ Serveren afviser al tekst, der ikke er en godkendt sætning (handlinger som `:dans` og spil som `/terning` virker)
 
 **Forældre**
 
-- [ ] Forældrekonto med e-mail-bekræftelse og samtykke (krav for børn under 13 år i Danmark)
+- [ ] Forældrekonto med e-mail-bekræftelse og samtykke (krav for børn under 13 år i Danmark) – forælderens e-mail og samtykke gemmes nu ved oprettelse; bekræftelses-mail mangler (kræver en mail-tjeneste)
 - [ ] Forælderen opretter barnets figur og vælger chatniveau
 - [ ] Forældreoverblik: venner, tid online, rapporter, og mulighed for at slette barnets data
 - [ ] Barnet logger ind med en kode/QR fra forælderens konto – intet barns e-mail eller fulde navn
 
 **Venner og leg**
 
-- [ ] Venner kun via vennekode, som børn giver hinanden i virkeligheden, eller godkendt af forælderen
-- [ ] Navne vælges fra en liste med sjove kombinationer (fx "Glad Odder 12"), så ingen skriver deres rigtige navn
+- [x] ✅ Venner kun via vennekode (6 tegn), som børn giver hinanden i virkeligheden
+- [x] ✅ Navne vælges med terningen fra sjove kombinationer (fx "Glad Odder 12") – serveren afviser alt andet
 - [ ] Opgaver, mønter, værelser og butik som i Hutel – men ingen rigtige penge uden forælderens godkendelse
-- [ ] AI-beboere svarer kun med faste, godkendte replikker (ingen fri AI-chat med børn)
+- [x] ✅ AI-beboere svarer kun med faste, godkendte replikker (ingen fri AI-chat med børn)
 
 **Tryghed og regler**
 

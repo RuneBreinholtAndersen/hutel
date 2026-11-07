@@ -112,6 +112,8 @@ import {
   type ClientMsg,
   type TradeOfferView,
   type TradeView,
+  JUNIOR_PHRASES,
+  randomJuniorName,
 } from '@hutel/shared';
 import { Actor } from './actors';
 import { Pet } from './gfx/pets';
@@ -487,7 +489,7 @@ function updateRoomUi() {
   if (!room || !me) return;
   $('roomName').textContent = room.ownerName
     ? `${room.name} · ${room.ownerName}`
-    : `${room.name} · Lobbi.dk`;
+    : `${room.name} · ${junior() ? 'Lobbi Junior' : 'Lobbi.dk'}`;
   $<HTMLButtonElement>('bBuild').disabled = !room.canBuild;
   $<HTMLButtonElement>('bShop').disabled = !isOwner();
   roomGfx.setDoorUnlocked(onboarded());
@@ -862,6 +864,7 @@ function handle(msg: ServerMsg) {
     case 'friends':
       friends = msg.friends;
       requests = msg.requests;
+      myFriendCode = msg.code ?? null;
       $('reqDot').classList.toggle(
         'hidden',
         !requests.length && !friends.some((f) => f.unread > 0),
@@ -2235,12 +2238,15 @@ function renderFriends() {
   openPanel(
     'friends',
     head('👥 Venner') +
-      `<div class="row" style="display:flex;gap:6px"><input id="frName" maxlength="16" placeholder="Navn på en gæst" style="flex:1"><button id="frAdd" class="small primary">Tilføj</button></div>` +
+      (junior()
+        ? `<p class="sub">Din vennekode: <b class="fcode">${esc(myFriendCode ?? '…')}</b><br>Giv den kun til nogen, du kender. De skriver den her for at blive din ven.</p>` +
+          `<div class="row" style="display:flex;gap:6px"><input id="frName" maxlength="6" placeholder="Vennekode (6 tegn)" style="flex:1;text-transform:uppercase"><button id="frAdd" class="small primary">Tilføj</button></div>`
+        : `<div class="row" style="display:flex;gap:6px"><input id="frName" maxlength="16" placeholder="Navn på en gæst" style="flex:1"><button id="frAdd" class="small primary">Tilføj</button></div>`) +
       (requests.length
         ? `<h3>Venneanmodninger</h3><div class="list">${requests.map((r) => `<div class="li"><div class="grow"><b>${esc(r.name)}</b></div><button class="small primary" data-acc="${r.id}">Ja</button><button class="small" data-dec="${r.id}">Nej</button></div>`).join('')}</div>`
         : '') +
       `<label class="sub" style="display:block;margin:8px 0"><input id="noFollow" type="checkbox" ${me?.noFollow ? 'checked' : ''}> 🔒 Må ikke følges – venner kan se, at jeg er online, men ikke hvor</label>` +
-      `<h3>Dine venner</h3><div class="list">${friends.map((f) => `<div class="li"><div class="grow"><b>${me?.relations?.[f.id] ? RELATIONS[me.relations[f.id]!].icon + ' ' : ''}${esc(f.name)}</b><small>${f.online ? `<span class="status-on">● Online</span>${f.roomName ? ' · ' + esc(f.roomName) : ''}` : 'Offline'}</small></div>${f.online && f.roomId ? `<button class="small" data-go="${esc(f.roomId)}">Gå til</button>` : ''}<button class="small" data-pm="${esc(f.id)}">💬 Skriv${f.unread ? ` <b class="unread">${f.unread}</b>` : ''}</button></div>`).join('') || '<p class="sub">Ingen venner endnu – klik på en figur for at tilføje.</p>'}</div>`,
+      `<h3>Dine venner</h3><div class="list">${friends.map((f) => `<div class="li"><div class="grow"><b>${me?.relations?.[f.id] ? RELATIONS[me.relations[f.id]!].icon + ' ' : ''}${esc(f.name)}</b><small>${f.online ? `<span class="status-on">● Online</span>${f.roomName ? ' · ' + esc(f.roomName) : ''}` : 'Offline'}</small></div>${f.online && f.roomId ? `<button class="small" data-go="${esc(f.roomId)}">Gå til</button>` : ''}<button class="small" data-pm="${esc(f.id)}">💬 Skriv${f.unread ? ` <b class="unread">${f.unread}</b>` : ''}</button></div>`).join('') || `<p class="sub">${junior() ? 'Ingen venner endnu – byt vennekoder med nogen, du kender.' : 'Ingen venner endnu – klik på en figur for at tilføje.'}</p>`}</div>`,
   );
   const p = $('panel');
   $<HTMLInputElement>('noFollow').addEventListener('change', (e) => {
@@ -2249,7 +2255,8 @@ function renderFriends() {
     net?.send({ t: 'setPrivacy', noFollow: on });
   });
   $('frAdd').addEventListener('click', () => {
-    const n = $<HTMLInputElement>('frName').value.trim();
+    const raw = $<HTMLInputElement>('frName').value.trim();
+    const n = junior() ? raw.toUpperCase() : raw;
     if (n.length >= 2) net?.send({ t: 'friendRequest', name: n });
   });
   p.querySelectorAll<HTMLElement>('[data-acc]').forEach((b) =>
@@ -3052,6 +3059,7 @@ $('bbDown').addEventListener('click', () => setTerrain('down'));
 $('qHead').addEventListener('click', () => $('quests').classList.toggle('min'));
 $('chatForm').addEventListener('submit', (e) => {
   e.preventDefault();
+  if (junior()) return togglePhrases();
   const inp = $<HTMLInputElement>('chatIn');
   const text = inp.value.trim();
   if (!text || !net) return;
@@ -3094,6 +3102,60 @@ let authCfg: AuthConfig = {
 let authMode: AuthMode = 'signup';
 let signupLook: Look = { ...DEFAULT_LOOK };
 const social = () => authCfg.auth === 'supabase';
+const junior = () => authCfg.edition === 'junior';
+let myFriendCode: string | null = null;
+
+/* ---------------- Lobbi Junior: menu chat ---------------- */
+let phraseCat = Object.keys(JUNIOR_PHRASES)[0]!;
+function togglePhrases(show = $('phrases').classList.contains('hidden')) {
+  const box = $('phrases');
+  box.classList.toggle('hidden', !show);
+  if (!show) return;
+  box.replaceChildren();
+  const tabs = document.createElement('div');
+  tabs.className = 'tabs';
+  for (const [key, cat] of Object.entries(JUNIOR_PHRASES)) {
+    const b = document.createElement('button');
+    b.className = 'small' + (key === phraseCat ? ' on' : '');
+    b.textContent = `${cat.icon} ${key[0]!.toUpperCase()}${key.slice(1)}`;
+    b.addEventListener('click', () => {
+      phraseCat = key;
+      togglePhrases(true);
+    });
+    tabs.append(b);
+  }
+  const lines = document.createElement('div');
+  lines.className = 'lines';
+  for (const line of JUNIOR_PHRASES[phraseCat]!.lines) {
+    const b = document.createElement('button');
+    b.className = 'small';
+    b.textContent = line;
+    b.addEventListener('click', () => {
+      net?.send({ t: 'chat', text: line });
+      togglePhrases(false);
+    });
+    lines.append(b);
+  }
+  box.append(tabs, lines);
+}
+
+function setupJunior() {
+  document.body.classList.add('junior');
+  document.title = 'Lobbi Junior';
+  $('brand').textContent = 'Lobbi Junior';
+  document.querySelectorAll('.logo span').forEach((el) => (el.textContent = 'Lobbi Junior'));
+  const chat = $<HTMLInputElement>('chatIn');
+  chat.readOnly = true;
+  chat.placeholder = '💬 Tryk her og vælg hvad du vil sige';
+  chat.addEventListener('click', () => togglePhrases());
+  const name = $<HTMLInputElement>('suName');
+  name.readOnly = true;
+  name.maxLength = 24;
+  name.value = randomJuniorName();
+  $('suDice').addEventListener('click', () => (name.value = randomJuniorName()));
+  $<HTMLInputElement>('liName').maxLength = 24;
+  $<HTMLInputElement>('liName').placeholder = 'Fx Glad Odder 12';
+}
 function showSignup(error = '', mode: AuthMode = social() ? 'social' : 'signup') {
   authMode = mode;
   $('signup').classList.remove('hidden');
@@ -3117,7 +3179,9 @@ function showSignup(error = '', mode: AuthMode = social() ? 'social' : 'signup')
   $('toSocialRow').classList.toggle('hidden', !social());
   $('signupForm').querySelector('h1')!.textContent = profile
     ? 'Lav din figur'
-    : 'Velkommen til Lobbi';
+    : junior()
+      ? 'Velkommen til Lobbi Junior'
+      : 'Velkommen til Lobbi';
   $('authError').textContent = mode === 'social' ? error : '';
   $('suError').textContent = mode === 'signup' || profile ? error : '';
   $('liError').textContent = mode === 'login' ? error : '';
@@ -3218,7 +3282,13 @@ $('signupForm').addEventListener('submit', async (e) => {
   const name = $<HTMLInputElement>('suName').value.trim();
   const adult = $<HTMLInputElement>('suAdult').checked;
   const terms = $<HTMLInputElement>('suTerms').checked;
-  if (!adult || !terms)
+  const parentEmail = $<HTMLInputElement>('suParent').value.trim();
+  const parentConsent = $<HTMLInputElement>('suConsent').checked;
+  if (junior()) {
+    if (!parentEmail || !parentConsent || !terms)
+      return ($('suError').textContent =
+        'Få en voksen til at skrive sin e-mail og sætte begge flueben.');
+  } else if (!adult || !terms)
     return ($('suError').textContent = 'Du skal være fyldt 18 og acceptere vilkårene.');
   const invite = $<HTMLInputElement>('suInvite').value.trim() || undefined;
   if (authMode === 'profile') {
@@ -3239,7 +3309,7 @@ $('signupForm').addEventListener('submit', async (e) => {
         look: signupLook,
         password: $<HTMLInputElement>('suPw').value,
         invite,
-        adult,
+        ...(junior() ? { parentEmail, parentConsent } : { adult }),
         terms,
       }),
     });
@@ -3342,6 +3412,7 @@ async function boot() {
     history.replaceState(null, '', location.pathname);
   }
   authCfg = await loadConfig(SERVER);
+  if (junior()) setupJunior();
   const saved = store.get(TOKEN_KEY);
   // The game has moved (e.g. hutel.fly.dev → spil.lobbi.dk): go there and stay logged in.
   if (authCfg.canonicalUrl && !envServer) {

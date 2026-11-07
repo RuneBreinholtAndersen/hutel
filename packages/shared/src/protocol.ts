@@ -589,7 +589,13 @@ export type ServerMsg =
   | { t: 'online'; onlineSec: number }
   | { t: 'quest'; id: QuestId; reward: number; all: boolean; hotelAll?: boolean }
   | { t: 'badge'; id: BadgeId }
-  | { t: 'friends'; friends: FriendView[]; requests: { id: string; name: string }[] }
+  | {
+      t: 'friends';
+      friends: FriendView[];
+      requests: { id: string; name: string }[];
+      /** Lobbi Junior: my friend code. */
+      code?: string;
+    }
   | { t: 'whisper'; from: string; fromName: string; to: string; text: string; at: number }
   | { t: 'hush'; from: string; fromName: string; to: string; toName: string; text: string }
   | { t: 'pmHistory'; with: string; msgs: PmLine[] }

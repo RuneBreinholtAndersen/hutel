@@ -36,6 +36,11 @@ export interface UserRecord {
   homeRoomId: string;
   motto: string;
   friends: string[];
+  /** Lobbi Junior: code you give to a friend so they can add you (no search by name). */
+  friendCode?: string;
+  /** Lobbi Junior: the parent's e-mail and when they gave consent. */
+  parentEmail?: string;
+  parentConsentAt?: number;
   /** Room ids on my favourites list. */
   favorites?: string[];
   pets?: PetRecord[];
@@ -192,6 +197,7 @@ export interface Store {
   getUserByName(name: string): UserRecord | undefined;
   getUserByToken(token: string): UserRecord | undefined;
   getUserByAuthId(authId: string): UserRecord | undefined;
+  getUserByFriendCode(code: string): UserRecord | undefined;
   createUser(
     name: string,
     look: Look,
@@ -269,6 +275,10 @@ export class JsonFileStore implements Store {
   }
   getUserByAuthId(authId: string) {
     return Object.values(this.data.users).find((u) => u.authId === authId);
+  }
+  getUserByFriendCode(code: string) {
+    const c = code.trim().toUpperCase();
+    return Object.values(this.data.users).find((u) => u.friendCode === c);
   }
   getUserByToken(token: string) {
     const h = hashSecret(token);

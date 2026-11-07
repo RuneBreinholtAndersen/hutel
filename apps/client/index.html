@@ -74,13 +74,21 @@
         <h1>Lav din figur</h1>
         <p class="sub">Vælg et navn og et udseende. Du kan altid ændre det senere.</p>
         <label
-          >Dit navn<input
-            id="suName"
-            maxlength="16"
-            required
-            autocomplete="off"
-            placeholder="Fx Rune"
-        /></label>
+          >Dit navn<span class="namepick"
+            ><input
+              id="suName"
+              maxlength="16"
+              required
+              autocomplete="off"
+              placeholder="Fx Rune"
+            /><button type="button" id="suDice" class="jr-only small" title="Find på et nyt navn">
+              🎲
+            </button></span
+          ></label
+        >
+        <p class="sub jr-only">
+          Brug aldrig dit rigtige navn – tryk på terningen og find et sjovt navn.
+        </p>
         <label id="suPwRow"
           ><span id="suPwLabel">Adgangskode</span
           ><input
@@ -100,7 +108,27 @@
             placeholder="Fra den, der inviterede dig"
         /></label>
         <div id="suLook"></div>
-        <label class="check"><input type="checkbox" id="suAdult" /> Jeg er fyldt 18 år</label>
+        <label class="check adult-only"
+          ><input type="checkbox" id="suAdult" /> Jeg er fyldt 18 år</label
+        >
+        <div class="jr-only parent">
+          <p class="sub">
+            <b>Til en voksen:</b> Lobbi Junior er for børn på 8–12 år. Man kan kun chatte med
+            færdige sætninger, og man bliver kun venner med nogen, man giver sin vennekode.
+          </p>
+          <label
+            >Forælders e-mail<input
+              id="suParent"
+              type="email"
+              maxlength="120"
+              autocomplete="email"
+              placeholder="forælder@eksempel.dk"
+          /></label>
+          <label class="check"
+            ><input type="checkbox" id="suConsent" /> Jeg er forælder og siger ja til, at mit barn
+            spiller Lobbi Junior</label
+          >
+        </div>
         <label class="check"
           ><input type="checkbox" id="suTerms" /> Jeg accepterer
           <a href="#vilkaar" id="termsLink">vilkår og privatlivspolitik</a></label
@@ -154,7 +182,7 @@
     <div id="top">
       <div class="brand card">
         <div class="logo">🏨</div>
-        <div><b>Lobbi.dk</b><span id="roomName">…</span></div>
+        <div><b id="brand">Lobbi.dk</b><span id="roomName">…</span></div>
       </div>
       <div id="coins" class="card">
         <span id="coinVal"><i class="coin"></i> 0</span
@@ -196,6 +224,7 @@
       </button>
       <button id="bFig" title="Min figur">🧍<span>Figur</span></button>
       <button id="bPets" title="Kæledyr">🐾<span>Dyr</span></button>
+      <div id="phrases" class="hidden"></div>
       <form id="chatForm" autocomplete="off">
         <input
           id="chatIn"

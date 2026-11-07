@@ -4,6 +4,7 @@ import { extname, join, normalize } from 'node:path';
 import { WebSocketServer } from 'ws';
 import {
   DEFAULT_HOME_ITEMS,
+  isJuniorName,
   isValidName,
   lookAllowed,
   LookSchema,
@@ -75,6 +76,17 @@ const GuestSchema = z.object({
   password: z.string().min(8).max(72),
   invite: z.string().max(40).optional(),
   adult: z.literal(true),
+  terms: z.literal(true),
+});
+
+/** Lobbi Junior signup: a made-up name, and a parent who says yes (no 18+ box). */
+const JuniorGuestSchema = z.object({
+  name: z.string().min(2).max(24),
+  look: LookSchema,
+  password: z.string().min(8).max(72),
+  invite: z.string().max(40).optional(),
+  parentEmail: z.string().email().max(120),
+  parentConsent: z.literal(true),
   terms: z.literal(true),
 });
 
@@ -217,6 +229,30 @@ export function createApp(
       } catch {
         return json(res, 400, { ok: false, error: 'Ugyldig forespørgsel.' });
       }
+      if (cfg.junior) {
+        const jp = JuniorGuestSchema.safeParse(body);
+        if (!jp.success)
+          return json(res, 400, {
+            ok: false,
+            error:
+              'Vælg et navn, en adgangskode på mindst 8 tegn, og få en voksen til at skrive sin e-mail og sætte flueben.',
+          });
+        const name = jp.data.name.trim();
+        if (!isJuniorName(name))
+          return json(res, 400, {
+            ok: false,
+            error: 'Vælg dit navn med knapperne – ikke dit rigtige navn.',
+          });
+        const bad = checkProfile({ name, invite: jp.data.invite });
+        if (bad) return json(res, bad[0], { ok: false, error: bad[1] });
+        const { user, token } = store.createUser(name, freeLook(jp.data.look), {
+          password: jp.data.password,
+        });
+        user.parentEmail = jp.data.parentEmail.trim().toLowerCase();
+        user.parentConsentAt = Date.now();
+        store.touch();
+        return json(res, 200, { ok: true, token, userId: user.id });
+      }
       const parsed = GuestSchema.safeParse(body);
       if (!parsed.success)
         return json(res, 400, {
@@ -234,16 +270,18 @@ export function createApp(
     if (req.method === 'GET' && url.pathname === '/api/config') {
       return json(res, 200, {
         ok: true,
-        auth: verify ? 'supabase' : 'password',
+        edition: cfg.junior ? 'junior' : 'adult',
+        // Junior: name + password only – no Google/e-mail login for children.
+        auth: verify && !cfg.junior ? 'supabase' : 'password',
         supabaseUrl: cfg.supabaseUrl ?? null,
         supabaseAnonKey: cfg.supabaseAnonKey ?? null,
         inviteRequired: invites.length > 0,
-        providers: verify ? (cfg.authProviders ?? ['google']) : [],
+        providers: verify && !cfg.junior ? (cfg.authProviders ?? ['google']) : [],
         canonicalUrl: cfg.canonicalUrl ?? null,
       });
     }
     if (req.method === 'POST' && url.pathname === '/api/session') {
-      if (!verify) return json(res, 404, { ok: false, error: 'not_found' });
+      if (!verify || cfg.junior) return json(res, 404, { ok: false, error: 'not_found' });
       const ip = clientIp(req);
       if (!sessionLimiter.take(ip))
         return json(res, 429, { ok: false, error: 'For mange forsøg – vent lidt og prøv igen.' });

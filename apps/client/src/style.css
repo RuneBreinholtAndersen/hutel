@@ -1331,3 +1331,79 @@ body:has(#signup:not(.hidden)) :is(#top, #bar, #hint, #quests, #log) {
 .signup .error:empty {
   display: none;
 }
+
+/* ---------------- Lobbi Junior ---------------- */
+.jr-only {
+  display: none;
+}
+body.junior .jr-only {
+  display: block;
+}
+body.junior button.jr-only {
+  display: inline-block;
+}
+body.junior .adult-only,
+body.junior #toSocialRow,
+body.junior #authCard,
+body.junior [data-a='friend'],
+body.junior [data-a='hush'],
+body.junior [data-a='pm'],
+body.junior [data-pm],
+body.junior #mottoIn,
+body.junior #mottoSave,
+body.junior .row:has(> #motto),
+body.junior .row:has(> #noteText),
+body.junior .chips:has(#noteSend),
+body.junior #gbText,
+body.junior #gbSend {
+  display: none !important;
+}
+.namepick {
+  display: flex;
+  gap: 6px;
+}
+.namepick input {
+  flex: 1;
+}
+.signup .parent {
+  margin: 8px 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 179, 71, 0.14);
+}
+body.junior #chatIn {
+  cursor: pointer;
+}
+#phrases {
+  position: fixed;
+  bottom: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(560px, 94vw);
+  max-height: 46vh;
+  overflow: auto;
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(40, 24, 14, 0.92);
+  color: #fff3e0;
+  z-index: 30;
+  pointer-events: auto;
+}
+#phrases .tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+#phrases .tabs button.on {
+  background: #ffb347;
+  color: #3a2210;
+}
+#phrases .lines {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+#phrases .lines button {
+  font-size: 15px;
+}

@@ -7,6 +7,8 @@ export interface AuthConfig {
   supabaseAnonKey: string | null;
   inviteRequired: boolean;
   providers: string[];
+  /** 'junior' on the Lobbi Junior server (children 8–12, menu chat only). */
+  edition?: 'adult' | 'junior';
   /** Set when the game has moved to a new address. */
   canonicalUrl?: string | null;
 }

@@ -30,6 +30,9 @@ import {
   COINS_PER_ONLINE_MINUTE,
   DOOR_TILE,
   filterChat,
+  isFriendCode,
+  isJuniorPhrase,
+  newFriendCode,
   furniture,
   isGreeting,
   PUBLIC_ROOMS,
@@ -318,7 +321,12 @@ export class Hotel {
         recent: (roomId) =>
           this.store.recentChat(roomId, 8).map((c) => ({ name: c.name, text: c.text })),
       },
-      { apiKey: cfg.anthropicApiKey, model: cfg.botModel, maxCallsPerDay: cfg.botMaxCallsPerDay },
+      {
+        // Junior bots only use their fixed, friendly lines – no AI replies to children.
+        apiKey: cfg.junior ? undefined : cfg.anthropicApiKey,
+        model: cfg.botModel,
+        maxCallsPerDay: cfg.botMaxCallsPerDay,
+      },
     );
     this.ticker = setInterval(() => this.tick(), 100);
     this.secondTicker = setInterval(() => this.everySecond(), 1000);
@@ -1340,6 +1348,7 @@ export class Hotel {
   ) {
     const room = s.room;
     const player = s.player;
+    if (this.cfg.junior && !this.juniorAllows(s, msg)) return;
     switch (msg.t) {
       case 'join':
         return this.join(s, msg.roomId, msg.password);
@@ -1434,6 +1443,9 @@ export class Hotel {
           return;
         }
         if (text.startsWith('/') && this.game(s, user, room, player, text)) return;
+        // Junior: anything that wasn't a command must be one of the ready-made sentences.
+        if (this.cfg.junior && !isJuniorPhrase(text))
+          return this.toast(s, 'Vælg en sætning fra chat-menuen 💬', 'error');
         this.sayInRoom(room, player, text);
         this.quizAnswer(s, user, room, text);
         user.stats.chats++;
@@ -1863,7 +1875,8 @@ export class Hotel {
     if (def.minLevel && levelOf(user).level < def.minLevel)
       return this.toast(s, `🔒 Kræver level ${def.minLevel}`, 'error');
     if (user.coins < def.price) return this.toast(s, 'Du har ikke mønter nok.', 'error');
-    const name = filterChat(sanitizeChat(rawName)).trim();
+    // Junior: pets get their kind as name, so no free text reaches other children.
+    const name = this.cfg.junior ? def.name : filterChat(sanitizeChat(rawName)).trim();
     if (!isValidName(name)) return this.toast(s, 'Det navn kan ikke bruges.', 'error');
     const pet: PetRecord = {
       id: newId('pet'),
@@ -2972,6 +2985,51 @@ export class Hotel {
       .sort((a, b) => Number(b.online) - Number(a.online) || a.name.localeCompare(b.name, 'da'));
   }
 
+  /** Lobbi Junior: what children may send. Everything is checked here, not in the client. */
+  private juniorAllows(
+    s: Session,
+    msg: Exclude<ClientMsg, { t: 'auth' } | { t: 'ping' }>,
+  ): boolean {
+    const no = (text = 'Det kan man ikke i Lobbi Junior.') => {
+      this.toast(s, text, 'error');
+      return false;
+    };
+    switch (msg.t) {
+      case 'chat': {
+        const text = msg.text.trim();
+        // ":vink", ":dans" … and game commands like "/terning" are fine – they never show free text.
+        if (/^:[\p{L}-]+$/u.test(text) || /^\/[a-zæøå]+$/u.test(text)) return true;
+        return isJuniorPhrase(text) || no('Vælg en sætning fra chat-menuen 💬');
+      }
+      case 'whisper':
+      case 'hush':
+        return no('Hvisken findes ikke i Lobbi Junior.');
+      case 'motto':
+      case 'guestbookWrite':
+      case 'noteWrite':
+      case 'petRename':
+        return no('Man kan ikke skrive egen tekst i Lobbi Junior.');
+      case 'cinemaAdd':
+        return no('Biografen findes ikke i Lobbi Junior.');
+      case 'roomSettings':
+        if (msg.name !== undefined || msg.description !== undefined)
+          return no('Værelsets navn kan ikke ændres i Lobbi Junior.');
+        return true;
+      default:
+        return true;
+    }
+  }
+
+  private friendCodeOf(user: UserRecord) {
+    if (!user.friendCode) {
+      let c = newFriendCode();
+      while (this.store.getUserByFriendCode(c)) c = newFriendCode();
+      user.friendCode = c;
+      this.store.touch();
+    }
+    return user.friendCode;
+  }
+
   private sendFriends(user: UserRecord) {
     const s = this.byUser.get(user.id);
     if (!s) return;
@@ -2979,7 +3037,12 @@ export class Hotel {
       .map((id) => this.store.getUser(id))
       .filter((u): u is UserRecord => !!u)
       .map((u) => ({ id: u.id, name: u.name }));
-    this.send(s, { t: 'friends', friends: this.friendViews(user), requests });
+    this.send(s, {
+      t: 'friends',
+      friends: this.friendViews(user),
+      requests,
+      code: this.cfg.junior ? this.friendCodeOf(user) : undefined,
+    });
   }
 
   private notifyFriendsOf(user: UserRecord) {
@@ -2990,9 +3053,20 @@ export class Hotel {
   }
 
   private friendRequest(s: Session, user: UserRecord, name: string) {
-    const target = this.store.getUserByName(name.trim());
+    // Junior: you can only add someone who gave you their friend code.
+    const target = this.cfg.junior
+      ? isFriendCode(name)
+        ? this.store.getUserByFriendCode(name)
+        : undefined
+      : this.store.getUserByName(name.trim());
     if (!target || target.id === user.id)
-      return this.toast(s, 'Fandt ingen gæst med det navn.', 'error');
+      return this.toast(
+        s,
+        this.cfg.junior
+          ? 'Den vennekode findes ikke. Tjek bogstaverne 🔎'
+          : 'Fandt ingen gæst med det navn.',
+        'error',
+      );
     if (user.friends.includes(target.id)) return this.toast(s, `I er allerede venner`);
     if (target.blocked.includes(user.id)) return this.toast(s, 'Venneanmodning sendt');
     if (user.requests.includes(target.id)) return this.friendRespond(s, user, target.id, true);
