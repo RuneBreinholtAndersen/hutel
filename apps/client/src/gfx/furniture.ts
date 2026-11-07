@@ -805,7 +805,7 @@ const BUILD: Record<FurnitureType, (c: number, state: number) => T.Group> = {
         M(col, {
           roughness: 0.35,
           emissive: state ? col : 0x000000,
-          emissiveIntensity: state ? 0.25 : 0,
+          emissiveIntensity: state ? 0.08 : 0,
         }),
         0,
         0.06,
