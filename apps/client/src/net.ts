@@ -41,7 +41,7 @@ export class Net {
     };
     ws.onclose = (e) => {
       clearInterval(this.pingTimer);
-      if ([4000, 4001, 4003].includes(e.code)) {
+      if ([4000, 4001, 4003, 4005, 4009].includes(e.code)) {
         this.stopped = true;
         this.onFatal(e.code);
       }

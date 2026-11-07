@@ -1,0 +1,30 @@
+---
+import Base from '../../layouts/Base.astro';
+import { JUNIOR_URL, PLAY_URL } from '../../config';
+---
+<Base page title="Slet min konto" description="Sådan sletter du din Lobbi-konto og alle dine data – du gør det selv på et minut.">
+  <article class="prose wrap">
+    <h1>Slet min konto</h1>
+    <p>Du kan selv slette din konto. Det tager et minut, og det sker med det samme.</p>
+    <ol>
+      <li>Tryk på knappen herunder og log ind, hvis du ikke allerede er det.</li>
+      <li>Feltet <strong>Slet min konto</strong> åbner af sig selv (du finder det også under <strong>Figur</strong> i spillet).</li>
+      <li>Skriv dit navn og tryk <strong>Slet min konto</strong>.</li>
+    </ol>
+    <p>Så slettes din figur, dine værelser, møbler, mønter, kæledyr, venner og dine varer på markedet. Det kan ikke fortrydes. Chatbeskeder slettes automatisk efter 30 dage.</p>
+    <p class="buttons">
+      <a class="btn" href={`${PLAY_URL}/#slet-konto`}>Slet min Lobbi-konto</a>
+      <a class="btn ghost" href={`${JUNIOR_URL}/#slet-konto`}>Slet en Lobbi Junior-konto</a>
+    </p>
+    <p>Er du forælder til et barn på Lobbi Junior? Du kan også trykke <strong>Nej</strong> i den mail, du fik, da barnet oprettede sig – så slettes kontoen. Har du ikke mailen, så skriv til <a href="mailto:kontakt@lobbi.dk">kontakt@lobbi.dk</a> med barnets figurnavn.</p>
+    <p>Kan du ikke logge ind? Skriv til <a href="mailto:kontakt@lobbi.dk">kontakt@lobbi.dk</a>, så hjælper vi.</p>
+  </article>
+</Base>
+<style>
+  .buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 1.6em 0;
+  }
+</style>

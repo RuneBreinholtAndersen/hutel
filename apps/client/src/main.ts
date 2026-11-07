@@ -590,6 +590,15 @@ function handle(msg: ServerMsg) {
       setCoins(me.coins);
       setOnline(me.onlineSec);
       $('signup').classList.add('hidden');
+      // Came from "Slet min konto" on lobbi.dk: open the figure panel at the delete box.
+      if (wantDelete) {
+        wantDelete = false;
+        sessionStorage.removeItem('hutel-delete');
+        setTimeout(() => {
+          renderFigure();
+          document.getElementById('delName')?.scrollIntoView({ block: 'center' });
+        }, 600);
+      }
       return;
     case 'room':
       audio.sfx('door');
@@ -1996,6 +2005,8 @@ function renderFigure() {
     <h3>Lyd</h3><button id="openSound" class="small">🔊 Lydindstillinger</button>
     <h3>Konto</h3><button id="logout" class="small danger">Log ud på denne enhed</button>
     ${me.role !== 'user' ? `<button id="openAdmin" class="small">🛡️ Moderation</button>` : ''}
+    <h3>Slet min konto</h3><p class="sub">Sletter din figur, dine værelser, møbler, mønter og venner for altid. Det kan ikke fortrydes.</p>
+    <div class="row" style="display:flex;gap:6px"><input id="delName" maxlength="40" placeholder="Skriv dit navn: ${esc(me.name)}" style="flex:1" autocomplete="off"><button id="delMe" class="small danger">🗑️ Slet min konto</button></div>
     ${canReset ? `<h3>Test</h3><p class="sub">Nulstil mønter, opgaver, badges og dit værelse, og prøv starten igen. Navn, figur og venner beholdes.</p><button id="resetMe" class="small danger">🔄 Start forfra</button>` : ''}`,
   );
   $('panel')
@@ -2065,6 +2076,13 @@ function renderFigure() {
   document
     .getElementById('openAdmin')
     ?.addEventListener('click', () => net?.send({ t: 'admin', action: 'reports' }));
+  $('delMe').addEventListener('click', () => {
+    const name = $<HTMLInputElement>('delName').value.trim();
+    if (name.toLowerCase() !== me!.name.toLowerCase())
+      return toast(`Skriv dit navn (${me!.name}) for at bekræfte`, 'error');
+    if (!confirm('Er du sikker? Din konto og alt dit bliver slettet for altid.')) return;
+    net?.send({ t: 'deleteAccount', confirm: name });
+  });
   $('resetMe')?.addEventListener('click', () => {
     if (confirmReset) {
       net?.send({ t: 'reset' });
@@ -3296,9 +3314,7 @@ for (const [id, provider] of [
 /** Browsers built into other apps, where Google blocks sign-in ("disallowed_useragent"). */
 function inAppBrowser() {
   const ua = navigator.userAgent;
-  return /FBAN|FBAV|FB_IAB|Instagram|Messenger|Line\/|Snapchat|TikTok|LinkedInApp|\bwv\)/i.test(
-    ua,
-  );
+  return /FBAN|FBAV|FB_IAB|Instagram|Messenger|Line\/|Snapchat|TikTok|LinkedInApp|\bwv\)/i.test(ua);
 }
 function showInAppHelp() {
   const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
@@ -3407,6 +3423,10 @@ function start(token: string) {
     if (code === 4001) {
       store.set(TOKEN_KEY, null);
       showSignup('Du er blevet logget ud – log ind igen.', social() ? 'social' : 'login');
+    } else if (code === 4009) {
+      store.set(TOKEN_KEY, null);
+      void signOut(authCfg).catch(() => {});
+      showSignup('Din konto er slettet. Tak fordi du var med 👋', social() ? 'social' : 'signup');
     } else if (code === 4005) {
       net?.close();
       showParentWait('Den voksne har ikke sagt ja endnu.');
@@ -3474,6 +3494,9 @@ function loop() {
 }
 
 roomGfx.setTheme('home');
+/** lobbi.dk links to spil.lobbi.dk/#slet-konto to delete an account. */
+let wantDelete = location.hash === '#slet-konto' || sessionStorage.getItem('hutel-delete') === '1';
+if (wantDelete) sessionStorage.setItem('hutel-delete', '1');
 async function boot() {
   // Arriving from the old address: keep the login that came along in the link.
   const moved = /^#move=([^&]+)/.exec(location.hash);

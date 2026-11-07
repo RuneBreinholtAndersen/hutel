@@ -351,7 +351,7 @@ export function createApp(
         return res.end(
           parentPage(
             'Tak',
-            `<h1>Tak! 🎉</h1><p><b>${escHtml(child.name)}</b> kan nu spille Lobbi Junior. Barnet skal bare logge ind igen.</p><p><small>Vil du senere have kontoen slettet, så skriv til rune@breinholtdigital.dk.</small></p>`,
+            `<h1>Tak! 🎉</h1><p><b>${escHtml(child.name)}</b> kan nu spille Lobbi Junior. Barnet skal bare logge ind igen.</p><p><small>Vil du senere have kontoen slettet, så skriv til kontakt@lobbi.dk.</small></p>`,
           ),
         );
       }

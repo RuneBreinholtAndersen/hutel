@@ -195,6 +195,7 @@ const LIMIT_FOR: Partial<Record<ClientMsg['t'], LimitKind>> = {
   use: 'build',
   glide: 'glide',
   reset: 'build',
+  deleteAccount: 'build',
   buyRoom: 'build',
   decor: 'build',
   buyPet: 'build',
@@ -1376,6 +1377,8 @@ export class Hotel {
         s.doorTicket = (s.doorTicket ?? 0) + 1;
         if (room && player) room.walk(player, [msg.x, msg.z], msg.run);
         return;
+      case 'deleteAccount':
+        return this.deleteAccount(s, user, msg.confirm);
       case 'reset': {
         if (!this.cfg.allowReset) return;
         const home = user.homeRoomId;
@@ -2887,6 +2890,33 @@ export class Hotel {
     this.trades.delete(b.id);
     for (const sess of [sa, sb])
       this.send(sess, { t: 'tradeEnd', text: '🤝 Byttet er gennemført!', done: true });
+  }
+
+  /** The player deletes their own account: rooms, listings, friends and all. Can't be undone. */
+  private deleteAccount(s: Session, user: UserRecord, confirm: string) {
+    if (confirm.trim().toLowerCase() !== user.name.toLowerCase())
+      return this.toast(s, 'Skriv dit navn præcis, som det står, for at slette kontoen.', 'error');
+    this.endTrade(user.id, `${user.name} har forladt Lobbi.`);
+    this.leaveRoom(s);
+    // Everyone in one of my rooms goes to the lobby before the rooms disappear.
+    const mine = this.store.listRooms().filter((r) => r.ownerId === user.id);
+    for (const r of mine) {
+      const inst = this.rooms.get(r.id);
+      if (!inst) continue;
+      for (const other of this.sessions) if (other.room === inst) this.join(other, 'lobby');
+      this.rooms.delete(r.id);
+    }
+    const market = this.store.market();
+    for (let i = market.length - 1; i >= 0; i--)
+      if (market[i]!.sellerId === user.id) market.splice(i, 1);
+    const friends = [...user.friends];
+    this.store.deleteUser(user.id);
+    this.store.flush();
+    for (const id of friends) {
+      const f = this.store.getUser(id);
+      if (f) this.sendFriends(f);
+    }
+    s.conn.close(4009, 'account deleted');
   }
 
   private endTrade(userId: string, text: string) {

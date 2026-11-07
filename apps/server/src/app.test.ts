@@ -1226,3 +1226,18 @@ describe('multiplayer', () => {
     b.c.ws.close();
   });
 });
+
+describe('delete account', () => {
+  it('needs the name typed, then deletes everything and closes the connection', async () => {
+    const { c, g, welcome } = await login('Sletmig');
+    c.send({ t: 'deleteAccount', confirm: 'forkert' });
+    await c.waitFor('toast', (m) => m.kind === 'error');
+    expect(app.store.getUser(g.userId)).toBeDefined();
+    const closed = new Promise<number>((r) => c.ws.once('close', (code) => r(code)));
+    c.send({ t: 'deleteAccount', confirm: welcome.me.name });
+    expect(await closed).toBe(4009);
+    expect(app.store.getUser(g.userId)).toBeUndefined();
+    expect(app.store.getUserByToken(g.token)).toBeUndefined();
+    expect(app.store.listRooms().some((r) => r.ownerId === g.userId)).toBe(false);
+  });
+});

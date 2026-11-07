@@ -31,7 +31,7 @@
 
 ## Del 2 – Vilkår (til forældre)
 
-**Hvem står bag?** Lobbi Junior drives af Breinholt Digital (enkeltmandsvirksomhed), CVR 29040656, Skalhøjvej 20, 8581 Nimtofte. Kontakt: rune@breinholtdigital.dk.
+**Hvem står bag?** Lobbi Junior drives af Breinholt Digital (enkeltmandsvirksomhed), CVR 29040656, Skalhøjvej 20, 8581 Nimtofte. Kontakt: kontakt@lobbi.dk.
 
 **Hvad er Lobbi Junior?** Et gratis hotel-spil i browseren for børn på 8–12 år. Børnene laver en figur, indretter et værelse, spiller små spil og leger med andre børn.
 
@@ -53,7 +53,7 @@
 
 ## Del 3 – Privatlivspolitik (til forældre)
 
-**Dataansvarlig:** Breinholt Digital, CVR 29040656, Skalhøjvej 20, 8581 Nimtofte, rune@breinholtdigital.dk.
+**Dataansvarlig:** Breinholt Digital, CVR 29040656, Skalhøjvej 20, 8581 Nimtofte, kontakt@lobbi.dk.
 
 **Hvilke oplysninger gemmer vi?**
 
@@ -76,6 +76,6 @@ Vi beder **aldrig** om barnets rigtige navn, alder, adresse, skole, billede elle
 
 Vi sælger aldrig data, og vi bruger ikke cookies til sporing eller reklamer. Spillet gemmer kun et login i browseren (localStorage), så barnet forbliver logget ind.
 
-**Dine rettigheder.** Som forælder kan du altid få indsigt i, rette eller slette barnets data, trække samtykket tilbage eller få dataene udleveret. Skriv til rune@breinholtdigital.dk. Vi svarer inden for 30 dage. Du kan klage til Datatilsynet (datatilsynet.dk).
+**Dine rettigheder.** Som forælder kan du altid få indsigt i, rette eller slette barnets data, trække samtykket tilbage eller få dataene udleveret. Skriv til kontakt@lobbi.dk. Vi svarer inden for 30 dage. Du kan klage til Datatilsynet (datatilsynet.dk).
 
 **Sikkerhed.** Adgangskoder gemmes som scrypt-hash, forbindelsen er krypteret (HTTPS), og der tages automatiske snapshots af databasen.

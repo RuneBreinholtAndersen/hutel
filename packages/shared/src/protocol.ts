@@ -189,6 +189,8 @@ export const ClientMsgSchema = z.discriminatedUnion('t', [
   }),
   /** Test phase: wipe my progress (coins, quests, badges, room) and start over. */
   z.object({ t: z.literal('reset') }),
+  /** Delete my own account for good. `confirm` must be my name, typed by hand. */
+  z.object({ t: z.literal('deleteAccount'), confirm: z.string().max(40) }),
   z.object({
     t: z.literal('chat'),
     text: z
