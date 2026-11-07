@@ -14,6 +14,15 @@ export interface ReleaseNote {
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
     date: '2026-11-07',
+    title: 'Guldkister og begrænsede udgaver',
+    items: [
+      '✨ En sjælden gang dukker en glimtende guldkiste op i et offentligt rum – den første, der når den, får en sjælden ting',
+      '🌌 Begrænset udgave i butikken: Nordlyslampen – kun 100 stk. og kun til 21. november',
+      '#️⃣ Sjældne ting har deres eget nummer, som følger med, når de byttes eller sælges',
+    ],
+  },
+  {
+    date: '2026-11-07',
     title: 'Ny indgang, vælg køn og en bedre biograf',
     items: [
       '🎬 Større lærred – videoen ligger nu skråt lige på lærredet',

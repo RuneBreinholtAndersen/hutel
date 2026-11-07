@@ -168,10 +168,17 @@ function offerUpdate(notes: ReleaseNote | undefined, must: boolean) {
   if (updateShown) return;
   updateShown = true;
   const bar = $('updateBar');
-  const what = notes ? esc(notes.title) : 'Nye forbedringer';
+  let seenNotes: string | null = null;
+  try {
+    seenNotes = localStorage.getItem('hutel-seen-notes');
+  } catch {
+    /* private mode */
+  }
+  if (notes && noteKey(notes) === seenNotes) notes = undefined; // nothing new to tell
+  const what = notes ? esc(notes.title) : 'Små forbedringer';
   bar.innerHTML = must
     ? `<b>✨ Lobbi er blevet opdateret</b><span>${what}</span><button id="upGo" class="small primary">Opdater nu</button>`
-    : `<b>✨ Ny version</b><span>${what}</span><button id="upNews" class="small">Se nyt</button><button id="upGo" class="small primary">Opdater</button><button id="upLater" class="small" title="Senere">✕</button>`;
+    : `<b>✨ Ny version</b><span>${what}</span>${notes ? '<button id="upNews" class="small">Se nyt</button>' : ''}<button id="upGo" class="small primary">Opdater</button><button id="upLater" class="small" title="Senere">✕</button>`;
   bar.classList.remove('hidden');
   $('upGo').addEventListener('click', () => location.reload());
   $('upLater')?.addEventListener('click', () => bar.classList.add('hidden'));
@@ -200,12 +207,20 @@ function showNotes(notes: ReleaseNote | undefined, pending: boolean, must = fals
   $('notesGo')?.addEventListener('click', () => location.reload());
 }
 
-/** Shows "what's new" once after the page loaded a new version. */
+/** Identifies a release note, so the same news is never shown twice. */
+const noteKey = (n: ReleaseNote | undefined) => (n ? `${n.date}|${n.title}` : '');
+
+/** Shows "what's new" once, when there is news this player hasn't seen (not after every deploy). */
 function maybeShowNews() {
   try {
-    const seen = localStorage.getItem('hutel-seen-build');
-    localStorage.setItem('hutel-seen-build', __BUILD_ID__);
-    if (seen && seen !== __BUILD_ID__) setTimeout(() => showNotes(RELEASE_NOTES[0], false), 1500);
+    const latest = noteKey(RELEASE_NOTES[0]);
+    let seen = localStorage.getItem('hutel-seen-notes');
+    // Players from before this check had already seen the news up to this one.
+    if (seen === null && localStorage.getItem('hutel-seen-build'))
+      seen = '2026-11-07|Ny indgang, vælg køn og en bedre biograf';
+    localStorage.setItem('hutel-seen-notes', latest);
+    if (seen !== null && seen !== latest)
+      setTimeout(() => showNotes(RELEASE_NOTES[0], false), 1500);
   } catch {
     /* private mode */
   }
