@@ -68,6 +68,17 @@ export interface UserRecord {
   /** Furniture not placed in a room. */
   inventory?: { type: PlacedItem['type']; color?: number; pair?: string; serial?: number }[];
   guestbook?: GuestbookEntry[];
+  /** Daily login gift: last day it was given and how many days in a row. */
+  loginGift?: { last: string; days: number };
+  /** Wrapped gifts not opened yet. */
+  gifts?: {
+    id: string;
+    fromId: string;
+    fromName: string;
+    item: { type: PlacedItem['type']; color?: number; pair?: string; serial?: number };
+    note: string;
+    at: string;
+  }[];
   /** Today's daily quests (rolls over at Danish midnight). */
   daily?: {
     date: string;
@@ -114,6 +125,8 @@ export interface PetRecord {
 export interface RoomRecord {
   /** Post-its on the room's notice board. */
   notes?: RoomNote[];
+  /** User ids that gave the room a 👍. */
+  likes?: string[];
   id: string;
   ownerId: string;
   name: string;

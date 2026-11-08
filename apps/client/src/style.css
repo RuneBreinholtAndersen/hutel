@@ -1745,3 +1745,132 @@ body {
     white-space: nowrap;
   }
 }
+
+/* ---------------- daily gift, room likes, gifts ---------------- */
+.brand {
+  align-items: center;
+}
+#bLike {
+  margin-left: 6px;
+  padding: 5px 10px;
+  font-size: 13px;
+  border-radius: 999px;
+  background: rgba(255, 244, 224, 0.1);
+}
+#bLike.on {
+  background: var(--acc);
+  color: #3a2618;
+}
+#bLike:disabled {
+  opacity: 1;
+  cursor: default;
+}
+#giftCard {
+  position: fixed;
+  top: 84px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 35;
+  padding: 12px 16px 14px;
+  width: min(440px, calc(100% - 20px));
+  animation: giftIn 0.45s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+#giftCard h3 {
+  margin: 0 0 4px;
+}
+#giftCard .x {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 4px 9px;
+  background: transparent;
+}
+.gdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+  margin-top: 8px;
+}
+.gdays div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 2px;
+  border-radius: 10px;
+  background: rgba(255, 244, 224, 0.07);
+  font-size: 12px;
+}
+.gdays small {
+  font-size: 10px;
+  color: var(--muted);
+}
+.gdays .got {
+  opacity: 0.45;
+}
+.gdays .now {
+  background: var(--acc);
+  color: #3a2618;
+  transform: scale(1.08);
+}
+.gdays .now small {
+  color: #3a2618;
+}
+@keyframes giftIn {
+  from {
+    transform: translate(-50%, -30px) scale(0.8);
+    opacity: 0;
+  }
+}
+#bGifts {
+  position: fixed;
+  right: 14px;
+  bottom: calc(var(--barH, 70px) + 26px);
+  z-index: 6;
+  font-size: 18px;
+  padding: 8px 12px;
+  animation: giftWiggle 2.4s ease-in-out infinite;
+}
+#bGifts span {
+  font-size: 13px;
+  font-weight: 700;
+}
+@keyframes giftWiggle {
+  0%,
+  80%,
+  100% {
+    transform: rotate(0);
+  }
+  85% {
+    transform: rotate(-10deg);
+  }
+  90% {
+    transform: rotate(10deg);
+  }
+  95% {
+    transform: rotate(-6deg);
+  }
+}
+.li.gift .ic {
+  font-size: 30px;
+}
+.li.gift.opening .ic {
+  animation: giftWiggle 0.45s linear infinite;
+}
+.item .btns {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+}
+.item .btns button:first-child:not(:last-child) {
+  flex: 1;
+}
+.li .likes {
+  font-size: 12px;
+  color: var(--muted);
+  margin-right: 6px;
+}
+/* The floating gift button steps aside while a panel is open. */
+#panel:not(.hidden) ~ #bGifts {
+  display: none;
+}

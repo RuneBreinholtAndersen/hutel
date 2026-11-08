@@ -220,6 +220,9 @@
       <div class="brand card">
         <div class="logo">🏨</div>
         <div><b id="brand">Lobbi.dk</b><span id="roomName">…</span></div>
+        <button id="bLike" class="like hidden" title="Synes godt om værelset">
+          👍 <span id="likeN">0</span>
+        </button>
       </div>
       <div id="coins" class="card">
         <span id="coinVal"><i class="coin"></i> 0</span
@@ -279,9 +282,7 @@
       <button id="bShop" title="Butik">🛒<span>Butik</span></button>
       <button id="bMarket" title="Marked">🏪<span>Marked</span></button>
       <i class="brk"></i>
-      <button id="bMore" title="Mere">
-        ⋯<span>Mere</span><i id="moreDot" class="dot hidden"></i>
-      </button>
+      <button id="bMore" title="Mere">⋯<span>Mere</span></button>
     </div>
     <div id="moreSheet" class="card hidden">
       <button data-proxy="bPets">🐾 Kæledyr</button>
@@ -289,6 +290,10 @@
       <button data-proxy="bAdmin" class="admin-only">🛡️ Admin</button>
     </div>
     <div id="toast"></div>
+    <div id="giftCard" class="card hidden"></div>
+    <button id="bGifts" class="card hidden" title="Gaver til dig">
+      🎁 <span id="giftN">1</span>
+    </button>
     <canvas id="confetti"></canvas>
     <div id="fade"></div>
     <script type="module" src="/src/main.ts"></script>

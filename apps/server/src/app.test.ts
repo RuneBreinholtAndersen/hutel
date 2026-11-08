@@ -28,6 +28,7 @@ const cfg = {
   signupsPerHour: 1000,
   videoTitles: false,
   chests: false,
+  loginGifts: false,
   limitedDrops: [
     {
       type: 'nordlyslampe' as const,
@@ -1345,5 +1346,86 @@ describe('limited editions', () => {
     );
     expect(got.items.find((i) => i.type === 'nordlyslampe')!.serial).toBe(1);
     for (const p of [a, b, c3]) p.c.ws.close();
+  });
+});
+
+describe('daily gift, room likes and gifts', () => {
+  it('gives a login gift once a day and counts the days in a row', async () => {
+    const hotelCfg = (app.hotel as unknown as { cfg: { loginGifts?: boolean } }).cfg;
+    hotelCfg.loginGifts = true;
+    const a = await login('Gavedag');
+    const g = await a.c.waitFor('loginGift');
+    expect(g).toMatchObject({ day: 1, coins: 10 });
+    const u = app.store.getUser(a.g.userId)!;
+    // A gap of several days starts over at day 1.
+    a.c.ws.close();
+    u.loginGift = { last: '2000-01-01', days: 3 };
+    const again = new TestClient();
+    await again.open();
+    again.send({ t: 'auth', token: a.g.token });
+    // A gap resets to day 1.
+    expect((await again.waitFor('loginGift')).day).toBe(1);
+    // Logged in yesterday on day 3 → today is day 4 with the day-4 amount.
+    again.ws.close();
+    app.store.getUser(a.g.userId)!.loginGift = {
+      last: new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Copenhagen' }).format(
+        Date.now() - 86_400_000,
+      ),
+      days: 3,
+    };
+    const third = new TestClient();
+    await third.open();
+    third.send({ t: 'auth', token: a.g.token });
+    expect(await third.waitFor('loginGift')).toMatchObject({ day: 4, coins: 25 });
+    third.ws.close();
+    hotelCfg.loginGifts = false;
+  });
+
+  it('lets guests 👍 a room, not the owner, and lists top rooms', async () => {
+    const owner = await login('Rumejer');
+    const guest = await login('Rumgæst');
+    const home = app.store.getUser(owner.g.userId)!.homeRoomId;
+    const mine = await owner.c.waitFor('roomLikes', (m) => m.roomId === home);
+    expect(mine.canLike).toBe(false);
+    guest.c.send({ t: 'join', roomId: home });
+    await guest.c.waitFor('roomLikes', (m) => m.roomId === home && m.canLike);
+    guest.c.send({ t: 'likeRoom', on: true });
+    const liked = await guest.c.waitFor('roomLikes', (m) => m.likes === 1);
+    expect(liked.liked).toBe(true);
+    // Liking twice still counts once.
+    guest.c.send({ t: 'likeRoom', on: true });
+    owner.c.send({ t: 'likeRoom', on: true }); // own room: ignored
+    guest.c.send({ t: 'navigator', top: true });
+    const nav = await guest.c.waitFor('navigator', (m) => m.rooms.some((r) => r.id === home));
+    expect(nav.rooms.find((r) => r.id === home)!.likes).toBe(1);
+    for (const x of [owner, guest]) x.c.ws.close();
+  });
+
+  it('sends wrapped gifts to friends only and unwraps them into the inventory', async () => {
+    const a = await login('Giver');
+    const b = await login('Modtagerx');
+    const c3 = await login('Fremmed');
+    app.store.getUser(a.g.userId)!.coins = 500;
+    // Not friends yet: refused.
+    a.c.send({ t: 'giftSend', to: c3.g.userId, buy: { type: 'sofa' }, note: 'hej' });
+    expect((await a.c.waitFor('toast', (m) => /venner/.test(m.text))).kind).toBe('error');
+    a.c.send({ t: 'friendRequest', name: 'modtagerx' });
+    await b.c.waitFor('friends', (m) => m.requests.length > 0);
+    b.c.send({ t: 'friendRespond', userId: a.g.userId, accept: true });
+    await a.c.waitFor('friends', (m) => m.friends.some((f) => f.id === b.g.userId));
+    const before = app.store.getUser(a.g.userId)!.coins;
+    a.c.send({ t: 'giftSend', to: b.g.userId, buy: { type: 'sofa' }, note: 'Tillykke!' });
+    const got = await b.c.waitFor('gifts', (m) => m.fresh === true);
+    expect(got.gifts[0]).toMatchObject({
+      fromName: 'Giver',
+      note: 'Tillykke!',
+      item: { type: 'sofa' },
+    });
+    expect(app.store.getUser(a.g.userId)!.coins).toBeLessThan(before);
+    b.c.send({ t: 'giftOpen', id: got.gifts[0]!.id });
+    const inv = await b.c.waitFor('inventory', (m) => m.items.some((i) => i.type === 'sofa'));
+    expect(inv.items.some((i) => i.type === 'sofa')).toBe(true);
+    expect(app.store.getUser(b.g.userId)!.gifts).toHaveLength(0);
+    for (const x of [a, b, c3]) x.c.ws.close();
   });
 });

@@ -38,6 +38,8 @@ import {
   PUBLIC_ROOMS,
   CHEST,
   pickLoot,
+  loginGiftFor,
+  LOGIN_GIFTS,
   activeDrop,
   activeDrops,
   canTrade,
@@ -167,6 +169,8 @@ export interface HotelConfig {
   videoTitles?: boolean;
   /** Golden chests appear by themselves (off in tests). */
   chests?: boolean;
+  /** Daily login gift (default on; off in most tests so coin counts stay simple). */
+  loginGifts?: boolean;
   /** For the admin panel: newest backup and how many there are. */
   backupInfo?: () => { lastBackup: string | null; backups: number };
   /** Override the limited-edition drops (tests). */
@@ -212,6 +216,9 @@ const HOTEL_TIPS: Record<(typeof HOTEL_QUESTS)[number]['id'], [string, string]> 
 };
 
 const LIMIT_FOR: Partial<Record<ClientMsg['t'], LimitKind>> = {
+  likeRoom: 'build',
+  giftSend: 'build',
+  giftOpen: 'build',
   move: 'move',
   use: 'build',
   glide: 'glide',
@@ -470,6 +477,8 @@ export class Hotel {
       notes: RELEASE_NOTES[0],
     });
     this.send(s, { t: 'limited', drops: this.limitedViews() });
+    this.loginGift(s, user);
+    if (user.gifts?.length) this.send(s, { t: 'gifts', gifts: user.gifts });
     this.sendFriends(user);
     this.notifyFriendsOf(user);
     // Back to the room you were in if you were only gone a little while (reconnect, update).
@@ -648,6 +657,7 @@ export class Hotel {
       t: 'chest',
       chest: this.chest?.roomId === room.meta.id ? this.chest.view : null,
     });
+    this.send(s, this.likesMsg(room.meta.id, user.id));
     if (room.meta.id === user.homeRoomId && !this.onboarded(user))
       this.bots.startGuide(room, () => this.nextTip(user));
     this.bots.onHumanJoin(room, player);
@@ -680,7 +690,12 @@ export class Hotel {
    * your own, your friends' and your favourites (busiest first). With a search: every guest room
    * whose name, description or owner matches.
    */
-  private navigator(user: UserRecord, q?: string, cat?: RoomCategory): NavigatorRoom[] {
+  private navigator(
+    user: UserRecord,
+    q?: string,
+    cat?: RoomCategory,
+    top?: boolean,
+  ): NavigatorRoom[] {
     const favs = new Set(user.favorites ?? []);
     const query = (q ?? '').trim().toLowerCase();
     const out: NavigatorRoom[] = PUBLIC_ROOMS.filter(
@@ -705,18 +720,24 @@ export class Hotel {
         users: this.rooms.get(rec.id)?.humans().length ?? 0,
       }))
       .filter(({ rec, users, owner }) =>
-        query
-          ? `${rec.name} ${rec.description} ${owner ?? ''}`.toLowerCase().includes(query)
-          : cat
-            ? (rec.category ?? 'andet') === cat &&
-              (rec.access !== 'locked' || rec.ownerId === user.id)
-            : users > 0 ||
-              rec.ownerId === user.id ||
-              user.friends.includes(rec.ownerId) ||
-              favs.has(rec.id),
+        top
+          ? (rec.likes?.length ?? 0) > 0 && rec.access !== 'locked'
+          : query
+            ? `${rec.name} ${rec.description} ${owner ?? ''}`.toLowerCase().includes(query)
+            : cat
+              ? (rec.category ?? 'andet') === cat &&
+                (rec.access !== 'locked' || rec.ownerId === user.id)
+              : users > 0 ||
+                rec.ownerId === user.id ||
+                user.friends.includes(rec.ownerId) ||
+                favs.has(rec.id),
       )
-      .sort((a, b) => b.users - a.users || a.rec.name.localeCompare(b.rec.name, 'da'))
-      .slice(0, 60)
+      .sort((a, b) =>
+        top
+          ? (b.rec.likes?.length ?? 0) - (a.rec.likes?.length ?? 0) || b.users - a.users
+          : b.users - a.users || a.rec.name.localeCompare(b.rec.name, 'da'),
+      )
+      .slice(0, top ? 30 : 60)
       .map(({ rec, users, owner }) => ({
         id: rec.id,
         name: rec.name,
@@ -728,6 +749,7 @@ export class Hotel {
         public: false,
         category: rec.category ?? 'andet',
         fav: favs.has(rec.id),
+        likes: rec.likes?.length ?? 0,
       }));
     return [...out, ...guest];
   }
@@ -1437,7 +1459,7 @@ export class Hotel {
       case 'navigator':
         return this.send(s, {
           t: 'navigator',
-          rooms: this.navigator(user, msg.q, msg.cat as RoomCategory | undefined),
+          rooms: this.navigator(user, msg.q, msg.cat as RoomCategory | undefined, msg.top),
           q: msg.q,
           cat: msg.cat as RoomCategory | undefined,
         });
@@ -1458,6 +1480,12 @@ export class Hotel {
         return;
       case 'chestOpen':
         return this.chestOpen(s, user, msg.id);
+      case 'likeRoom':
+        return this.likeRoom(s, user, msg.on);
+      case 'giftSend':
+        return this.giftSend(s, user, msg);
+      case 'giftOpen':
+        return this.giftOpen(s, user, msg.id);
       case 'deleteAccount':
         return this.deleteAccount(s, user, msg.confirm);
       case 'reset': {
@@ -2272,6 +2300,116 @@ export class Hotel {
     if (it.pair) e.pair = it.pair;
     if (it.serial) e.serial = it.serial;
     return e;
+  }
+
+  /* ---------------- daily gift, room likes and gifts ---------------- */
+
+  /** Once a day: coins for logging in, more for each day in a row (fixed amounts, no luck). */
+  private loginGift(s: Session, user: UserRecord) {
+    if (this.cfg.loginGifts === false) return;
+    const today = danishDate();
+    const g = user.loginGift;
+    if (g?.last === today) return;
+    const yesterday = danishDate(Date.now() - 86_400_000);
+    const days = g?.last === yesterday ? g.days + 1 : 1;
+    user.loginGift = { last: today, days };
+    const coins = loginGiftFor(days);
+    this.coins(s, user, coins);
+    this.send(s, { t: 'loginGift', day: ((days - 1) % LOGIN_GIFTS.length) + 1, coins });
+  }
+
+  private likesMsg(roomId: string, userId: string) {
+    const rec = this.store.getRoom(roomId);
+    const likes = rec?.likes ?? [];
+    return {
+      t: 'roomLikes',
+      roomId,
+      likes: likes.length,
+      liked: likes.includes(userId),
+      canLike: !!rec && rec.ownerId !== userId,
+    } as const;
+  }
+
+  private likeRoom(s: Session, user: UserRecord, on: boolean) {
+    const room = s.room;
+    const rec = room && this.store.getRoom(room.meta.id);
+    if (!room || !rec || rec.ownerId === user.id) return;
+    const likes = (rec.likes ?? []).filter((id) => id !== user.id);
+    if (on) likes.push(user.id);
+    rec.likes = likes;
+    this.store.touch();
+    for (const other of this.sessions)
+      if (other.room === room && other.user) this.send(other, this.likesMsg(rec.id, other.user.id));
+    const owner = this.byUser.get(rec.ownerId);
+    if (on && owner && owner.room !== room)
+      this.toast(owner, `👍 ${user.name} kan lide dit værelse ${rec.name}!`);
+  }
+
+  private giftSend(s: Session, user: UserRecord, msg: Extract<ClientMsg, { t: 'giftSend' }>) {
+    const to = this.store.getUser(msg.to);
+    if (!to || to.id === user.id) return;
+    if (!user.friends.includes(to.id))
+      return this.toast(s, 'Du kan kun give gaver til dine venner.', 'error');
+    if (to.blocked?.includes(user.id)) return this.toast(s, 'Gaven kunne ikke sendes.', 'error');
+    if ((to.gifts?.length ?? 0) >= 30)
+      return this.toast(s, `${to.name} har for mange gaver, der ikke er pakket ud.`, 'error');
+    let item: InvItem;
+    let price = 0;
+    if (msg.index !== undefined) {
+      const inv = user.inventory ?? [];
+      const e = inv[msg.index];
+      if (!e || !canTrade(e.type)) return;
+      inv.splice(msg.index, 1);
+      item = e;
+      this.sendInventory(s, user);
+    } else if (msg.buy) {
+      const def = furniture(msg.buy.type);
+      if (def.noShop) return this.toast(s, 'Den kan ikke købes som gave.', 'error');
+      if (user.coins < def.price) return this.toast(s, 'Du har ikke mønter nok.', 'error');
+      item = { type: msg.buy.type };
+      if (msg.buy.color && def.colors?.[msg.buy.color] !== undefined) item.color = msg.buy.color;
+      price = def.price;
+      user.stats.buys++;
+      this.coins(s, user, -price);
+    } else return;
+    // Junior: no free text between children, so gifts come without a note.
+    const note = this.cfg.junior ? '' : filterChat(sanitizeChat(msg.note)).slice(0, 60);
+    const gift = {
+      id: newId('gift'),
+      fromId: user.id,
+      fromName: user.name,
+      item,
+      note,
+      at: new Date().toISOString(),
+    };
+    (to.gifts ??= []).push(gift);
+    this.store.touch();
+    this.store.logMarket({
+      at: gift.at,
+      listingId: `gift:${gift.id}`,
+      sellerId: user.id,
+      buyerId: to.id,
+      item: item.type,
+      price,
+    });
+    this.toast(s, `🎁 Gaven er pakket ind og sendt til ${to.name}!`);
+    const ts = this.byUser.get(to.id);
+    if (ts) this.send(ts, { t: 'gifts', gifts: to.gifts!, fresh: true });
+  }
+
+  private giftOpen(s: Session, user: UserRecord, id: string) {
+    const i = user.gifts?.findIndex((g) => g.id === id) ?? -1;
+    if (i < 0) return;
+    const [g] = user.gifts!.splice(i, 1);
+    (user.inventory ??= []).push(g!.item);
+    this.store.touch();
+    this.sendInventory(s, user);
+    this.send(s, { t: 'gifts', gifts: user.gifts! });
+    const def = furniture(g!.item.type);
+    this.toast(
+      s,
+      `🎁 Du fik ${def.icon} ${def.name}${g!.item.serial ? ` #${g!.item.serial}` : ''} fra ${g!.fromName}! Den ligger i dit inventar.`,
+    );
   }
 
   /* ---------------- limited editions ---------------- */

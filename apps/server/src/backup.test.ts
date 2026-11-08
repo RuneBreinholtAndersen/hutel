@@ -56,6 +56,8 @@ describe('backups', () => {
       onboardingLock: false,
       backups: false,
       chests: false,
+      botModel: 'test',
+      botMaxCallsPerDay: 0,
     });
     await app.close();
     const u = { id: 'u_1', name: 'Gemt', nameLower: 'gemt', coins: 77 };
@@ -68,6 +70,8 @@ describe('backups', () => {
       onboardingLock: false,
       backups: false,
       chests: false,
+      botModel: 'test',
+      botMaxCallsPerDay: 0,
     });
     expect(app2.store.getUser('u_1')?.coins).toBe(77);
     await app2.close();
@@ -84,6 +88,8 @@ describe('backups', () => {
       onboardingLock: false,
       backups: false,
       chests: false,
+      botModel: 'test',
+      botMaxCallsPerDay: 0,
     });
     expect(app.store.getUser('u_1')?.coins).toBe(5);
     await app.close();

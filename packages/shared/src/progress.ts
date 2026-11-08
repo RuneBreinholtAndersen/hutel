@@ -32,6 +32,15 @@ export type DailyId = (typeof DAILY_POOL)[number]['id'];
 /** Extra coins when all of today's quests are done. */
 export const DAILY_BONUS = 10;
 
+/**
+ * Daily gift for logging in, by day in a row (1–7, then it starts over). Always coins and always
+ * the same amounts – no random prizes.
+ */
+export const LOGIN_GIFTS = [10, 15, 20, 25, 30, 40, 100] as const;
+export function loginGiftFor(dayInRow: number): number {
+  return LOGIN_GIFTS[(Math.max(1, dayInRow) - 1) % LOGIN_GIFTS.length]!;
+}
+
 /** Today's date in Denmark, e.g. "2026-11-06". */
 export function danishDate(now = Date.now()): string {
   return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Copenhagen' }).format(now);

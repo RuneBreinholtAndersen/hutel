@@ -13,6 +13,16 @@ export interface ReleaseNote {
 /** What's new, newest first. Add an entry for every deploy players should hear about. */
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
+    date: '2026-11-08',
+    title: 'Daglig gave, top-rum og gaver til venner',
+    items: [
+      '🎁 Daglig gave: mønter hver dag du logger ind – jo flere dage i træk, jo større (dag 7: 100 mønter)',
+      '👍 Synes godt om andres værelser – de mest populære står under "Top-rum" i navigatoren',
+      '🎀 Giv en ven en gave: tryk 🎁 i butikken eller dit inventar, og skriv en lille hilsen',
+      '📱 Ny bundlinje på mobil med tekst under knapperne og en "Mere"-menu',
+    ],
+  },
+  {
     date: '2026-11-07',
     title: 'Guldkister og begrænsede udgaver',
     items: [

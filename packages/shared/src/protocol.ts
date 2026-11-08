@@ -195,6 +195,22 @@ export const ClientMsgSchema = z.discriminatedUnion('t', [
   z.object({ t: z.literal('reset') }),
   /** Walk to the golden chest and open it. */
   z.object({ t: z.literal('chestOpen'), id: z.number().int() }),
+  /** 👍 the room you are in (not your own). */
+  z.object({ t: z.literal('likeRoom'), on: z.boolean() }),
+  /**
+   * Give a friend a wrapped gift: something from your inventory (`index`) or bought straight
+   * from the shop (`buy`), with a short note.
+   */
+  z.object({
+    t: z.literal('giftSend'),
+    to: userId,
+    index: z.number().int().min(0).max(999).optional(),
+    buy: z
+      .object({ type: furnitureType, color: z.number().int().min(0).max(20).optional() })
+      .optional(),
+    note: z.string().max(60),
+  }),
+  z.object({ t: z.literal('giftOpen'), id: z.string().max(40) }),
   /** Delete my own account for good. `confirm` must be my name, typed by hand. */
   z.object({ t: z.literal('deleteAccount'), confirm: z.string().max(40) }),
   z.object({
@@ -317,6 +333,8 @@ export const ClientMsgSchema = z.discriminatedUnion('t', [
     q: z.string().max(30).optional(),
     /** List every open guest room in this category. */
     cat: z.enum(ROOM_CATEGORY_IDS as [string, ...string[]]).optional(),
+    /** The most liked rooms. */
+    top: z.boolean().optional(),
   }),
   z.object({ t: z.literal('favorite'), roomId: z.string().max(40), on: z.boolean() }),
   z.object({ t: z.literal('ping') }),
@@ -516,6 +534,17 @@ export interface NavigatorRoom {
   category: RoomCategory;
   /** On my favourites list. */
   fav: boolean;
+  /** 👍 from other players. */
+  likes?: number;
+}
+
+/** A wrapped gift waiting to be opened. */
+export interface GiftView {
+  id: string;
+  fromName: string;
+  item: InvItem;
+  note: string;
+  at: string;
 }
 
 export interface ProfileView {
@@ -564,6 +593,12 @@ export type ServerMsg =
   | { t: 'adminUsers'; stats: AdminStats; users: AdminUser[] }
   /** The golden chest in this room, or null when there is none. */
   | { t: 'chest'; chest: ChestView | null }
+  /** 👍 on the room you are in. `canLike` is false in your own room and public rooms. */
+  | { t: 'roomLikes'; roomId: string; likes: number; liked: boolean; canLike: boolean }
+  /** Today's login gift (sent once a day). `day` is the day in a row (1–7). */
+  | { t: 'loginGift'; day: number; coins: number }
+  /** Wrapped gifts waiting to be opened. `fresh` = one just arrived. */
+  | { t: 'gifts'; gifts: GiftView[]; fresh?: boolean }
   | { t: 'events'; events: ActiveEvent[] }
   /** A system line in the room (game results etc.); shown over `id` if given. */
   | { t: 'sys'; text: string; id?: string }

@@ -2,7 +2,7 @@
 
 Listen sammenligner Lobbi (tidligere Hutel) med de klassiske funktioner fra Habbo Hotel. Navne, grafik og møbler kopieres ikke: vi laver vores egen version af idéen.
 
-_Senest opdateret: 7. november 2026 (inventar-knap)._
+_Senest opdateret: 8. november 2026 (daglig gave, top-rum, gaver og mobil)._
 
 **Sådan læses den**
 - **Værdi**: hvor meget det betyder for spillerne (★–★★★)
@@ -18,8 +18,7 @@ Det her mener jeg giver mest spil for pengene, i den rækkefølge:
 - [ ] **1. Flere rum-spil** – stoleleg (Farvekamp, Kapløb og Sneboldkamp findes). ★★ · M
 - [ ] **2. Wired light: møbler der reagerer** – trykplader, "når nogen går her → tænd lampe / teleportér / sig noget". Giver brugerne mulighed for at bygge deres egne spil. ★★★ · L
 - [ ] **3. Grupper/klubber** – navn, logo-generator (vores egen), medlemsliste, gruppe-rum, gruppe-badge ved navnet. ★★ · M
-- [ ] **4. Mobil-kontroller** – tryk-for-at-gå er der, men knapper og paneler skal tilpasses små skærme. ★★★ · M
-- [ ] **5. Lobbi Junior, resten** – forældreoverblik, ordliste-chat og spilletid; vælg mail-tjeneste og få vilkårene læst juridisk igennem (se PLAN.md). ★★★ · M
+- [ ] **4. Lobbi Junior, resten** – forældreoverblik, ordliste-chat og spilletid; vælg mail-tjeneste og få vilkårene læst juridisk igennem (se PLAN.md). ★★★ · M
 
 ## 💡 Habbo-funktioner vi mangler (fuld liste)
 
@@ -30,13 +29,10 @@ Det her mener jeg giver mest spil for pengene, i den rækkefølge:
 - [ ] **Gulvplan-editor** – tegn selv gulvets form, højde, dørens placering. L
 - [ ] **Stable møbler** (højde/z-akse) – sætte ting oven på hinanden, hylder på væggen. M–L
 - [ ] **Rum-indstillinger** – maks. antal gæster, hvem må tale, "kun venner", forbudt-liste. S
-- [ ] **Rum-vurdering** – 👍 til rum, "top-rum" i navigatoren (kategorier og søgning findes). S
 - [ ] **Rotér/flyt flere ting på én gang**, "fortryd". M
 - [ ] **Byggeklodser** – fleksible blokke man kan farve og stable (vores egen variant). M
 
 ### Økonomi og ting
-- [ ] **Gave-indpakning** – køb en ting som gave til en ven med en lille besked. S
-- [ ] **Lykkehjul / gratis gave dagligt** – daglig belønning ud over opgaver. S
 - [ ] **Møbel-sæt** – køb et helt tema samlet (fx "Strandsæt"). S
 - [ ] **Ting med funktion** – dispenser (giver en drink i hånden), terning-møbel, ur, lyskæder. M
 - [ ] **Indløs mønter i ting ("crackables")** – se ting man kan "knække" for en overraskelse. Pas på det ikke bliver gambling for børn. M
@@ -142,4 +138,8 @@ Det her mener jeg giver mest spil for pengene, i den rækkefølge:
 - ✅ Login med e-mail og Google, 18+-bekræftelse og vilkår
 - ✅ Guldkister: meget sjældent (i snit hver 4. time) dukker en glimtende guldkiste op i et offentligt rum. Den første, der klikker og når hen til den, får en sjælden ting, som ikke kan købes i butikken (Guldanden, Krystallampen, Guldtronen eller Regnbuekuglen). Kisten forsvinder efter 8 minutter. Admin kan gemme en kiste til test
 - ✅ Begrænsede udgaver: møbler der kun sælges i en periode og i et fast antal (første: Nordlyslampen, 100 stk. til og med 21. november). Hvert eksemplar har sit eget nummer (#7 af 100), som følger med, når det byttes eller sælges på markedet. Guldkisternes rares bliver også nummereret, og alle rares kan nu gemmes væk, byttes og sælges
+- ✅ Daglig gave for at logge ind: faste beløb, der vokser med dage i træk (10, 15, 20, 25, 30, 40, 100 mønter), ingen tilfældige præmier
+- ✅ Rum-vurdering: 👍 til andres værelser, ejeren får besked, og fanen "👍 Top-rum" i navigatoren
+- ✅ Gave-indpakning: giv en ven noget fra inventaret eller køb det direkte i butikken som gave, med en lille hilsen (ingen hilsen i Junior). Gaven pakkes ud med konfetti
+- ✅ Mobil: bundlinje i to rækker med tekst under knapperne og en "Mere"-menu, paneler og byggeværktøjer lige over bundlinjen, faner man swiper i
 - ✅ Inventar med egen 📦-knap i bunden, der virker i alle rum, rød prik ved nye ting og "Vis"-knap, når man får noget

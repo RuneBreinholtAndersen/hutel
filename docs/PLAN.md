@@ -8,6 +8,9 @@ Sidst opdateret: 7. november 2026. Rækkefølge: voksen-Hutel i lukket beta før
 
 ## Det skal Rune gøre selv
 
+- [ ] Prøv en gendannelse på Fly én gang (kommandoerne står i `docs/DEPLOY.md` → "Backup og gendannelse")
+- [ ] Valgfrit: opret en gratis Sentry-konto (EU) og sæt `SENTRY_DSN` og `SENTRY_DSN_BROWSER` på Fly
+
 - [ ] Når der kommer rigtige brugere: beta-server `lobbi-beta` på Fly (eget volume, beta.lobbi.dk, BETA-mærkat, auto-stop, automatisk deploy fra GitHub) – test der, før `fly deploy` til de rigtige spillere
 
 - [ ] Spillet på spil.lobbi.dk: kør `fly certs add spil.lobbi.dk -a hutel` og `git pull && fly deploy`. Når https://spil.lobbi.dk virker: `fly secrets set CANONICAL_URL=https://spil.lobbi.dk -a hutel` (så sendes hutel.fly.dev videre, og man forbliver logget ind)
@@ -191,7 +194,7 @@ Samme kodebase og grafik som Hutel, men en helt separat verden for børn. Børn 
 - [ ] Gennemgå RLS-politikker i Supabase
 - [ ] Cloudflare foran klient og server
 - [ ] Sentry og alarmer sat op
-- [ ] Gendannelse fra backup afprøvet
+- [ ] Gendannelse fra backup afprøvet på Fly (lokalt og i tests virker det)
 - [ ] Ekstern sikkerhedstest (pentest) eller gennemgang af en sikkerhedskyndig
 - [ ] `security.txt` med kontakt til at indberette sikkerhedshuller
 
@@ -206,6 +209,13 @@ Samme kodebase og grafik som Hutel, men en helt separat verden for børn. Børn 
 ---
 
 ## Færdigt ✅
+
+### 8. november
+
+- ✅ Daglig backup af datafilen (14 dage), gendannelse med `src/restore.ts`, automatisk start fra nyeste backup hvis datafilen er ødelagt, og seneste backup vist i Admin (se `docs/DEPLOY.md`)
+- ✅ Sentry til server og browser (slås til med `SENTRY_DSN` og `SENTRY_DSN_BROWSER`) og alarm ved over 3.000 mønter på en time
+- ✅ Mobil: ny bundlinje i to rækker med "Mere"-menu, paneler og byggeværktøjer over bundlinjen, faner man swiper i
+- ✅ Daglig gave, 👍 til værelser med "Top-rum" i navigatoren, og gaver til venner fra butik og inventar
 
 ### 7. november
 

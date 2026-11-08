@@ -53,6 +53,9 @@ import {
   MARKET_MAX_PRICE,
   type MarketListing,
   type LimitedView,
+  type GiftView,
+  LOGIN_GIFTS,
+  canTrade,
   PET_FEED_PRICE,
   PET_FEED_XP,
   PET_KIND_IDS,
@@ -644,6 +647,8 @@ function handle(msg: ServerMsg) {
       return;
     case 'room':
       audio.sfx('door');
+      roomLikes = null;
+      renderLike();
       return setRoom(msg.room);
     case 'market':
       market = { listings: msg.listings, mine: msg.mine };
@@ -765,6 +770,26 @@ function handle(msg: ServerMsg) {
       logLine({ text: msg.text, cls: 'game' });
       if (msg.id) bubble(msg.id, '🎮', msg.text);
       return;
+    case 'loginGift':
+      return showLoginGift(msg.day, msg.coins);
+    case 'roomLikes':
+      if (room?.id !== msg.roomId) return;
+      roomLikes = msg;
+      return renderLike();
+    case 'gifts': {
+      gifts = msg.gifts;
+      renderGiftButton();
+      if (panelKind === 'gifts') renderGifts();
+      const g = msg.gifts.at(-1);
+      if (msg.fresh && g) {
+        audio.sfx('coin');
+        toast(`🎁 ${g.fromName} har givet dig en gave!`, 'info', {
+          label: 'Pak ud',
+          run: renderGifts,
+        });
+      }
+      return;
+    }
     case 'limited':
       limited = msg.drops;
       if (panelKind === 'shop') renderShop();
@@ -1033,20 +1058,28 @@ function openNavigator() {
     if (panelKind === 'nav') net?.send(navRequest());
   }, 1500);
 }
-type NavTab = 'popular' | 'fav' | RoomCategory;
+type NavTab = 'popular' | 'top' | 'fav' | RoomCategory;
 const navRequest = () => ({
   t: 'navigator' as const,
   q: navQuery || undefined,
-  cat: navTab !== 'popular' && navTab !== 'fav' && !navQuery ? navTab : undefined,
+  cat:
+    navTab !== 'popular' && navTab !== 'fav' && navTab !== 'top' && !navQuery ? navTab : undefined,
+  top: navTab === 'top' && !navQuery ? true : undefined,
 });
 let navTab: NavTab = 'popular';
 let navQuery = '';
 let navSearchTimer = 0;
 function renderNavigator(rooms: NavigatorRoom[]) {
   const row = (r: NavigatorRoom) =>
-    `<div class="li"><button class="star${r.fav ? ' on' : ''}" data-fav="${esc(r.id)}" title="${r.fav ? 'Fjern fra favoritter' : 'Tilføj til favoritter'}">${r.fav ? '★' : '☆'}</button><div class="grow"><b>${ROOM_CATEGORIES[r.category].icon} ${esc(r.name)}</b>${events.some((e) => e.roomId === r.id) ? ' <span class="evtag">🎉 Event</span>' : ''}${r.access !== 'open' ? (r.access === 'locked' ? ' 🔒' : ' 🔑') : ''}<small>${esc(r.description || (r.ownerName ? `Af ${r.ownerName}` : ''))}</small></div><span class="users${r.users >= r.max ? ' full' : ''}">👤 ${r.users}/${r.max}</span>${r.users >= r.max && room?.id !== r.id ? '<button class="small" disabled>Fyldt</button>' : `<button class="small" data-go="${esc(r.id)}">${room?.id === r.id ? 'Her' : 'Gå'}</button>`}</div>`;
+    `<div class="li"><button class="star${r.fav ? ' on' : ''}" data-fav="${esc(r.id)}" title="${r.fav ? 'Fjern fra favoritter' : 'Tilføj til favoritter'}">${r.fav ? '★' : '☆'}</button><div class="grow"><b>${ROOM_CATEGORIES[r.category].icon} ${esc(r.name)}</b>${events.some((e) => e.roomId === r.id) ? ' <span class="evtag">🎉 Event</span>' : ''}${r.access !== 'open' ? (r.access === 'locked' ? ' 🔒' : ' 🔑') : ''}<small>${esc(r.description || (r.ownerName ? `Af ${r.ownerName}` : ''))}</small></div>${r.likes ? `<span class="likes">👍 ${r.likes}</span>` : ''}<span class="users${r.users >= r.max ? ' full' : ''}">👤 ${r.users}/${r.max}</span>${r.users >= r.max && room?.id !== r.id ? '<button class="small" disabled>Fyldt</button>' : `<button class="small" data-go="${esc(r.id)}">${room?.id === r.id ? 'Her' : 'Gå'}</button>`}</div>`;
   const inTab = (r: NavigatorRoom) =>
-    navTab === 'popular' ? true : navTab === 'fav' ? r.fav : r.category === navTab;
+    navTab === 'popular'
+      ? true
+      : navTab === 'top'
+        ? !r.public && (r.likes ?? 0) > 0
+        : navTab === 'fav'
+          ? r.fav
+          : r.category === navTab;
   const shown = rooms.filter(inTab);
   const pub = shown.filter((r) => r.public);
   const guest = shown
@@ -1055,15 +1088,19 @@ function renderNavigator(rooms: NavigatorRoom[]) {
         !r.public &&
         (navQuery || navTab !== 'popular' || !me?.apartment.some((a) => a.id === r.id)),
     )
-    .sort((a, b) => b.users - a.users);
-  const tabs = (['popular', 'fav', ...ROOM_CATEGORY_IDS] as NavTab[])
+    .sort((a, b) =>
+      navTab === 'top' ? (b.likes ?? 0) - (a.likes ?? 0) || b.users - a.users : b.users - a.users,
+    );
+  const tabs = (['popular', 'top', 'fav', ...ROOM_CATEGORY_IDS] as NavTab[])
     .map((t) => {
       const label =
         t === 'popular'
           ? '🔥 Populære'
-          : t === 'fav'
-            ? '⭐ Favoritter'
-            : `${ROOM_CATEGORIES[t].icon} ${ROOM_CATEGORIES[t].name}`;
+          : t === 'top'
+            ? '👍 Top-rum'
+            : t === 'fav'
+              ? '⭐ Favoritter'
+              : `${ROOM_CATEGORIES[t].icon} ${ROOM_CATEGORIES[t].name}`;
       return `<button class="${navTab === t ? 'on' : ''}" data-tab="${t}">${label}</button>`;
     })
     .join('');
@@ -1099,9 +1136,9 @@ function renderNavigator(rooms: NavigatorRoom[]) {
       (pub.length
         ? `<h3>Offentlige rum</h3><div class="list">${pub.map(row).join('')}</div>`
         : '') +
-      `<h3>${navQuery ? `Søgning: “${esc(navQuery)}”` : navTab === 'popular' ? '🔥 Værelser lige nu' : 'Værelser'}</h3><div class="list">${
+      `<h3>${navQuery ? `Søgning: “${esc(navQuery)}”` : navTab === 'popular' ? '🔥 Værelser lige nu' : navTab === 'top' ? '👍 Mest populære værelser' : 'Værelser'}</h3><div class="list">${
         guest.map(row).join('') ||
-        `<p class="sub">${navQuery ? 'Ingen rum passer til din søgning.' : navTab === 'fav' ? 'Tryk ☆ ved et rum for at gemme det her.' : navTab === 'popular' ? 'Ingen værelser med gæster lige nu.' : 'Ingen rum i denne kategori endnu – ejere vælger kategori under "Dit værelse".'}</p>${navTab !== 'popular' || navQuery ? '<button class="small" id="navAll">← Vis populære rum</button>' : ''}`
+        `<p class="sub">${navQuery ? 'Ingen rum passer til din søgning.' : navTab === 'fav' ? 'Tryk ☆ ved et rum for at gemme det her.' : navTab === 'top' ? 'Ingen værelser har fået 👍 endnu. Besøg et værelse og tryk 👍 øverst til venstre.' : navTab === 'popular' ? 'Ingen værelser med gæster lige nu.' : 'Ingen rum i denne kategori endnu – ejere vælger kategori under "Dit værelse".'}</p>${navTab !== 'popular' || navQuery ? '<button class="small" id="navAll">← Vis populære rum</button>' : ''}`
       }</div>` +
       `<h3>📅 Ugens events</h3><p class="sub">${EVENTS.map((e) => `${e.name}: ${WEEKDAYS[e.weekday]} kl. ${e.start}–${e.end}`).join('<br>')}<br>Dobbelt mønter og et særligt badge, hvis du er med i 5 minutter.</p>` +
       own,
@@ -1264,6 +1301,121 @@ function limitedSection() {
   return `<h3>✨ Begrænset udgave</h3><p class="sub">Sælges kun i kort tid, og hvert eksemplar har sit eget nummer. Når de er væk, kan de kun fås ved at bytte eller på markedet.</p><div class="grid">${cards}</div>`;
 }
 
+/* ---------------- daily gift, room likes and gifts ---------------- */
+
+/** A card under the coins: today's login gift and the next days' amounts. */
+function showLoginGift(day: number, coins: number) {
+  const el = $('giftCard');
+  const boxes = LOGIN_GIFTS.map(
+    (c, i) =>
+      `<div class="gd${i + 1 < day ? ' got' : i + 1 === day ? ' now' : ''}"><small>Dag ${i + 1}</small>${i === LOGIN_GIFTS.length - 1 ? '🎁' : COIN}<b>${c}</b></div>`,
+  ).join('');
+  el.innerHTML = `<button class="x" aria-label="Luk">✕</button><h3>🎁 Daglig gave</h3><p class="sub">Dag ${day} i træk: <b>+${coins} ${COIN}</b>. Kom igen i morgen, så bliver gaven større.</p><div class="gdays">${boxes}</div>`;
+  el.classList.remove('hidden');
+  el.querySelector('.x')!.addEventListener('click', () => el.classList.add('hidden'));
+  audio.sfx('coin');
+  if (day === LOGIN_GIFTS.length) confetti();
+  window.setTimeout(() => el.classList.add('hidden'), 9000);
+}
+
+let roomLikes: { likes: number; liked: boolean; canLike: boolean } | null = null;
+function renderLike() {
+  const b = $('bLike');
+  const show = !!roomLikes && (roomLikes.canLike || roomLikes.likes > 0);
+  b.classList.toggle('hidden', !show);
+  if (!roomLikes) return;
+  $('likeN').textContent = String(roomLikes.likes);
+  b.classList.toggle('on', roomLikes.liked);
+  (b as HTMLButtonElement).disabled = !roomLikes.canLike;
+  b.title = roomLikes.canLike
+    ? roomLikes.liked
+      ? 'Du synes godt om værelset (tryk for at fortryde)'
+      : 'Synes godt om værelset'
+    : `${roomLikes.likes} synes godt om dit værelse`;
+}
+$('bLike').addEventListener('click', () => {
+  if (!roomLikes?.canLike) return;
+  net?.send({ t: 'likeRoom', on: !roomLikes.liked });
+});
+
+let gifts: GiftView[] = [];
+function renderGiftButton() {
+  $('bGifts').classList.toggle('hidden', !gifts.length);
+  $('giftN').textContent = String(gifts.length);
+}
+$('bGifts').addEventListener('click', () => renderGifts());
+
+function renderGifts() {
+  if (!gifts.length) {
+    if (panelKind === 'gifts') closePanel();
+    return;
+  }
+  const cards = gifts
+    .map(
+      (g) =>
+        `<div class="li gift"><div class="ic">🎁</div><div class="grow"><b>Fra ${esc(g.fromName)}</b>${g.note ? `<small>“${esc(g.note)}”</small>` : ''}</div><button class="small primary" data-open="${esc(g.id)}">Pak ud</button></div>`,
+    )
+    .join('');
+  openPanel(
+    'gifts',
+    head('🎁 Gaver til dig', 'Pak dem ud – tingene havner i dit inventar.') +
+      `<div class="list">${cards}</div>`,
+  );
+  $('panel')
+    .querySelectorAll<HTMLElement>('[data-open]')
+    .forEach((b) =>
+      b.addEventListener('click', () => {
+        b.closest('.gift')?.classList.add('opening');
+        confetti();
+        window.setTimeout(() => net?.send({ t: 'giftOpen', id: b.dataset.open! }), 450);
+      }),
+    );
+}
+
+/** Pick a friend (and a note) for a gift: from the inventory or bought straight from the shop. */
+function renderGiftTo(what: { index: number } | { type: FurnitureType }) {
+  const type = 'index' in what ? me!.inventory[what.index]!.type : what.type;
+  const c = FURNITURE[type] as FurnitureDef;
+  const label = 'index' in what ? invName(me!.inventory[what.index]!) : `${c.icon} ${esc(c.name)}`;
+  const list = friends
+    .map(
+      (f) =>
+        `<label class="li"><input type="radio" name="giftTo" value="${esc(f.id)}"><div class="grow"><b>${esc(f.name)}</b>${f.online ? '<small>🟢 Online</small>' : ''}</div></label>`,
+    )
+    .join('');
+  openPanel(
+    'giftTo',
+    head(
+      `🎁 Giv ${label}`,
+      'index' in what
+        ? 'Tingen pakkes ind og sendes til din ven.'
+        : `Købes for ${c.price} ${COIN} og sendes indpakket.`,
+    ) +
+      (friends.length
+        ? `<h3>Til hvem?</h3><div class="list">${list}</div>` +
+          (junior()
+            ? ''
+            : `<div class="row"><input id="giftNote" maxlength="60" placeholder="En lille hilsen (valgfri)" style="width:100%"></div>`) +
+          `<div class="row"><button id="giftGo" class="primary" disabled>🎁 Send gaven</button></div>`
+        : '<p class="sub">Du kan kun give gaver til dine venner. Tilføj venner under 👥 Venner.</p>'),
+  );
+  const go = $<HTMLButtonElement>('giftGo');
+  $('panel')
+    .querySelectorAll<HTMLInputElement>('input[name="giftTo"]')
+    .forEach((r) => r.addEventListener('change', () => go && (go.disabled = false)));
+  go?.addEventListener('click', () => {
+    const to = $('panel').querySelector<HTMLInputElement>('input[name="giftTo"]:checked')?.value;
+    if (!to) return;
+    const note = $<HTMLInputElement>('giftNote')?.value.trim() ?? '';
+    net?.send(
+      'index' in what
+        ? { t: 'giftSend', to, index: what.index, note }
+        : { t: 'giftSend', to, buy: { type: what.type }, note },
+    );
+    closePanel();
+  });
+}
+
 /** How many inventory items the player has seen; more than that lights the red dot. */
 let invSeen = -1;
 function updateInvDot() {
@@ -1295,7 +1447,7 @@ function renderInventory() {
         : c.rare
           ? '<small class="sub">✨ Sjælden</small>'
           : '';
-      return `<div class="item${it.serial || special(it.type) ? ' limited' : ''}"><div class="ic">${c.icon}</div><div class="n">${esc(c.name)}${serialTag(it)}</div>${tag}${col !== undefined && it.color ? `<div class="dots"><i style="background:#${col.toString(16).padStart(6, '0')}"></i></div>` : ''}${own ? `<button data-inv="${i}">Placér</button>` : ''}</div>`;
+      return `<div class="item${it.serial || special(it.type) ? ' limited' : ''}"><div class="ic">${c.icon}</div><div class="n">${esc(c.name)}${serialTag(it)}</div>${tag}${col !== undefined && it.color ? `<div class="dots"><i style="background:#${col.toString(16).padStart(6, '0')}"></i></div>` : ''}<div class="btns">${own ? `<button data-inv="${i}">Placér</button>` : ''}${canTrade(it.type) ? `<button data-give="${i}" title="Giv som gave">🎁</button>` : ''}</div></div>`;
     })
     .join('');
   const hint = own
@@ -1316,6 +1468,9 @@ function renderInventory() {
     b.addEventListener('click', () => startPlaceInv(Number(b.dataset.inv))),
   );
   $('invHome')?.addEventListener('click', () => goTo(me!.homeRoomId));
+  p.querySelectorAll<HTMLElement>('[data-give]').forEach((b) =>
+    b.addEventListener('click', () => renderGiftTo({ index: Number(b.dataset.give) })),
+  );
 }
 
 /** Shop: tab (department, 'all', 'decor' or 'inv') and search text. */
@@ -1336,7 +1491,7 @@ function renderShop() {
       : '';
     const btn = locked
       ? `<button disabled>🔒 ${lvLocked ? `Level ${c.minLevel}` : esc(BADGES[c.unlock!].icon + ' ' + BADGES[c.unlock!].name)}</button>`
-      : `<button data-buy="${k}" ${me!.coins < c.price ? 'disabled' : ''}>Køb</button>`;
+      : `<div class="btns"><button data-buy="${k}" ${me!.coins < c.price ? 'disabled' : ''}>Køb</button><button data-giftbuy="${k}" title="Køb som gave til en ven" ${me!.coins < c.price ? 'disabled' : ''}>🎁</button></div>`;
     return `<div class="item${locked ? ' locked' : ''}"><div class="ic">${c.icon}</div><div class="n">${c.name}</div><div class="p">${c.price} ${COIN} · ${c.w}×${c.d}</div>${dots}${btn}</div>`;
   };
   const inv = me.inventory;
@@ -1421,6 +1576,11 @@ function renderShop() {
   $('panel')
     .querySelectorAll<HTMLElement>('[data-buy]')
     .forEach((b) => b.addEventListener('click', () => startBuy(b.dataset.buy as FurnitureType)));
+  $('panel')
+    .querySelectorAll<HTMLElement>('[data-giftbuy]')
+    .forEach((b) =>
+      b.addEventListener('click', () => renderGiftTo({ type: b.dataset.giftbuy as FurnitureType })),
+    );
   $('panel')
     .querySelectorAll<HTMLElement>('[data-decor]')
     .forEach((b) =>
