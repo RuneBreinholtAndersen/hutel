@@ -629,6 +629,9 @@ function handle(msg: ServerMsg) {
       setOnline(me.onlineSec);
       $('signup').classList.add('hidden');
       $('bAdmin').classList.toggle('hidden', me.role !== 'admin');
+      document
+        .querySelector('#moreSheet .admin-only')
+        ?.classList.toggle('show', me.role === 'admin');
       // Came from "Slet min konto" on lobbi.dk: open the figure panel at the delete box.
       if (wantDelete) {
         wantDelete = false;
@@ -2688,6 +2691,7 @@ function setBuild(on: boolean) {
   build = on && !!room?.canBuild;
   gridHelper.visible = build;
   $('bBuild').classList.toggle('on', build);
+  document.body.classList.toggle('building', build);
   hoverM.visible = false;
   updateBuildbar();
 }
@@ -3257,6 +3261,28 @@ $('panel').addEventListener('change', () => panelKind === 'sound' && updateSound
 $('bMarket').addEventListener('click', toggle('market', openMarket));
 $('bShop').addEventListener('click', toggle('shop', renderShop));
 $('bInv').addEventListener('click', toggle('inv', renderInventory));
+
+/* Phones: "Mere" holds the buttons that don't fit in the bottom bar. */
+$('bMore').addEventListener('click', (e) => {
+  e.stopPropagation();
+  $('moreSheet').classList.toggle('hidden');
+});
+document.querySelectorAll<HTMLElement>('#moreSheet [data-proxy]').forEach((b) =>
+  b.addEventListener('click', () => {
+    $('moreSheet').classList.add('hidden');
+    $(b.dataset.proxy!).click();
+  }),
+);
+document.addEventListener('click', (e) => {
+  if (!(e.target as HTMLElement).closest('#moreSheet')) $('moreSheet').classList.add('hidden');
+});
+// The long hint doesn't fit on a phone.
+if (matchMedia('(max-width: 760px)').matches)
+  ($('chatIn') as HTMLInputElement).placeholder = 'Skriv noget…';
+/** Panels and the chat log sit just above the bottom bar, whatever its height. */
+new ResizeObserver(() =>
+  document.documentElement.style.setProperty('--barH', `${$('bar').offsetHeight}px`),
+).observe($('bar'));
 $('bBuild').addEventListener('click', () => {
   closePanel();
   setBuild(!build);
