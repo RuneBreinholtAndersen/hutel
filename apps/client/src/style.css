@@ -1066,7 +1066,8 @@ ul.notes {
   line-height: 1.7;
 }
 
-#bSound {
+#bSound,
+#bFeedback {
   pointer-events: auto;
   display: flex;
   align-items: center;
@@ -1873,4 +1874,102 @@ body {
 /* The floating gift button steps aside while a panel is open. */
 #panel:not(.hidden) ~ #bGifts {
   display: none;
+}
+
+/* ---------------- admin: beta stats ---------------- */
+.bchart {
+  display: grid;
+  grid-template-columns: repeat(14, 1fr);
+  gap: 4px;
+  height: 120px;
+  align-items: end;
+  margin: 6px 0 2px;
+}
+.bcol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  gap: 2px;
+}
+.bcol i {
+  display: flex;
+  align-items: flex-end;
+  width: 100%;
+  min-height: 2px;
+  border-radius: 5px 5px 2px 2px;
+  background: var(--acc);
+  overflow: hidden;
+}
+.bcol em {
+  display: block;
+  width: 100%;
+  background: #5fb37a;
+}
+.bcol small,
+.bcol span {
+  font-size: 10px;
+  color: var(--muted);
+}
+.key {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  vertical-align: -1px;
+}
+.key.act {
+  background: var(--acc);
+}
+.key.new {
+  background: #5fb37a;
+}
+.astats.two {
+  grid-template-columns: 1fr 1fr;
+}
+.astats small {
+  display: block;
+}
+
+.topright {
+  display: flex;
+  gap: 8px;
+  flex: none;
+}
+#bFeedback {
+  pointer-events: auto;
+}
+.li.fb {
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.li.fb p {
+  margin: 4px 0 0;
+  white-space: pre-wrap;
+}
+.li.fb.done {
+  opacity: 0.5;
+}
+@media (max-width: 760px) {
+  .topright {
+    gap: 4px;
+  }
+  #bFeedback {
+    padding: 6px 9px;
+  }
+}
+
+.invite {
+  margin: 10px 0 4px;
+  padding: 4px 12px 8px;
+  border-radius: 12px;
+  background: rgba(255, 179, 71, 0.1);
+  border: 1px solid rgba(255, 179, 71, 0.35);
+}
+.invite h3 {
+  margin-top: 8px;
+}
+#invLink {
+  font-size: 13px;
 }

@@ -41,6 +41,11 @@ export function loginGiftFor(dayInRow: number): number {
   return LOGIN_GIFTS[(Math.max(1, dayInRow) - 1) % LOGIN_GIFTS.length]!;
 }
 
+/** Coins for both, when a friend who joined through your invite link reaches level 2. */
+export const INVITE_REWARD = 50;
+/** Invite rewards stop after this many friends (the new player still gets theirs). */
+export const INVITE_REWARD_MAX = 20;
+
 /** Today's date in Denmark, e.g. "2026-11-06". */
 export function danishDate(now = Date.now()): string {
   return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Copenhagen' }).format(now);

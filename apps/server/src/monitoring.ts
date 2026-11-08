@@ -12,6 +12,12 @@ export async function initMonitoring(dsn = process.env.SENTRY_DSN) {
     dsn,
     environment: process.env.HUTEL_JUNIOR === 'true' ? 'junior' : 'production',
     tracesSampleRate: 0,
+    // Errors only – never who the player is or where they connect from.
+    beforeSend(event) {
+      delete event.user;
+      delete event.request;
+      return event;
+    },
   });
   sentry = S;
   process.on('uncaughtException', (e) => {

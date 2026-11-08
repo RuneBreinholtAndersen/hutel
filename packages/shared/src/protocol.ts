@@ -19,6 +19,7 @@ import { LookSchema, type Look } from './look';
 import type { PlacedItem } from './placement';
 import type { ChestView } from './chest';
 import type { LimitedView } from './limited';
+import type { BetaStats } from './stats';
 import {
   ROOM_CATEGORY_IDS,
   type AptDoor,
@@ -172,6 +173,8 @@ export const ClientMsgSchema = z.discriminatedUnion('t', [
       'eventStart',
       'eventStop',
       'chestSpawn',
+      'feedback',
+      'feedbackDone',
     ]),
     reportId: z.string().max(40).optional(),
     userId: z.string().max(40).optional(),
@@ -211,6 +214,13 @@ export const ClientMsgSchema = z.discriminatedUnion('t', [
     note: z.string().max(60),
   }),
   z.object({ t: z.literal('giftOpen'), id: z.string().max(40) }),
+  /** "Fejl eller idé?" from the game – goes to the admins. */
+  z.object({
+    t: z.literal('feedback'),
+    kind: z.enum(['bug', 'idea']),
+    text: z.string().min(3).max(500),
+    device: z.string().max(160),
+  }),
   /** Delete my own account for good. `confirm` must be my name, typed by hand. */
   z.object({ t: z.literal('deleteAccount'), confirm: z.string().max(40) }),
   z.object({
@@ -458,6 +468,8 @@ export interface AdminStats {
   /** Newest backup (ISO time) and how many are kept, if backups are on. */
   lastBackup?: string | null;
   backups?: number;
+  /** Active and new players per day, and how many come back. */
+  beta?: BetaStats;
 }
 
 export interface InvItem {
@@ -538,6 +550,19 @@ export interface NavigatorRoom {
   likes?: number;
 }
 
+/** A bug report or idea from a player, as the admins see it. */
+export interface FeedbackView {
+  id: string;
+  kind: 'bug' | 'idea';
+  text: string;
+  name: string;
+  userId: string;
+  device: string;
+  roomName: string | null;
+  at: string;
+  done: boolean;
+}
+
 /** A wrapped gift waiting to be opened. */
 export interface GiftView {
   id: string;
@@ -591,6 +616,7 @@ export type ServerMsg =
   | { t: 'tag'; id: string; badge?: string; shown?: string | null; level?: number }
   | { t: 'adminReports'; reports: AdminReport[] }
   | { t: 'adminUsers'; stats: AdminStats; users: AdminUser[] }
+  | { t: 'adminFeedback'; items: FeedbackView[] }
   /** The golden chest in this room, or null when there is none. */
   | { t: 'chest'; chest: ChestView | null }
   /** 👍 on the room you are in. `canLike` is false in your own room and public rooms. */
@@ -667,8 +693,10 @@ export type ServerMsg =
       t: 'friends';
       friends: FriendView[];
       requests: { id: string; name: string }[];
-      /** Lobbi Junior: my friend code. */
+      /** My friend code (Junior) – also the code in my invite link (?ven=…). */
       code?: string;
+      /** Friends who joined through my invite link and reached level 2. */
+      invited?: number;
     }
   | { t: 'whisper'; from: string; fromName: string; to: string; text: string; at: number }
   | { t: 'hush'; from: string; fromName: string; to: string; toName: string; text: string }

@@ -91,6 +91,8 @@ export function supabaseVerifier(url: string, anonKey: string) {
 }
 
 const GuestSchema = z.object({
+  /** Friend code from an invite link (?ven=…). */
+  ref: z.string().max(12).optional(),
   name: z.string().min(2).max(16),
   look: LookSchema,
   password: z.string().min(8).max(72),
@@ -101,6 +103,8 @@ const GuestSchema = z.object({
 
 /** Lobbi Junior signup: a made-up name, and a parent who says yes (no 18+ box). */
 const JuniorGuestSchema = z.object({
+  /** Friend code from an invite link (?ven=…). */
+  ref: z.string().max(12).optional(),
   name: z.string().min(2).max(24),
   look: LookSchema,
   password: z.string().min(8).max(72),
@@ -111,6 +115,8 @@ const JuniorGuestSchema = z.object({
 });
 
 const ProfileSchema = z.object({
+  /** Friend code from an invite link (?ven=…). */
+  ref: z.string().max(12).optional(),
   name: z.string().min(2).max(16),
   /** Optional: password of an existing name+password account to link instead of creating one. */
   password: z.string().min(1).max(72).optional(),
@@ -133,6 +139,7 @@ const LoginSchema = z.object({
 });
 
 const MIME: Record<string, string> = {
+  '.txt': 'text/plain; charset=utf-8',
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript',
   '.css': 'text/css',
@@ -270,6 +277,16 @@ export function createApp(cfg: AppConfig, givenStore?: Store) {
     cfg.dataFile && cfg.backups !== false ? setInterval(takeBackup, 3600_000) : null;
   backupTimer?.unref();
   setTimeout(takeBackup, 5000).unref();
+  /** A new player came through an invite link: make them friends (the reward comes at level 2). */
+  const refer = (user: UserRecord, ref?: string) => {
+    const by = ref ? store.getUserByFriendCode(ref) : undefined;
+    if (!by || by.id === user.id) return;
+    user.referredBy = by.id;
+    if (!user.friends.includes(by.id)) user.friends.push(by.id);
+    if (!by.friends.includes(user.id)) by.friends.push(user.id);
+    store.touch();
+    hotel.referred(by.id);
+  };
   /** Returns [status, message] if the profile can't be used, otherwise null. */
   const checkProfile = (p: { name: string; invite?: string }): [number, string] | null => {
     if (invites.length && !invites.includes((p.invite ?? '').trim().toLowerCase()))
@@ -342,6 +359,7 @@ export function createApp(cfg: AppConfig, givenStore?: Store) {
             password: jp.data.password,
           },
         );
+        refer(user, jp.data.ref);
         user.parentEmail = jp.data.parentEmail.trim().toLowerCase();
         await sendParentMail(user, publicBase(req));
         return json(res, 200, { ok: true, token, userId: user.id, waitingForParent: true });
@@ -358,6 +376,7 @@ export function createApp(cfg: AppConfig, givenStore?: Store) {
       const { user, token } = store.createUser(name, freeLook(parsed.data.look), {
         password: parsed.data.password,
       });
+      refer(user, parsed.data.ref);
       return json(res, 200, { ok: true, token, userId: user.id });
     }
     if (cfg.junior && url.pathname === '/foraelder') {
@@ -502,6 +521,7 @@ export function createApp(cfg: AppConfig, givenStore?: Store) {
       const { user, token } = store.createUser(profile.name.trim(), freeLook(profile.look), {
         authId: who.id,
       });
+      refer(user, profile.ref);
       return json(res, 200, { ok: true, token, userId: user.id });
     }
     if (req.method === 'POST' && url.pathname === '/api/login') {

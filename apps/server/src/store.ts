@@ -38,6 +38,12 @@ export interface UserRecord {
   friends: string[];
   /** Lobbi Junior: code you give to a friend so they can add you (no search by name). */
   friendCode?: string;
+  /** Joined through this player's invite link. */
+  referredBy?: string;
+  /** The invite reward has been paid (at level 2). */
+  referralPaid?: boolean;
+  /** Friends who joined through my link and reached level 2. */
+  invited?: number;
   /** Lobbi Junior: the parent's e-mail and when they gave consent. */
   parentEmail?: string;
   /** Set when the parent clicked "Ja" in the e-mail. Until then a Junior account can't play. */
@@ -68,6 +74,8 @@ export interface UserRecord {
   /** Furniture not placed in a room. */
   inventory?: { type: PlacedItem['type']; color?: number; pair?: string; serial?: number }[];
   guestbook?: GuestbookEntry[];
+  /** Danish dates the player was online (newest 90), for the beta statistics. */
+  days?: string[];
   /** Daily login gift: last day it was given and how many days in a row. */
   loginGift?: { last: string; days: number };
   /** Wrapped gifts not opened yet. */
@@ -120,6 +128,18 @@ export interface PetRecord {
   trickXp: number;
   trickDate: string;
   lastTrick: number;
+}
+
+export interface FeedbackRecord {
+  id: string;
+  userId: string;
+  name: string;
+  kind: 'bug' | 'idea';
+  text: string;
+  device: string;
+  roomName: string | null;
+  at: string;
+  done?: boolean;
 }
 
 export interface RoomRecord {
@@ -203,6 +223,8 @@ interface Data {
   adminLog?: AdminLogRecord[];
   market?: MarketListing[];
   marketLog?: MarketLogRecord[];
+  /** "Fejl eller idé?" from players (newest 500). */
+  feedback?: FeedbackRecord[];
   /** Copies handed out so far per numbered item type (rares and limited editions). */
   serials?: Record<string, number>;
 }
@@ -250,6 +272,8 @@ export interface Store {
   logMarket(entry: MarketLogRecord): void;
   /** Every moderator action is logged. */
   logAdmin(entry: AdminLogRecord): void;
+  addFeedback(f: Omit<FeedbackRecord, 'id' | 'at'>): FeedbackRecord;
+  listFeedback(): FeedbackRecord[];
   /** Next copy number for a numbered item (1, 2, …). */
   nextSerial(type: string): number;
   /** How many numbered copies of this type exist. */
@@ -471,6 +495,17 @@ export class JsonFileStore implements Store {
 
   market() {
     return (this.data.market ??= []);
+  }
+  addFeedback(f: Omit<FeedbackRecord, 'id' | 'at'>) {
+    const rec = { ...f, id: newId('fb'), at: new Date().toISOString() };
+    const list = (this.data.feedback ??= []);
+    list.push(rec);
+    if (list.length > 500) list.splice(0, list.length - 500);
+    this.touch();
+    return rec;
+  }
+  listFeedback() {
+    return this.data.feedback ?? [];
   }
   nextSerial(type: string) {
     const serials = (this.data.serials ??= {});

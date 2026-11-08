@@ -38,6 +38,9 @@ import {
   PUBLIC_ROOMS,
   CHEST,
   pickLoot,
+  INVITE_REWARD,
+  INVITE_REWARD_MAX,
+  betaStats,
   loginGiftFor,
   LOGIN_GIFTS,
   activeDrop,
@@ -46,6 +49,7 @@ import {
   serialLabel,
   type InvItem,
   type LimitedView,
+  type FeedbackView,
   type LimitedDrop,
   LIMITED_DROPS,
   type ChestView,
@@ -217,6 +221,7 @@ const HOTEL_TIPS: Record<(typeof HOTEL_QUESTS)[number]['id'], [string, string]> 
 
 const LIMIT_FOR: Partial<Record<ClientMsg['t'], LimitKind>> = {
   likeRoom: 'build',
+  feedback: 'social',
   giftSend: 'build',
   giftOpen: 'build',
   move: 'move',
@@ -477,6 +482,7 @@ export class Hotel {
       notes: RELEASE_NOTES[0],
     });
     this.send(s, { t: 'limited', drops: this.limitedViews() });
+    this.markActive(user);
     this.loginGift(s, user);
     if (user.gifts?.length) this.send(s, { t: 'gifts', gifts: user.gifts });
     this.sendFriends(user);
@@ -859,6 +865,16 @@ export class Hotel {
     switch (msg.action) {
       case 'reports':
         return this.send(s, { t: 'adminReports', reports: this.adminReports() });
+      case 'feedback':
+        return this.send(s, { t: 'adminFeedback', items: this.feedbackViews() });
+      case 'feedbackDone': {
+        const f = this.store.listFeedback().find((x) => x.id === msg.reportId);
+        if (f) {
+          f.done = !f.done;
+          this.store.touch();
+        }
+        return this.send(s, { t: 'adminFeedback', items: this.feedbackViews() });
+      }
       case 'chestSpawn':
         if (user.role !== 'admin') return;
         return this.spawnChest(s.room ?? undefined)
@@ -893,6 +909,7 @@ export class Hotel {
             today: since(24 * 3600_000),
             week: since(7 * 24 * 3600_000),
             online: this.byUser.size,
+            beta: betaStats(all),
             ...(this.cfg.backupInfo?.() ?? {}),
           },
           users,
@@ -1429,6 +1446,7 @@ export class Hotel {
       const up = (s.player.level ?? 1) < level;
       this.updateTag(s, u);
       if (up) this.toast(s, `⭐ Du er nu level ${level}!`);
+      if (up && level >= 2) this.payReferral(s, u);
     }
   }
 
@@ -1482,6 +1500,8 @@ export class Hotel {
         return this.chestOpen(s, user, msg.id);
       case 'likeRoom':
         return this.likeRoom(s, user, msg.on);
+      case 'feedback':
+        return this.feedback(s, user, msg);
       case 'giftSend':
         return this.giftSend(s, user, msg);
       case 'giftOpen':
@@ -2300,6 +2320,42 @@ export class Hotel {
     if (it.pair) e.pair = it.pair;
     if (it.serial) e.serial = it.serial;
     return e;
+  }
+
+  /* ---------------- feedback ---------------- */
+
+  private feedback(s: Session, user: UserRecord, msg: Extract<ClientMsg, { t: 'feedback' }>) {
+    const text = filterChat(sanitizeChat(msg.text)).slice(0, 500);
+    if (text.trim().length < 3) return;
+    this.store.addFeedback({
+      userId: user.id,
+      name: user.name,
+      kind: msg.kind,
+      text,
+      device: sanitizeChat(msg.device).slice(0, 160),
+      roomName: s.room?.meta.name ?? null,
+    });
+    this.toast(s, 'Tak! Din besked er sendt til holdet bag Lobbi 💛');
+    for (const other of this.byUser.values())
+      if (other.user?.role === 'admin' && other !== s)
+        this.toast(other, `💬 Ny ${msg.kind === 'bug' ? 'fejl' : 'idé'} fra ${user.name}`);
+  }
+
+  private feedbackViews(): FeedbackView[] {
+    return [...this.store.listFeedback()]
+      .reverse()
+      .slice(0, 200)
+      .map((f) => ({ ...f, done: !!f.done }));
+  }
+
+  /** Remembers that the player was online today (for the beta statistics). */
+  private markActive(u: UserRecord) {
+    const today = danishDate();
+    const days = (u.days ??= []);
+    if (days.at(-1) === today) return;
+    days.push(today);
+    if (days.length > 90) days.splice(0, days.length - 90);
+    this.store.touch();
   }
 
   /* ---------------- daily gift, room likes and gifts ---------------- */
@@ -3425,8 +3481,34 @@ export class Hotel {
       t: 'friends',
       friends: this.friendViews(user),
       requests,
-      code: this.cfg.junior ? this.friendCodeOf(user) : undefined,
+      code: this.friendCodeOf(user),
+      invited: user.invited ?? 0,
     });
+  }
+
+  /** Someone joined through `byId`'s invite link: they are friends now, so refresh the list. */
+  referred(byId: string) {
+    const by = this.store.getUser(byId);
+    if (by) this.sendFriends(by);
+  }
+
+  /** At level 2, a player who came through an invite link earns coins for both. */
+  private payReferral(s: Session, u: UserRecord) {
+    if (!u.referredBy || u.referralPaid) return;
+    u.referralPaid = true;
+    this.coins(s, u, INVITE_REWARD);
+    this.toast(s, `🔗 +${INVITE_REWARD} mønter, fordi du kom med på en invitation!`);
+    const by = this.store.getUser(u.referredBy);
+    if (by && (by.invited ?? 0) < INVITE_REWARD_MAX) {
+      by.invited = (by.invited ?? 0) + 1;
+      const bs = this.byUser.get(by.id);
+      if (bs) {
+        this.coins(bs, by, INVITE_REWARD);
+        this.toast(bs, `🔗 ${u.name} er nået level 2 – I får begge ${INVITE_REWARD} mønter!`);
+        this.sendFriends(by);
+      } else by.coins += INVITE_REWARD;
+    }
+    this.store.touch();
   }
 
   private notifyFriendsOf(user: UserRecord) {
@@ -3682,6 +3764,7 @@ export class Hotel {
       const u = s.user!;
       u.onlineSec++;
       if (u.onlineSec % 60 === 0) {
+        this.markActive(u);
         this.coins(s, u, COINS_PER_ONLINE_MINUTE, 'online');
         this.send(s, { t: 'online', onlineSec: u.onlineSec });
         this.daily(s, u, 'd_online');

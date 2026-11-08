@@ -8,6 +8,8 @@ Sidst opdateret: 7. november 2026. Rækkefølge: voksen-Hutel i lukket beta før
 
 ## Det skal Rune gøre selv
 
+- [ ] Lukket beta: invitér 10–20 venner og familie med dit eget link (👥 Venner → 🔗 Invitér en ven), og hold øje med 📊 og 💬 i Admin
+
 - [ ] Prøv en gendannelse på Fly én gang (kommandoerne står i `docs/DEPLOY.md` → "Backup og gendannelse")
 - [ ] Valgfrit: opret en gratis Sentry-konto (EU) og sæt `SENTRY_DSN` og `SENTRY_DSN_BROWSER` på Fly
 
@@ -185,7 +187,7 @@ Samme kodebase og grafik som Hutel, men en helt separat verden for børn. Børn 
 - [ ] AI-hjælp til at markere problematiske beskeder til en moderator
 - [ ] Endelige vilkår og privatlivspolitik (der er en kladde i tilmeldingen)
 - [ ] Lukket beta for venner og familie
-- [ ] Simpel statistik: antal online, aktive pr. dag
+- [x] ✅ Simpel statistik: antal online, aktive pr. dag og hvem der kommer igen (Admin)
 
 ---
 
@@ -196,7 +198,7 @@ Samme kodebase og grafik som Hutel, men en helt separat verden for børn. Børn 
 - [ ] Sentry og alarmer sat op
 - [ ] Gendannelse fra backup afprøvet på Fly (lokalt og i tests virker det)
 - [ ] Ekstern sikkerhedstest (pentest) eller gennemgang af en sikkerhedskyndig
-- [ ] `security.txt` med kontakt til at indberette sikkerhedshuller
+- [x] ✅ `security.txt` med kontakt til at indberette sikkerhedshuller
 
 ---
 
@@ -211,6 +213,8 @@ Samme kodebase og grafik som Hutel, men en helt separat verden for børn. Børn 
 ## Færdigt ✅
 
 ### 8. november
+
+- ✅ Klar til beta: statistik i Admin (aktive pr. dag de sidste 14 dage, hvor mange der kommer igen dagen efter og i første uge), "💬 Fejl eller idé?"-knap med liste i Admin, "Invitér en ven"-link (`?ven=KODE`) der gør jer til venner og giver begge 50 mønter ved level 2 (højst 20 belønninger pr. spiller), `security.txt` på spillet og lobbi.dk, og Sentry sender aldrig spillerdata med
 
 - ✅ Daglig backup af datafilen (14 dage), gendannelse med `src/restore.ts`, automatisk start fra nyeste backup hvis datafilen er ødelagt, og seneste backup vist i Admin (se `docs/DEPLOY.md`)
 - ✅ Sentry til server og browser (slås til med `SENTRY_DSN` og `SENTRY_DSN_BROWSER`) og alarm ved over 3.000 mønter på en time

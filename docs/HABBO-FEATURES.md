@@ -2,7 +2,7 @@
 
 Listen sammenligner Lobbi (tidligere Hutel) med de klassiske funktioner fra Habbo Hotel. Navne, grafik og møbler kopieres ikke: vi laver vores egen version af idéen.
 
-_Senest opdateret: 8. november 2026 (daglig gave, top-rum, gaver og mobil)._
+_Senest opdateret: 8. november 2026 (klar til beta: statistik, feedback og invitationer)._
 
 **Sådan læses den**
 - **Værdi**: hvor meget det betyder for spillerne (★–★★★)
@@ -138,6 +138,9 @@ Det her mener jeg giver mest spil for pengene, i den rækkefølge:
 - ✅ Login med e-mail og Google, 18+-bekræftelse og vilkår
 - ✅ Guldkister: meget sjældent (i snit hver 4. time) dukker en glimtende guldkiste op i et offentligt rum. Den første, der klikker og når hen til den, får en sjælden ting, som ikke kan købes i butikken (Guldanden, Krystallampen, Guldtronen eller Regnbuekuglen). Kisten forsvinder efter 8 minutter. Admin kan gemme en kiste til test
 - ✅ Begrænsede udgaver: møbler der kun sælges i en periode og i et fast antal (første: Nordlyslampen, 100 stk. til og med 21. november). Hvert eksemplar har sit eget nummer (#7 af 100), som følger med, når det byttes eller sælges på markedet. Guldkisternes rares bliver også nummereret, og alle rares kan nu gemmes væk, byttes og sælges
+- ✅ Invitér en ven: personligt link, I bliver venner med det samme, og begge får 50 mønter, når vennen når level 2
+- ✅ "💬 Fejl eller idé?" fra spillet direkte til admins, med rum og enhed
+- ✅ Beta-statistik i Admin: aktive pr. dag og hvor mange der kommer igen
 - ✅ Daglig gave for at logge ind: faste beløb, der vokser med dage i træk (10, 15, 20, 25, 30, 40, 100 mønter), ingen tilfældige præmier
 - ✅ Rum-vurdering: 👍 til andres værelser, ejeren får besked, og fanen "👍 Top-rum" i navigatoren
 - ✅ Gave-indpakning: giv en ven noget fra inventaret eller køb det direkte i butikken som gave, med en lille hilsen (ingen hilsen i Junior). Gaven pakkes ud med konfetti

@@ -43,6 +43,7 @@ import {
   activeDrop,
   canTrade,
   LIMITED_DROPS,
+  betaStats,
 } from './index';
 
 describe('placement', () => {
@@ -345,5 +346,41 @@ describe('limited editions', () => {
   });
   it('every drop is for a limited item', () => {
     for (const d of LIMITED_DROPS) expect(furniture(d.type).limited, d.type).toBe(true);
+  });
+});
+
+describe('beta stats', () => {
+  const day = (d: string) => `${d}T10:00:00Z`;
+  it('counts active and new players per day', () => {
+    const s = betaStats(
+      [
+        { createdAt: day('2026-11-07'), days: ['2026-11-07', '2026-11-08'] },
+        { createdAt: day('2026-11-08'), days: ['2026-11-08'] },
+      ],
+      '2026-11-08',
+      3,
+    );
+    expect(s.daily).toEqual([
+      { date: '2026-11-06', active: 0, new: 0 },
+      { date: '2026-11-07', active: 1, new: 1 },
+      { date: '2026-11-08', active: 2, new: 1 },
+    ]);
+  });
+  it('measures who comes back the next day and within the week', () => {
+    const s = betaStats(
+      [
+        // Came back the next day.
+        { createdAt: day('2026-10-25'), days: ['2026-10-25', '2026-10-26'] },
+        // Came back on day 5.
+        { createdAt: day('2026-10-25'), days: ['2026-10-25', '2026-10-30'] },
+        // Never came back.
+        { createdAt: day('2026-10-25'), days: ['2026-10-25'] },
+        // Too new to count.
+        { createdAt: day('2026-11-08'), days: ['2026-11-08'] },
+      ],
+      '2026-11-08',
+    );
+    expect(s.nextDay).toEqual({ of: 3, came: 1 });
+    expect(s.week).toEqual({ of: 3, came: 2 });
   });
 });

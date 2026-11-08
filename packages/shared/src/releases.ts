@@ -14,6 +14,15 @@ export interface ReleaseNote {
 export const RELEASE_NOTES: ReleaseNote[] = [
   {
     date: '2026-11-08',
+    title: 'Invitér dine venner',
+    items: [
+      '🔗 Invitér en ven med dit eget link under 👥 Venner – I bliver venner med det samme og får begge 50 mønter, når din ven når level 2',
+      '💬 Fejl eller idé? Tryk 💬 øverst til højre og skriv til os – vi læser alt',
+      '🎁 Daglig gave, 👍 til værelser med Top-rum, og gaver til venner',
+    ],
+  },
+  {
+    date: '2026-11-08',
     title: 'Daglig gave, top-rum og gaver til venner',
     items: [
       '🎁 Daglig gave: mønter hver dag du logger ind – jo flere dage i træk, jo større (dag 7: 100 mønter)',

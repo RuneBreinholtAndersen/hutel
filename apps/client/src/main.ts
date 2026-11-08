@@ -54,6 +54,8 @@ import {
   type MarketListing,
   type LimitedView,
   type GiftView,
+  INVITE_REWARD,
+  type FeedbackView,
   LOGIN_GIFTS,
   canTrade,
   PET_FEED_PRICE,
@@ -245,6 +247,12 @@ const store = {
     }
   },
 };
+
+/** Invite links look like spil.lobbi.dk/?ven=K7QX2M – remembered until the account is made. */
+const REF_KEY = 'hutel-ref';
+const refParam = new URLSearchParams(location.search).get('ven')?.trim().toUpperCase() ?? '';
+if (/^[A-Z0-9]{6}$/.test(refParam)) store.set(REF_KEY, refParam);
+const inviteRef = () => store.get(REF_KEY) ?? undefined;
 
 /* ---------------- scene ---------------- */
 const stage = createStage($('app'));
@@ -621,6 +629,7 @@ function setOnline(sec: number) {
 function handle(msg: ServerMsg) {
   switch (msg.t) {
     case 'welcome':
+      store.set(REF_KEY, null); // the invite link has done its job
       if (msg.protocol && msg.protocol !== PROTOCOL_VERSION) offerUpdate(msg.notes, true);
       else if (msg.build && msg.build !== __BUILD_ID__) offerUpdate(msg.notes, false);
       else if (!updateShown) maybeShowNews();
@@ -758,6 +767,8 @@ function handle(msg: ServerMsg) {
       return renderAdmin(msg.reports);
     case 'adminUsers':
       return renderAdminUsers(msg.stats, msg.users);
+    case 'adminFeedback':
+      return renderAdminFeedback(msg.items);
     case 'chest':
       return showChest(msg.chest);
     case 'apartment':
@@ -963,6 +974,7 @@ function handle(msg: ServerMsg) {
       friends = msg.friends;
       requests = msg.requests;
       myFriendCode = msg.code ?? null;
+      invitedCount = msg.invited ?? 0;
       $('reqDot').classList.toggle(
         'hidden',
         !requests.length && !friends.some((f) => f.unread > 0),
@@ -1008,7 +1020,7 @@ function openPanel(kind: string, html: string) {
   for (const id of ['bNav', 'bFriends', 'bFig', 'bShop', 'bInv']) $(id).classList.remove('on');
   const btn = { nav: 'bNav', friends: 'bFriends', fig: 'bFig', shop: 'bShop', inv: 'bInv' }[kind];
   if (btn) $(btn).classList.add('on');
-  $('bAdmin').classList.toggle('on', kind === 'adminUsers');
+  $('bAdmin').classList.toggle('on', kind === 'adminUsers' || kind === 'adminFeedback');
 }
 function closePanel() {
   stopTutorial?.();
@@ -2405,6 +2417,114 @@ function renderFigure() {
 
 /* ---------------- moderation ---------------- */
 /** Admin: who has signed up, newest first. */
+/* ---------------- feedback ---------------- */
+
+/** "iPhone · Safari · 390×844" – helps reproduce a bug, says nothing about who it is. */
+function deviceInfo() {
+  const ua = navigator.userAgent;
+  const dev = /iPhone/.test(ua)
+    ? 'iPhone'
+    : /iPad|Macintosh.*Mobile/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)
+      ? 'iPad'
+      : /Android/.test(ua)
+        ? 'Android'
+        : /Mac/.test(ua)
+          ? 'Mac'
+          : /Windows/.test(ua)
+            ? 'Windows'
+            : 'Andet';
+  const browser = inAppBrowser()
+    ? 'App-browser (fx Facebook)'
+    : /Edg\//.test(ua)
+      ? 'Edge'
+      : /Firefox|FxiOS/.test(ua)
+        ? 'Firefox'
+        : /Chrome|CriOS/.test(ua)
+          ? 'Chrome'
+          : /Safari/.test(ua)
+            ? 'Safari'
+            : 'Browser';
+  return `${dev} · ${browser} · ${innerWidth}×${innerHeight}`;
+}
+
+let fbKind: 'bug' | 'idea' = 'bug';
+function renderFeedback() {
+  openPanel(
+    'feedback',
+    head('💬 Fejl eller idé?', 'Vi læser alt – Lobbi er i beta og bliver bygget sammen med jer.') +
+      `<div class="chips"><button data-kind="bug" class="${fbKind === 'bug' ? 'on' : ''}">🐞 Noget virker ikke</button><button data-kind="idea" class="${fbKind === 'idea' ? 'on' : ''}">💡 Jeg har en idé</button></div>
+      <div class="row"><textarea id="fbText" maxlength="500" rows="5" style="width:100%" placeholder="${fbKind === 'bug' ? 'Hvad skete der, og hvad gjorde du lige før?' : 'Hvad kunne gøre Lobbi sjovere?'}"></textarea></div>
+      <p class="sub">Vi sender automatisk med, hvilket rum du er i, og hvilken slags telefon eller computer du bruger (${esc(deviceInfo())}).</p>
+      <div class="row"><button id="fbSend" class="primary" disabled>Send</button></div>`,
+  );
+  const text = $<HTMLTextAreaElement>('fbText');
+  const send = $<HTMLButtonElement>('fbSend');
+  text.addEventListener('input', () => (send.disabled = text.value.trim().length < 3));
+  $('panel')
+    .querySelectorAll<HTMLElement>('[data-kind]')
+    .forEach((b) =>
+      b.addEventListener('click', () => {
+        fbKind = b.dataset.kind as 'bug' | 'idea';
+        const keep = text.value;
+        renderFeedback();
+        $<HTMLTextAreaElement>('fbText').value = keep;
+        $<HTMLButtonElement>('fbSend').disabled = keep.trim().length < 3;
+      }),
+    );
+  send.addEventListener('click', () => {
+    net?.send({ t: 'feedback', kind: fbKind, text: text.value.trim(), device: deviceInfo() });
+    closePanel();
+  });
+  text.focus();
+}
+$('bFeedback').addEventListener('click', toggle('feedback', renderFeedback));
+
+function renderAdminFeedback(items: FeedbackView[]) {
+  const open = items.filter((f) => !f.done);
+  const row = (f: FeedbackView) => `<div class="li fb${f.done ? ' done' : ''}"><div class="grow">
+      <b>${f.kind === 'bug' ? '🐞' : '💡'} ${esc(f.name)}</b> <small>${new Date(f.at).toLocaleString('da-DK', { dateStyle: 'short', timeStyle: 'short' })}${f.roomName ? ` · ${esc(f.roomName)}` : ''} · ${esc(f.device)}</small>
+      <p>${esc(f.text)}</p></div>
+      <div class="chips"><button class="small" data-fbdone="${esc(f.id)}">${f.done ? '↩ Åbn igen' : '✓ Klaret'}</button><button class="small" data-prof="${esc(f.userId)}">Profil</button></div></div>`;
+  openPanel(
+    'adminFeedback',
+    head('💬 Fejl og idéer', `${open.length} åbne · ${items.length - open.length} klaret`) +
+      `<div class="chips" style="margin-bottom:10px"><button id="adBack" class="small">← Admin</button></div>` +
+      `<div class="list">${items.map(row).join('') || '<p class="sub">Ingen beskeder endnu.</p>'}</div>`,
+  );
+  $('adBack').addEventListener('click', () => net?.send({ t: 'admin', action: 'users' }));
+  $('panel')
+    .querySelectorAll<HTMLElement>('[data-fbdone]')
+    .forEach((b) =>
+      b.addEventListener('click', () =>
+        net?.send({ t: 'admin', action: 'feedbackDone', reportId: b.dataset.fbdone! }),
+      ),
+    );
+  $('panel')
+    .querySelectorAll<HTMLElement>('[data-prof]')
+    .forEach((b) =>
+      b.addEventListener('click', () => net?.send({ t: 'profile', userId: b.dataset.prof! })),
+    );
+}
+
+/** Beta numbers: a small bar chart of active players per day and the come-back rates. */
+function betaHtml(b: AdminStats['beta']) {
+  if (!b) return '';
+  const max = Math.max(1, ...b.daily.map((d) => d.active));
+  const bars = b.daily
+    .map((d) => {
+      const day = new Date(`${d.date}T12:00:00`);
+      const label = day.toLocaleDateString('da-DK', { weekday: 'short' }).slice(0, 2);
+      return `<div class="bcol" title="${day.toLocaleDateString('da-DK', { day: 'numeric', month: 'short' })}: ${d.active} aktive, ${d.new} nye"><small>${d.active || ''}</small><i style="height:${Math.round((d.active / max) * 100)}%">${d.new ? `<em style="height:${Math.round((d.new / Math.max(1, d.active)) * 100)}%"></em>` : ''}</i><span>${label}</span></div>`;
+    })
+    .join('');
+  const pct = (r: { of: number; came: number }) =>
+    r.of
+      ? `<b>${Math.round((r.came / r.of) * 100)} %</b><small>${r.came} af ${r.of}</small>`
+      : '<b>–</b><small>for tidligt</small>';
+  return `<h3>📊 Aktive spillere de sidste 14 dage</h3><div class="bchart">${bars}</div><p class="sub"><span class="key act"></span> aktive · <span class="key new"></span> heraf nye</p>
+    <div class="astats two"><div>${pct(b.nextDay)}<small>kom igen dagen efter</small></div><div>${pct(b.week)}<small>kom igen i første uge</small></div></div>`;
+}
+
 function renderAdminUsers(stats: AdminStats, users: AdminUser[]) {
   const ago = (iso: string) => {
     const m = Math.round((Date.now() - Date.parse(iso)) / 60000);
@@ -2424,14 +2544,16 @@ function renderAdminUsers(stats: AdminStats, users: AdminUser[]) {
     'adminUsers',
     head('🛡️ Admin') +
       `<div class="astats"><div><b>${stats.total}</b><small>brugere i alt</small></div><div><b>${stats.today}</b><small>nye i dag</small></div><div><b>${stats.week}</b><small>nye på 7 dage</small></div><div><b>${stats.online}</b><small>online nu</small></div></div>` +
+      betaHtml(stats.beta) +
       `<p class="sub">${stats.lastBackup ? `💾 Seneste backup: ${new Date(stats.lastBackup).toLocaleString('da-DK', { dateStyle: 'short', timeStyle: 'short' })} · ${stats.backups} gemt` : '⚠️ Ingen backup endnu'}</p>` +
-      `<div class="chips" style="margin-bottom:10px"><button id="adRefresh" class="small">🔄 Opdatér</button><button id="adReports" class="small">⚠️ Rapporter</button><button id="adChest" class="small">✨ Gem en guldkiste her</button></div>` +
+      `<div class="chips" style="margin-bottom:10px"><button id="adRefresh" class="small">🔄 Opdatér</button><button id="adReports" class="small">⚠️ Rapporter</button><button id="adFeedback" class="small">💬 Fejl og idéer</button><button id="adChest" class="small">✨ Gem en guldkiste her</button></div>` +
       `<h3>Nyeste brugere</h3><div class="list">${users.map(row).join('') || '<p class="sub">Ingen brugere endnu.</p>'}</div>` +
       (users.length >= 100 ? '<p class="sub">Viser de 100 nyeste.</p>' : ''),
   );
   $('adRefresh').addEventListener('click', () => net?.send({ t: 'admin', action: 'users' }));
   $('adReports').addEventListener('click', () => net?.send({ t: 'admin', action: 'reports' }));
   $('adChest').addEventListener('click', () => net?.send({ t: 'admin', action: 'chestSpawn' }));
+  $('adFeedback').addEventListener('click', () => net?.send({ t: 'admin', action: 'feedback' }));
   $('panel')
     .querySelectorAll<HTMLElement>('[data-prof]')
     .forEach((b) =>
@@ -2599,6 +2721,37 @@ function renderTrade() {
   $('tCancel').addEventListener('click', () => net?.send({ t: 'tradeCancel' }));
 }
 
+let invitedCount = 0;
+const inviteLink = () =>
+  myFriendCode
+    ? `${(authCfg.canonicalUrl ?? location.origin).replace(/\/$/, '')}/?ven=${myFriendCode}`
+    : '';
+
+function inviteHtml() {
+  if (!myFriendCode) return '';
+  return `<div class="invite"><h3>🔗 Invitér en ven</h3><p class="sub">Send dit link til en, du kender. I bliver venner med det samme, og I får begge ${INVITE_REWARD} ${COIN}, når din ven når level 2.</p>
+    <div class="row" style="display:flex;gap:6px"><input id="invLink" readonly value="${esc(inviteLink())}" style="flex:1"><button id="invShare" class="small primary">${canShare() ? '📤 Del' : '📋 Kopiér'}</button></div>
+    ${invitedCount ? `<p class="sub">🎉 ${invitedCount} ${invitedCount === 1 ? 'ven er' : 'venner er'} kommet med via dit link.</p>` : ''}</div>`;
+}
+
+const canShare = () =>
+  typeof navigator.share === 'function' && matchMedia('(pointer: coarse)').matches;
+
+async function shareInvite() {
+  const url = inviteLink();
+  if (!url) return;
+  const text = junior()
+    ? 'Kom og leg med mig i Lobbi Junior!'
+    : 'Kom og hæng ud med mig i Lobbi – et hyggeligt dansk chat-hotel 🏨';
+  try {
+    if (canShare()) return await navigator.share({ title: 'Lobbi', text, url });
+    await navigator.clipboard.writeText(url);
+    toast('Linket er kopieret 📋');
+  } catch {
+    $<HTMLInputElement>('invLink')?.select();
+  }
+}
+
 function renderFriends() {
   openPanel(
     'friends',
@@ -2610,10 +2763,12 @@ function renderFriends() {
       (requests.length
         ? `<h3>Venneanmodninger</h3><div class="list">${requests.map((r) => `<div class="li"><div class="grow"><b>${esc(r.name)}</b></div><button class="small primary" data-acc="${r.id}">Ja</button><button class="small" data-dec="${r.id}">Nej</button></div>`).join('')}</div>`
         : '') +
+      inviteHtml() +
       `<label class="sub" style="display:block;margin:8px 0"><input id="noFollow" type="checkbox" ${me?.noFollow ? 'checked' : ''}> 🔒 Må ikke følges – venner kan se, at jeg er online, men ikke hvor</label>` +
       `<h3>Dine venner</h3><div class="list">${friends.map((f) => `<div class="li"><div class="grow"><b>${me?.relations?.[f.id] ? RELATIONS[me.relations[f.id]!].icon + ' ' : ''}${esc(f.name)}</b><small>${f.online ? `<span class="status-on">● Online</span>${f.roomName ? ' · ' + esc(f.roomName) : ''}` : 'Offline'}</small></div>${f.online && f.roomId ? `<button class="small" data-go="${esc(f.roomId)}">Gå til</button>` : ''}<button class="small" data-pm="${esc(f.id)}">💬 Skriv${f.unread ? ` <b class="unread">${f.unread}</b>` : ''}</button></div>`).join('') || `<p class="sub">${junior() ? 'Ingen venner endnu – byt vennekoder med nogen, du kender.' : 'Ingen venner endnu – klik på en figur for at tilføje.'}</p>`}</div>`,
   );
   const p = $('panel');
+  $('invShare')?.addEventListener('click', () => void shareInvite());
   $<HTMLInputElement>('noFollow').addEventListener('change', (e) => {
     const on = (e.target as HTMLInputElement).checked;
     if (me) me.noFollow = on;
@@ -3739,7 +3894,7 @@ $('signupForm').addEventListener('submit', async (e) => {
   if (authMode === 'profile') {
     try {
       const password = $<HTMLInputElement>('suPw').value || undefined;
-      await exchange({ name, look: signupLook, invite, adult, terms, password });
+      await exchange({ name, look: signupLook, invite, adult, terms, password, ref: inviteRef() });
     } catch {
       $('suError').textContent = 'Kan ikke nå hotellet lige nu. Prøv igen om lidt.';
     }
@@ -3754,6 +3909,7 @@ $('signupForm').addEventListener('submit', async (e) => {
         look: signupLook,
         password: $<HTMLInputElement>('suPw').value,
         invite,
+        ref: inviteRef(),
         ...(junior() ? { parentEmail, parentConsent } : { adult }),
         terms,
       }),
@@ -3898,7 +4054,19 @@ async function boot() {
   if (authCfg.sentryDsn) {
     const dsn = authCfg.sentryDsn;
     void import('@sentry/browser')
-      .then((S) => S.init({ dsn, environment: authCfg.edition ?? 'adult', tracesSampleRate: 0 }))
+      .then((S) =>
+        S.init({
+          dsn,
+          environment: authCfg.edition ?? 'adult',
+          tracesSampleRate: 0,
+          // Errors only – no player data, and nothing typed in the chat.
+          beforeSend(event) {
+            delete event.user;
+            return event;
+          },
+          beforeBreadcrumb: (b) => (b.category === 'ui.input' ? null : b),
+        }),
+      )
       .catch(() => {});
   }
   if (junior()) setupJunior();
@@ -3914,7 +4082,8 @@ async function boot() {
           : saved
             ? '#move=' + encodeURIComponent(saved)
             : '';
-        location.replace(target.origin + '/' + hash);
+        const ref = inviteRef() && !isAuthRedirect() ? `?ven=${inviteRef()}` : '';
+        location.replace(target.origin + '/' + ref + hash);
         return;
       }
     } catch {

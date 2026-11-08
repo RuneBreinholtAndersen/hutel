@@ -1429,3 +1429,92 @@ describe('daily gift, room likes and gifts', () => {
     for (const x of [a, b, c3]) x.c.ws.close();
   });
 });
+
+describe('beta tools', () => {
+  async function boss() {
+    const res = (await (
+      await fetch(`http://${base}/api/login`, {
+        method: 'POST',
+        body: JSON.stringify({ name: 'Chefen', password: 'hemmelig123' }),
+      })
+    ).json()) as { token: string };
+    const c = new TestClient();
+    await c.open();
+    c.send({ t: 'auth', token: res.token });
+    await c.waitFor('welcome');
+    return c;
+  }
+
+  it('counts today as an active day and shows beta stats to admins', async () => {
+    const p = await login('Aktivspiller');
+    expect(app.store.getUser(p.g.userId)!.days).toHaveLength(1);
+    const b = await boss();
+    b.send({ t: 'admin', action: 'users' });
+    const list = await b.waitFor('adminUsers');
+    expect(list.stats.beta!.daily).toHaveLength(14);
+    expect(list.stats.beta!.daily.at(-1)!.active).toBeGreaterThanOrEqual(2);
+    p.c.ws.close();
+    b.ws.close();
+  });
+
+  it('sends feedback to the admins with room and device', async () => {
+    const p = await login('Feedbacker');
+    p.c.send({
+      t: 'feedback',
+      kind: 'bug',
+      text: 'Sofaen forsvandt',
+      device: 'iPhone · Safari · 390×844',
+    });
+    await p.c.waitFor('toast', (m) => /Tak/.test(m.text));
+    const b = await boss();
+    b.send({ t: 'admin', action: 'feedback' });
+    const fb = await b.waitFor('adminFeedback');
+    const item = fb.items.find((f) => f.name === 'Feedbacker')!;
+    expect(item).toMatchObject({ kind: 'bug', text: 'Sofaen forsvandt', done: false });
+    expect(item.roomName).toBeTruthy();
+    b.send({ t: 'admin', action: 'feedbackDone', reportId: item.id });
+    const after = await b.waitFor('adminFeedback');
+    expect(after.items.find((f) => f.id === item.id)!.done).toBe(true);
+    // Players can't read the list.
+    p.c.send({ t: 'admin', action: 'feedback' });
+    await new Promise((r) => setTimeout(r, 150));
+    expect(p.c.msgs.some((m) => m.t === 'adminFeedback')).toBe(false);
+    p.c.ws.close();
+    b.ws.close();
+  });
+
+  it('makes invited players friends and pays both at level 2', async () => {
+    const host = await login('Vært');
+    const friends = await host.c.waitFor('friends');
+    const code = friends.code!;
+    expect(code).toMatch(/^[A-Z0-9]{6}$/);
+    const res = await fetch(`http://${base}/api/guest`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Inviteret',
+        look: DEFAULT_LOOK,
+        password: 'hemmelig123',
+        adult: true,
+        terms: true,
+        ref: code,
+      }),
+    });
+    const g = (await res.json()) as { token: string; userId: string };
+    expect(app.store.getUser(g.userId)!.friends).toContain(host.g.userId);
+    await host.c.waitFor('friends', (m) => m.friends.some((f) => f.id === g.userId));
+    const c = new TestClient();
+    await c.open();
+    c.send({ t: 'auth', token: g.token });
+    await c.waitFor('welcome');
+    const hostCoins = app.store.getUser(host.g.userId)!.coins;
+    // Jump to just before a minute with enough time online for level 2.
+    app.store.getUser(g.userId)!.onlineSec = 6 * 3600 - 1;
+    await c.waitFor('toast', (m) => /invitation/.test(m.text), 3000);
+    await host.c.waitFor('toast', (m) => /level 2/.test(m.text));
+    expect(app.store.getUser(host.g.userId)!.coins).toBeGreaterThanOrEqual(hostCoins + 50);
+    expect(app.store.getUser(host.g.userId)!.invited).toBe(1);
+    host.c.ws.close();
+    c.ws.close();
+  });
+});
