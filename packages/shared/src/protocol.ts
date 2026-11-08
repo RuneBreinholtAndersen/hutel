@@ -437,6 +437,9 @@ export interface AdminStats {
   today: number;
   week: number;
   online: number;
+  /** Newest backup (ISO time) and how many are kept, if backups are on. */
+  lastBackup?: string | null;
+  backups?: number;
 }
 
 export interface InvItem {

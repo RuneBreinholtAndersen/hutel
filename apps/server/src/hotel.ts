@@ -144,6 +144,10 @@ import {
   type RoomQuiz,
 } from './games';
 import { checkOffer, executeTrade, Trade, tradeView, type Offer } from './trade';
+import { reportWarning } from './monitoring';
+
+/** More than this many coins earned within one hour raises an alarm (sales on the market included). */
+const COIN_ALARM_PER_HOUR = 3000;
 
 export interface HotelConfig {
   /** New guests must finish the starter quests before leaving their own room. */
@@ -163,6 +167,8 @@ export interface HotelConfig {
   videoTitles?: boolean;
   /** Golden chests appear by themselves (off in tests). */
   chests?: boolean;
+  /** For the admin panel: newest backup and how many there are. */
+  backupInfo?: () => { lastBackup: string | null; backups: number };
   /** Override the limited-edition drops (tests). */
   limitedDrops?: LimitedDrop[];
 }
@@ -728,7 +734,20 @@ export class Hotel {
 
   /* ---------------- progress ---------------- */
 
+  /** Coins earned per user in the current hour – for the "unusual activity" alarm. */
+  private earned = new Map<string, { hour: number; sum: number; warned: boolean }>();
+
   private coins(s: Session, user: UserRecord, delta: number, reason?: string) {
+    if (delta > 0) {
+      const hour = Math.floor(Date.now() / 3600_000);
+      let e = this.earned.get(user.id);
+      if (!e || e.hour !== hour) this.earned.set(user.id, (e = { hour, sum: 0, warned: false }));
+      e.sum += delta;
+      if (e.sum > COIN_ALARM_PER_HOUR && !e.warned) {
+        e.warned = true;
+        reportWarning(`${user.name} har tjent ${e.sum} mønter inden for en time`);
+      }
+    }
     user.coins = Math.max(0, user.coins + delta);
     this.store.touch();
     this.send(s, { t: 'coins', coins: user.coins, reason });
@@ -852,6 +871,7 @@ export class Hotel {
             today: since(24 * 3600_000),
             week: since(7 * 24 * 3600_000),
             online: this.byUser.size,
+            ...(this.cfg.backupInfo?.() ?? {}),
           },
           users,
         });

@@ -275,7 +275,17 @@ export class JsonFileStore implements Store {
     private readonly newRoomItems: () => PlacedItem[],
   ) {
     this.data = { version: 1, users: {}, rooms: {}, reports: [], chatlog: [] };
-    if (file && existsSync(file)) this.data = JSON.parse(readFileSync(file, 'utf8')) as Data;
+    if (file && existsSync(file)) {
+      try {
+        this.data = JSON.parse(readFileSync(file, 'utf8')) as Data;
+      } catch {
+        // Stop instead of starting empty and overwriting everyone's data.
+        throw new Error(
+          `Datafilen ${file} er ødelagt. Gendan en backup: tsx src/restore.ts --list, ` +
+            'derefter tsx src/restore.ts <fil> og start serveren igen.',
+        );
+      }
+    }
     this.pruneChat();
   }
 

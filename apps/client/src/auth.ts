@@ -11,6 +11,8 @@ export interface AuthConfig {
   edition?: 'adult' | 'junior';
   /** Set when the game has moved to a new address. */
   canonicalUrl?: string | null;
+  /** Error reports go to Sentry when the server has a DSN set. */
+  sentryDsn?: string | null;
 }
 
 const FALLBACK: AuthConfig = {

@@ -1,5 +1,8 @@
 import { resolve } from 'node:path';
 import { createApp } from './app';
+import { initMonitoring } from './monitoring';
+
+await initMonitoring();
 
 const port = Number(process.env.PORT ?? 2567);
 const origins = (process.env.CLIENT_ORIGIN ?? 'http://localhost:5173')
@@ -35,6 +38,7 @@ const app = createApp({
     .filter(Boolean),
   botModel: process.env.BOT_MODEL ?? 'claude-haiku-5-5',
   botMaxCallsPerDay: Number(process.env.BOT_MAX_CALLS_PER_DAY ?? 300),
+  sentryDsn: process.env.SENTRY_DSN_BROWSER || undefined,
 });
 
 app.server.listen(port, () => {

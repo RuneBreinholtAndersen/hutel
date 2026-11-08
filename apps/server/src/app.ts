@@ -17,6 +17,8 @@ import { Hotel, type HotelConfig } from './hotel';
 import { KeyedLimiter } from './ratelimit';
 import { randomBytes } from 'node:crypto';
 import { smtpMailer, type SendMail } from './mailer';
+import { applyPendingRestore, backupNow, listBackups, looksValid, prepareRestore } from './backup';
+import { reportError, reportWarning } from './monitoring';
 import { hashSecret, JsonFileStore, verifyPassword, type Store, type UserRecord } from './store';
 
 export const VERSION = '0.1.0';
@@ -43,6 +45,10 @@ export interface AppConfig extends HotelConfig {
   verifyAuthToken?: (accessToken: string) => Promise<AuthIdentity | null>;
   /** Sends e-mail (Junior parent confirmation). Defaults to SMTP from the environment. */
   sendMail?: SendMail;
+  /** Daily backups next to the data file (default on when there is a data file). */
+  backups?: boolean;
+  /** Public Sentry DSN for the browser (the server reads SENTRY_DSN itself). */
+  sentryDsn?: string;
 }
 
 /** Junior accounts a parent never confirmed are deleted after this long. */
@@ -168,10 +174,23 @@ export function newHomeItems(): PlacedItem[] {
   return DEFAULT_HOME_ITEMS.map((it, i) => ({ ...it, id: i + 1 }));
 }
 
-export function createApp(
-  cfg: AppConfig,
-  store: Store = new JsonFileStore(cfg.dataFile, newHomeItems),
-) {
+export function createApp(cfg: AppConfig, givenStore?: Store) {
+  // A restore prepared with src/restore.ts is swapped in before the data is loaded.
+  if (!givenStore && cfg.dataFile) {
+    const file = cfg.dataFile;
+    // A broken data file would keep the server from starting: fall back to the newest backup.
+    if (existsSync(file) && !looksValid(readFileSync(file, 'utf8'))) {
+      const newest = listBackups(file)[0];
+      if (newest) {
+        prepareRestore(file, newest.file);
+        reportWarning(`Datafilen var ødelagt – gendanner automatisk fra ${newest.file}`);
+      }
+    }
+    const saved = applyPendingRestore(file);
+    if (saved !== null)
+      console.log(`[backup] Gendannet fra backup. Den gamle fil ligger i ${saved}`);
+  }
+  const store: Store = givenStore ?? new JsonFileStore(cfg.dataFile, newHomeItems);
   let clientBuild: string | undefined;
   try {
     if (cfg.clientDist)
@@ -181,7 +200,11 @@ export function createApp(
   } catch {
     /* dev build without version.json */
   }
-  const hotel = new Hotel(store, { ...cfg, clientBuild });
+  const backupInfo = () => {
+    const list = cfg.dataFile ? listBackups(cfg.dataFile) : [];
+    return { lastBackup: list[0]?.at ?? null, backups: list.length };
+  };
+  const hotel = new Hotel(store, { ...cfg, clientBuild, backupInfo });
   const perHour = cfg.signupsPerHour ?? 5;
   const signupLimiter = new KeyedLimiter(perHour, perHour / 3600);
   const loginLimiter = new KeyedLimiter(10, 10 / 900);
@@ -232,6 +255,21 @@ export function createApp(
       }, 3600_000)
     : null;
   sweep?.unref();
+  // One backup per day of the data file (checked every hour, 14 days kept).
+  const takeBackup = () => {
+    if (!cfg.dataFile || cfg.backups === false) return;
+    try {
+      store.flush();
+      backupNow(cfg.dataFile);
+    } catch (e) {
+      console.error('[backup] fejlede', e);
+      reportError(e);
+    }
+  };
+  const backupTimer =
+    cfg.dataFile && cfg.backups !== false ? setInterval(takeBackup, 3600_000) : null;
+  backupTimer?.unref();
+  setTimeout(takeBackup, 5000).unref();
   /** Returns [status, message] if the profile can't be used, otherwise null. */
   const checkProfile = (p: { name: string; invite?: string }): [number, string] | null => {
     if (invites.length && !invites.includes((p.invite ?? '').trim().toLowerCase()))
@@ -405,6 +443,7 @@ export function createApp(
         inviteRequired: invites.length > 0,
         providers: verify && !cfg.junior ? (cfg.authProviders ?? ['google']) : [],
         canonicalUrl: cfg.canonicalUrl ?? null,
+        sentryDsn: cfg.sentryDsn ?? null,
       });
     }
     if (req.method === 'POST' && url.pathname === '/api/session') {
@@ -550,6 +589,7 @@ export function createApp(
     close: () =>
       new Promise<void>((r) => {
         if (sweep) clearInterval(sweep);
+        if (backupTimer) clearInterval(backupTimer);
         hotel.stop();
         for (const c of wss.clients) c.terminate();
         wss.close();

@@ -52,10 +52,30 @@ fly ssh console          # log ind på maskinen
 fly deploy               # udgiv en ny version
 ```
 
-## Backup af data (indtil Supabase)
+## Backup og gendannelse
+
+Serveren tager selv en backup hver dag af `/data/hutel-db.json` (pakket som `.json.gz` i `/data/backups/`) og gemmer de seneste 14 dage. Admin-panellet viser tidspunktet for den seneste. Er datafilen ødelagt, når serveren starter, starter den automatisk fra den nyeste backup og sender en alarm.
 
 ```bash
-fly ssh sftp get /data/hutel-db.json ./backup-$(date +%F).json
+# Se backups
+fly ssh console -a hutel -C "sh -c 'cd /app/apps/server && node_modules/.bin/tsx src/restore.ts --list'"
+# Tag en backup lige nu (fx før en stor opdatering)
+fly ssh console -a hutel -C "sh -c 'cd /app/apps/server && node_modules/.bin/tsx src/restore.ts --now'"
+# Gendan: læg den klar og genstart – den nuværende fil gemmes som hutel-db.json.before-restore-…
+fly ssh console -a hutel -C "sh -c 'cd /app/apps/server && node_modules/.bin/tsx src/restore.ts hutel-db-2026-11-08.json.gz'"
+fly apps restart hutel
+# Hent en kopi ned på din egen computer
+fly ssh sftp get /data/backups/hutel-db-2026-11-08.json.gz -a hutel
 ```
 
-Tag en backup før hver større opdatering.
+Junior: samme kommandoer med `-a lobbi-junior`.
+
+## Fejlrapporter (Sentry)
+
+Slået fra, indtil der er en nøgle. Opret en gratis konto på sentry.io (vælg EU som region) og to projekter: "Node" til serveren og "Browser JavaScript" til spillet. Så:
+
+```bash
+fly secrets set SENTRY_DSN=<server-dsn> SENTRY_DSN_BROWSER=<browser-dsn> -a hutel
+```
+
+Der sendes en alarm, hvis nogen tjener over 3.000 mønter på en time, eller hvis datafilen var ødelagt.

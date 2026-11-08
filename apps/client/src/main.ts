@@ -2261,6 +2261,7 @@ function renderAdminUsers(stats: AdminStats, users: AdminUser[]) {
     'adminUsers',
     head('🛡️ Admin') +
       `<div class="astats"><div><b>${stats.total}</b><small>brugere i alt</small></div><div><b>${stats.today}</b><small>nye i dag</small></div><div><b>${stats.week}</b><small>nye på 7 dage</small></div><div><b>${stats.online}</b><small>online nu</small></div></div>` +
+      `<p class="sub">${stats.lastBackup ? `💾 Seneste backup: ${new Date(stats.lastBackup).toLocaleString('da-DK', { dateStyle: 'short', timeStyle: 'short' })} · ${stats.backups} gemt` : '⚠️ Ingen backup endnu'}</p>` +
       `<div class="chips" style="margin-bottom:10px"><button id="adRefresh" class="small">🔄 Opdatér</button><button id="adReports" class="small">⚠️ Rapporter</button><button id="adChest" class="small">✨ Gem en guldkiste her</button></div>` +
       `<h3>Nyeste brugere</h3><div class="list">${users.map(row).join('') || '<p class="sub">Ingen brugere endnu.</p>'}</div>` +
       (users.length >= 100 ? '<p class="sub">Viser de 100 nyeste.</p>' : ''),
@@ -3708,6 +3709,12 @@ async function boot() {
     history.replaceState(null, '', location.pathname);
   }
   authCfg = await loadConfig(SERVER);
+  if (authCfg.sentryDsn) {
+    const dsn = authCfg.sentryDsn;
+    void import('@sentry/browser')
+      .then((S) => S.init({ dsn, environment: authCfg.edition ?? 'adult', tracesSampleRate: 0 }))
+      .catch(() => {});
+  }
   if (junior()) setupJunior();
   const saved = store.get(TOKEN_KEY);
   // The game has moved (e.g. hutel.fly.dev → spil.lobbi.dk): go there and stay logged in.
