@@ -79,3 +79,15 @@ fly secrets set SENTRY_DSN=<server-dsn> SENTRY_DSN_BROWSER=<browser-dsn> -a hute
 ```
 
 Der sendes en alarm, hvis nogen tjener over 3.000 mønter på en time, eller hvis datafilen var ødelagt.
+
+## Lobbi Junior på junior.lobbi.dk
+
+DNS er sat op hos Simply (`junior` → CNAME `lobbi-junior.fly.dev`). Gør det i denne rækkefølge:
+
+```bash
+fly certs add junior.lobbi.dk -a lobbi-junior
+fly certs show junior.lobbi.dk -a lobbi-junior   # vent til der står "Issued"
+git pull && fly deploy -c fly.junior.toml
+```
+
+Efter deployet sendes besøgende på lobbi-junior.fly.dev videre til junior.lobbi.dk, og links i forældre-mails bruger den nye adresse.

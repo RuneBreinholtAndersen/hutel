@@ -13,6 +13,9 @@ primary_region = "arn"
   HUTEL_JUNIOR = "true"
   CLIENT_ORIGIN = "https://junior.lobbi.dk,https://lobbi-junior.fly.dev"
   ONBOARDING_LOCK = "true"
+  # Links in parent e-mails and the redirect from lobbi-junior.fly.dev use this address.
+  # Only deploy this after `fly certs add junior.lobbi.dk -a lobbi-junior` shows the certificate as issued.
+  CANONICAL_URL = "https://junior.lobbi.dk"
 
 [[mounts]]
   source = "junior_data"
