@@ -39,6 +39,12 @@ const app = createApp({
   botModel: process.env.BOT_MODEL ?? 'claude-haiku-5-5',
   botMaxCallsPerDay: Number(process.env.BOT_MAX_CALLS_PER_DAY ?? 300),
   sentryDsn: process.env.SENTRY_DSN_BROWSER || undefined,
+  staffApiKey: process.env.STAFF_API_KEY || undefined,
+  // The adult server reaches Lobbi Junior's staff API with the same key.
+  juniorApi:
+    process.env.HUTEL_JUNIOR !== 'true' && process.env.STAFF_API_KEY
+      ? { url: process.env.JUNIOR_URL || 'https://junior.lobbi.dk', key: process.env.STAFF_API_KEY }
+      : undefined,
 });
 
 app.server.listen(port, () => {

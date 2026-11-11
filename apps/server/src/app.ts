@@ -11,11 +11,12 @@ import {
   type Look,
   ROOM_SIZE,
   type PlacedItem,
+  DEFAULT_LOOK,
 } from '@hutel/shared';
 import { z } from 'zod';
 import { Hotel, type HotelConfig } from './hotel';
 import { KeyedLimiter } from './ratelimit';
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { smtpMailer, type SendMail } from './mailer';
 import { applyPendingRestore, backupNow, listBackups, looksValid, prepareRestore } from './backup';
 import { reportError, reportWarning } from './monitoring';
@@ -49,6 +50,11 @@ export interface AppConfig extends HotelConfig {
   backups?: boolean;
   /** Public Sentry DSN for the browser (the server reads SENTRY_DSN itself). */
   sentryDsn?: string;
+  /**
+   * Shared secret between the adult server and Lobbi Junior (STAFF_API_KEY). On Junior it
+   * opens /api/staff/*, so the adult admins can see the numbers and moderate as "Lobbi-vagt".
+   */
+  staffApiKey?: string;
 }
 
 /** Junior accounts a parent never confirmed are deleted after this long. */
@@ -277,6 +283,32 @@ export function createApp(cfg: AppConfig, givenStore?: Store) {
     cfg.dataFile && cfg.backups !== false ? setInterval(takeBackup, 3600_000) : null;
   backupTimer?.unref();
   setTimeout(takeBackup, 5000).unref();
+  /** One-time codes that log the adult admins into Lobbi Junior as "Lobbi-vagt" (2 min). */
+  const staffCodes = new Map<string, { userId: string; exp: number }>();
+  const staffKeyOk = (req: IncomingMessage) => {
+    const key = cfg.staffApiKey;
+    const got = String(req.headers.authorization ?? '').replace(/^Bearer /, '');
+    if (!key || key.length < 32 || !got) return false;
+    const a = createHash('sha256').update(key).digest();
+    const b = createHash('sha256').update(got).digest();
+    return timingSafeEqual(a, b);
+  };
+  /** The staff account in Lobbi Junior: clearly marked, admin, never friends with children. */
+  const staffUser = (): UserRecord => {
+    const found = store.listUsers().find((u) => u.staff);
+    if (found) return found;
+    const { user } = store.createUser(
+      '🛡️ Lobbi-vagt',
+      { ...DEFAULT_LOOK, shirt: 0x2f6b5a, hairStyle: 'kasket', beard: 'ingen' },
+      { password: randomBytes(24).toString('base64url') },
+    );
+    user.staff = true;
+    user.role = 'admin';
+    user.parentConsentAt = Date.now();
+    user.motto = '🛡️ Jeg passer på, at alle har det godt i Lobbi Junior';
+    store.touch();
+    return user;
+  };
   /** A new player came through an invite link: make them friends (the reward comes at level 2). */
   const refer = (user: UserRecord, ref?: string) => {
     const by = ref ? store.getUserByFriendCode(ref) : undefined;
@@ -378,6 +410,35 @@ export function createApp(cfg: AppConfig, givenStore?: Store) {
       });
       refer(user, parsed.data.ref);
       return json(res, 200, { ok: true, token, userId: user.id });
+    }
+    // Lobbi Junior: the adult admin panel asks here (server to server, with the shared key).
+    if (cfg.junior && url.pathname.startsWith('/api/staff/')) {
+      if (url.pathname === '/api/staff/redeem' && req.method === 'POST') {
+        const body = await readBody(req, 512).catch(() => '');
+        const code = (() => {
+          try {
+            return String((JSON.parse(body) as { code?: unknown }).code ?? '');
+          } catch {
+            return '';
+          }
+        })();
+        const hit = staffCodes.get(hashSecret(code));
+        staffCodes.delete(hashSecret(code));
+        const staff = hit && hit.exp > Date.now() ? store.getUser(hit.userId) : undefined;
+        if (!staff)
+          return json(res, 403, { ok: false, error: 'Linket er brugt eller for gammelt.' });
+        return json(res, 200, { ok: true, token: store.rotateToken(staff), userId: staff.id });
+      }
+      if (!staffKeyOk(req)) return json(res, 401, { ok: false, error: 'unauthorized' });
+      if (url.pathname === '/api/staff/overview' && req.method === 'GET')
+        return json(res, 200, hotel.staffOverview());
+      if (url.pathname === '/api/staff/login' && req.method === 'POST') {
+        const staff = staffUser();
+        const code = randomBytes(24).toString('base64url');
+        staffCodes.set(hashSecret(code), { userId: staff.id, exp: Date.now() + 2 * 60_000 });
+        return json(res, 200, { ok: true, url: `${publicBase(req)}/?staff=${code}` });
+      }
+      return json(res, 404, { ok: false, error: 'not_found' });
     }
     if (cfg.junior && url.pathname === '/foraelder') {
       res.setHeader('Content-Type', 'text/html; charset=utf-8');

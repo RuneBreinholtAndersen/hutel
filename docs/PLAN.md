@@ -8,6 +8,8 @@ Sidst opdateret: 7. november 2026. Rækkefølge: voksen-Hutel i lukket beta før
 
 ## Det skal Rune gøre selv
 
+- [ ] Sæt `STAFF_API_KEY` på både hutel og lobbi-junior (se `docs/DEPLOY.md` → "Admin-adgang til Lobbi Junior") og deploy begge
+
 - [ ] Lukket beta: invitér 10–20 venner og familie med dit eget link (👥 Venner → 🔗 Invitér en ven), og hold øje med 📊 og 💬 i Admin
 
 - [ ] Prøv en gendannelse på Fly én gang (kommandoerne står i `docs/DEPLOY.md` → "Backup og gendannelse")
@@ -211,6 +213,12 @@ Samme kodebase og grafik som Hutel, men en helt separat verden for børn. Børn 
 ---
 
 ## Færdigt ✅
+
+### 11. november
+
+- ✅ Lobbi Junior flyttet til junior.lobbi.dk (DNS hos Simply, CANONICAL_URL, knapper på lobbi.dk)
+- ✅ Admin kan se Lobbi Junior fra den voksne Lobbi (tal, nyeste børn, hvem der venter på forælder) og gå ind som "🛡️ Lobbi-vagt" via et engangslink. Vagten kan ikke blive venner, give gaver eller bytte med børn
+- ✅ Upload af lobbi.dk falder tilbage til et andet værktøj, når GitHubs Ubuntu-spejl ikke svarer
 
 ### 8. november
 

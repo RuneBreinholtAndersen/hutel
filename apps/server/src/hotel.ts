@@ -50,6 +50,8 @@ import {
   type InvItem,
   type LimitedView,
   type FeedbackView,
+  type JuniorOverview,
+  type AdminStats,
   type LimitedDrop,
   LIMITED_DROPS,
   type ChestView,
@@ -177,6 +179,8 @@ export interface HotelConfig {
   loginGifts?: boolean;
   /** For the admin panel: newest backup and how many there are. */
   backupInfo?: () => { lastBackup: string | null; backups: number };
+  /** Adult server: where Lobbi Junior's staff API is, and the shared key. */
+  juniorApi?: { url: string; key: string };
   /** Override the limited-edition drops (tests). */
   limitedDrops?: LimitedDrop[];
 }
@@ -462,7 +466,7 @@ export class Hotel {
     if (this.cfg.junior && !user.parentConsentAt) return s.conn.close(4005, 'waiting for parent');
     const shouldBeAdmin = (this.cfg.adminNames ?? []).includes(user.name.toLowerCase());
     if (shouldBeAdmin && user.role === 'user') user.role = 'admin';
-    if (!shouldBeAdmin && user.role === 'admin') user.role = 'user';
+    if (!shouldBeAdmin && user.role === 'admin' && !user.staff) user.role = 'user';
     const old = this.byUser.get(user.id);
     if (old && old !== s) {
       this.toast(old, 'Du er logget ind et andet sted.');
@@ -883,37 +887,13 @@ export class Hotel {
       case 'users': {
         // Only admins see the whole list (moderators handle reports).
         if (user.role !== 'admin') return this.toast(s, 'Kun for administratorer.', 'error');
-        const all = this.store.listUsers();
-        const now = Date.now();
-        const since = (ms: number) => all.filter((u) => now - Date.parse(u.createdAt) < ms).length;
-        const users = [...all]
-          .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
-          .slice(0, 100)
-          .map((u) => ({
-            id: u.id,
-            name: u.name,
-            createdAt: u.createdAt,
-            lastSeen: u.lastSeen,
-            online: this.byUser.has(u.id),
-            role: u.role,
-            login: (u.authId ? 'google' : 'password') as 'google' | 'password',
-            coins: u.coins,
-            onlineMin: Math.floor(u.onlineSec / 60),
-            banned: !!u.bannedUntil && u.bannedUntil > now,
-            muted: !!u.mutedUntil && u.mutedUntil > now,
-          }));
-        return this.send(s, {
-          t: 'adminUsers',
-          stats: {
-            total: all.length,
-            today: since(24 * 3600_000),
-            week: since(7 * 24 * 3600_000),
-            online: this.byUser.size,
-            beta: betaStats(all),
-            ...(this.cfg.backupInfo?.() ?? {}),
-          },
-          users,
-        });
+        return this.send(s, { t: 'adminUsers', ...this.adminUsersData() });
+      }
+      case 'junior':
+      case 'juniorOpen': {
+        if (user.role !== 'admin') return this.toast(s, 'Kun for administratorer.', 'error');
+        void this.juniorStaff(s, msg.action);
+        return;
       }
       case 'resolve': {
         const r = this.store.listReports().find((x) => x.id === msg.reportId);
@@ -2322,6 +2302,81 @@ export class Hotel {
     return e;
   }
 
+  /** The admin list: newest players and the numbers. Also served to the adult admins from Junior. */
+  adminUsersData() {
+    const all = this.store.listUsers().filter((u) => !u.staff);
+    const now = Date.now();
+    const since = (ms: number) => all.filter((u) => now - Date.parse(u.createdAt) < ms).length;
+    const users = [...all]
+      .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+      .slice(0, 100)
+      .map((u) => ({
+        id: u.id,
+        name: u.name,
+        createdAt: u.createdAt,
+        lastSeen: u.lastSeen,
+        online: this.byUser.has(u.id),
+        role: u.role,
+        login: (u.authId ? 'google' : 'password') as 'google' | 'password',
+        coins: u.coins,
+        onlineMin: Math.floor(u.onlineSec / 60),
+        banned: !!u.bannedUntil && u.bannedUntil > now,
+        muted: !!u.mutedUntil && u.mutedUntil > now,
+        ...(this.cfg.junior ? { waiting: !u.parentConsentAt } : {}),
+      }));
+    const stats: AdminStats = {
+      total: all.length,
+      today: since(24 * 3600_000),
+      week: since(7 * 24 * 3600_000),
+      online: [...this.byUser.values()].filter((x) => !x.user?.staff).length,
+      beta: betaStats(all),
+      ...(this.cfg.junior ? { waitingParent: all.filter((u) => !u.parentConsentAt).length } : {}),
+      ...(this.cfg.backupInfo?.() ?? {}),
+    };
+    return { stats, users };
+  }
+
+  /** Lobbi Junior: what the adult admins see (no e-mail addresses, no chat). */
+  staffOverview(): JuniorOverview {
+    return {
+      ...this.adminUsersData(),
+      reportsOpen: this.store.listReports().filter((r) => r.status === 'open').length,
+      feedbackOpen: this.store.listFeedback().filter((f) => !f.done).length,
+    };
+  }
+
+  /** Adult server: ask Lobbi Junior's staff API for its numbers or a one-time login link. */
+  private async juniorStaff(s: Session, action: 'junior' | 'juniorOpen') {
+    const api = this.cfg.juniorApi;
+    if (!api)
+      return this.send(s, {
+        t: 'adminJunior',
+        overview: null,
+        error: 'Forbindelsen til Lobbi Junior er ikke sat op (STAFF_API_KEY og JUNIOR_URL).',
+      });
+    const base = api.url.replace(/\/$/, '');
+    try {
+      const res = await fetch(`${base}/api/staff/${action === 'junior' ? 'overview' : 'login'}`, {
+        method: action === 'junior' ? 'GET' : 'POST',
+        headers: { authorization: `Bearer ${api.key}` },
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (action === 'junior') {
+        const overview = (await res.json()) as JuniorOverview;
+        return this.send(s, { t: 'adminJunior', overview });
+      }
+      const { url } = (await res.json()) as { url: string };
+      return this.send(s, { t: 'adminJuniorLink', url });
+    } catch (e) {
+      return this.send(s, {
+        t: 'adminJunior',
+        overview: null,
+        error: `Kunne ikke nå Lobbi Junior (${(e as Error).message}).`,
+      });
+    }
+  }
+
   /* ---------------- feedback ---------------- */
 
   private feedback(s: Session, user: UserRecord, msg: Extract<ClientMsg, { t: 'feedback' }>) {
@@ -3122,7 +3177,7 @@ export class Hotel {
     if (!o || !other || otherId === user.id || o.room !== s.room || !s.room)
       return this.toast(s, 'I skal være i samme rum for at bytte.', 'error');
     if (!this.onboarded(user)) return this.toast(s, 'Klar startopgaverne først 🙂', 'error');
-    if (other.blocked.includes(user.id) || user.blocked.includes(other.id))
+    if (other.blocked.includes(user.id) || user.blocked.includes(other.id) || other.staff)
       return this.toast(s, 'Du kan ikke bytte med den person.', 'error');
     if (this.trades.has(user.id) || this.trades.has(otherId))
       return this.toast(s, 'En af jer er allerede i gang med at bytte.', 'error');
@@ -3451,6 +3506,11 @@ export class Hotel {
         return no('Man kan ikke skrive egen tekst i Lobbi Junior.');
       case 'cinemaAdd':
         return no('Biografen findes ikke i Lobbi Junior.');
+      case 'friendRequest':
+      case 'giftSend':
+      case 'tradeStart':
+        if (s.user?.staff) return no('Lobbi-vagten kan ikke blive venner, give gaver eller bytte.');
+        return true;
       case 'roomSettings':
         if (msg.name !== undefined || msg.description !== undefined)
           return no('Værelsets navn kan ikke ændres i Lobbi Junior.');
@@ -3533,6 +3593,7 @@ export class Hotel {
           : 'Fandt ingen gæst med det navn.',
         'error',
       );
+    if (target.staff) return this.toast(s, 'Lobbi-vagten kan ikke blive din ven 🛡️', 'error');
     if (user.friends.includes(target.id)) return this.toast(s, `I er allerede venner`);
     if (target.blocked.includes(user.id)) return this.toast(s, 'Venneanmodning sendt');
     if (user.requests.includes(target.id)) return this.friendRespond(s, user, target.id, true);

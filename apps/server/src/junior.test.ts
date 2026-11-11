@@ -12,6 +12,7 @@ import {
 } from '@hutel/shared';
 import { createApp } from './app';
 
+const STAFF_KEY = 'k'.repeat(40);
 const mails: { to: string; text: string }[] = [];
 const app = createApp({
   sendMail: async (m) => {
@@ -29,6 +30,7 @@ const app = createApp({
   videoTitles: false,
   chests: false,
   junior: true,
+  staffApiKey: STAFF_KEY,
 });
 let base = '';
 beforeAll(async () => {
@@ -235,5 +237,110 @@ describe('Lobbi Junior server', () => {
     expect(req.requests[0]!.name).toBe(b.name);
     a.c.ws.close();
     b.c.ws.close();
+  });
+});
+
+describe('Lobbi-vagt: adult admins in Junior', () => {
+  const staffGet = (path: string, key?: string, method = 'GET') =>
+    fetch(`http://${base}/api/staff/${path}`, {
+      method,
+      headers: key ? { authorization: `Bearer ${key}` } : {},
+    });
+
+  it('only answers with the shared key', async () => {
+    expect((await staffGet('overview')).status).toBe(401);
+    expect((await staffGet('overview', 'forkert'.repeat(6))).status).toBe(401);
+    const kid = await signup({ name: freshName() });
+    expect(kid.ok).toBe(true);
+    const o = (await (await staffGet('overview', STAFF_KEY)).json()) as {
+      stats: { total: number; waitingParent: number };
+      users: { name: string; waiting: boolean }[];
+    };
+    expect(o.stats.total).toBeGreaterThan(0);
+    expect(o.stats.waitingParent).toBeGreaterThan(0);
+    expect(o.users[0]!.waiting).toBe(true);
+    expect(JSON.stringify(o)).not.toContain('mor@example.com');
+  });
+
+  it('logs in as Lobbi-vagt with a one-time link, marked and unable to befriend children', async () => {
+    const { url } = (await (await staffGet('login', STAFF_KEY, 'POST')).json()) as { url: string };
+    const code = new URL(url).searchParams.get('staff')!;
+    const redeem = (c: string) =>
+      fetch(`http://${base}/api/staff/redeem`, {
+        method: 'POST',
+        body: JSON.stringify({ code: c }),
+      });
+    const r = (await (await redeem(code)).json()) as { ok: boolean; token: string };
+    expect(r.ok).toBe(true);
+    expect((await redeem(code)).status).toBe(403); // one time only
+    const vagt = new Client();
+    await vagt.open();
+    vagt.send({ t: 'auth', token: r.token });
+    const w = await vagt.waitFor('welcome');
+    expect(w.me.name).toContain('Lobbi-vagt');
+    expect(w.me.role).toBe('admin');
+    const kid = await child();
+    kid.c.send({ t: 'friendRequest', name: (await vagt.waitFor('friends')).code! });
+    await kid.c.waitFor('toast', (m) => /Lobbi-vagten/.test(m.text));
+    vagt.send({ t: 'friendRequest', name: (await kid.c.waitFor('friends')).code! });
+    await vagt.waitFor('toast', (m) => /Lobbi-vagten kan ikke/.test(m.text));
+    // The staff account never shows up in the numbers.
+    const o = (await (await staffGet('overview', STAFF_KEY)).json()) as {
+      users: { name: string }[];
+    };
+    expect(o.users.some((u) => u.name.includes('Lobbi-vagt'))).toBe(false);
+    vagt.ws.close();
+    kid.c.ws.close();
+  });
+
+  it('is reachable from the adult admin panel', async () => {
+    const adult = createApp({
+      adminNames: ['voksenchef'],
+      clientOrigins: ['http://localhost:5173'],
+      dataFile: null,
+      clientDist: null,
+      onboardingLock: false,
+      botModel: 'test',
+      botMaxCallsPerDay: 0,
+      chests: false,
+      juniorApi: { url: `http://${base}`, key: STAFF_KEY },
+    });
+    await new Promise<void>((r) => adult.server.listen(0, r));
+    const ab = `127.0.0.1:${(adult.server.address() as AddressInfo).port}`;
+    const g = (await (
+      await fetch(`http://${ab}/api/guest`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          name: 'Voksenchef',
+          look: DEFAULT_LOOK,
+          password: 'hemmelig123',
+          adult: true,
+          terms: true,
+        }),
+      })
+    ).json()) as { token: string };
+    const ws = new WebSocket(`ws://${ab}/ws`, { headers: { origin: 'http://localhost:5173' } });
+    const got: ServerMsg[] = [];
+    ws.on('message', (d) => got.push(JSON.parse(d.toString()) as ServerMsg));
+    await new Promise((r) => ws.once('open', r));
+    ws.send(JSON.stringify({ t: 'auth', token: g.token }));
+    const wait = async (t: string) => {
+      for (let i = 0; i < 100; i++) {
+        const m = got.find((x) => x.t === t);
+        if (m) return m;
+        await new Promise((r) => setTimeout(r, 30));
+      }
+      throw new Error(`no ${t}`);
+    };
+    await wait('welcome');
+    ws.send(JSON.stringify({ t: 'admin', action: 'junior' }));
+    const j = (await wait('adminJunior')) as Extract<ServerMsg, { t: 'adminJunior' }>;
+    expect(j.overview?.stats.total).toBeGreaterThan(0);
+    ws.send(JSON.stringify({ t: 'admin', action: 'juniorOpen' }));
+    const link = (await wait('adminJuniorLink')) as Extract<ServerMsg, { t: 'adminJuniorLink' }>;
+    expect(link.url).toContain('?staff=');
+    ws.close();
+    await adult.close();
   });
 });

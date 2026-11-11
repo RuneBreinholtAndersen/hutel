@@ -175,6 +175,10 @@ export const ClientMsgSchema = z.discriminatedUnion('t', [
       'chestSpawn',
       'feedback',
       'feedbackDone',
+      /** Numbers and newest players from Lobbi Junior (its own server). */
+      'junior',
+      /** A one-time link that opens Lobbi Junior as the staff account "Lobbi-vagt". */
+      'juniorOpen',
     ]),
     reportId: z.string().max(40).optional(),
     userId: z.string().max(40).optional(),
@@ -459,6 +463,8 @@ export interface AdminUser {
   onlineMin: number;
   banned: boolean;
   muted: boolean;
+  /** Lobbi Junior: still waiting for a parent to say yes. */
+  waiting?: boolean;
 }
 export interface AdminStats {
   total: number;
@@ -470,6 +476,16 @@ export interface AdminStats {
   backups?: number;
   /** Active and new players per day, and how many come back. */
   beta?: BetaStats;
+  /** Lobbi Junior: accounts waiting for a parent's yes. */
+  waitingParent?: number;
+}
+
+/** Lobbi Junior seen from the adult admin panel. */
+export interface JuniorOverview {
+  stats: AdminStats;
+  users: AdminUser[];
+  reportsOpen: number;
+  feedbackOpen: number;
 }
 
 export interface InvItem {
@@ -617,6 +633,8 @@ export type ServerMsg =
   | { t: 'adminReports'; reports: AdminReport[] }
   | { t: 'adminUsers'; stats: AdminStats; users: AdminUser[] }
   | { t: 'adminFeedback'; items: FeedbackView[] }
+  | { t: 'adminJunior'; overview: JuniorOverview | null; error?: string }
+  | { t: 'adminJuniorLink'; url: string }
   /** The golden chest in this room, or null when there is none. */
   | { t: 'chest'; chest: ChestView | null }
   /** 👍 on the room you are in. `canLike` is false in your own room and public rooms. */

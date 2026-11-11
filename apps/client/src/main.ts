@@ -56,6 +56,7 @@ import {
   type GiftView,
   INVITE_REWARD,
   type FeedbackView,
+  type JuniorOverview,
   LOGIN_GIFTS,
   canTrade,
   PET_FEED_PRICE,
@@ -769,6 +770,10 @@ function handle(msg: ServerMsg) {
       return renderAdminUsers(msg.stats, msg.users);
     case 'adminFeedback':
       return renderAdminFeedback(msg.items);
+    case 'adminJunior':
+      return renderAdminJunior(msg.overview, msg.error);
+    case 'adminJuniorLink':
+      return renderJuniorLink(msg.url);
     case 'chest':
       return showChest(msg.chest);
     case 'apartment':
@@ -1020,7 +1025,10 @@ function openPanel(kind: string, html: string) {
   for (const id of ['bNav', 'bFriends', 'bFig', 'bShop', 'bInv']) $(id).classList.remove('on');
   const btn = { nav: 'bNav', friends: 'bFriends', fig: 'bFig', shop: 'bShop', inv: 'bInv' }[kind];
   if (btn) $(btn).classList.add('on');
-  $('bAdmin').classList.toggle('on', kind === 'adminUsers' || kind === 'adminFeedback');
+  $('bAdmin').classList.toggle(
+    'on',
+    kind === 'adminUsers' || kind === 'adminFeedback' || kind === 'adminJunior',
+  );
 }
 function closePanel() {
   stopTutorial?.();
@@ -2417,6 +2425,59 @@ function renderFigure() {
 
 /* ---------------- moderation ---------------- */
 /** Admin: who has signed up, newest first. */
+/* ---------------- admin: Lobbi Junior ---------------- */
+
+/** Lobbi Junior seen from the adult admin panel: numbers, newest children, and a way in. */
+function renderAdminJunior(o: JuniorOverview | null, error?: string) {
+  const back = `<div class="chips" style="margin-bottom:10px"><button id="adBack" class="small">← Admin</button>${o ? '<button id="ajRefresh" class="small">🔄 Opdatér</button>' : ''}</div>`;
+  if (!o) {
+    openPanel(
+      'adminJunior',
+      head('🧒 Lobbi Junior') + back + `<p class="sub">⚠️ ${esc(error ?? 'Ukendt fejl')}</p>`,
+    );
+  } else {
+    const ago = (iso: string) =>
+      new Date(iso).toLocaleString('da-DK', { dateStyle: 'short', timeStyle: 'short' });
+    const row = (u: AdminUser) =>
+      `<div class="li"><div class="grow"><b>${u.online ? '<span class="status-on">●</span> ' : ''}${esc(u.name)}</b>${u.waiting ? ' <span class="tag-wait">⏳ venter på forælder</span>' : ''}${u.banned ? ' <small>⛔</small>' : ''}<small>Oprettet ${ago(u.createdAt)} · sidst set ${ago(u.lastSeen)} · ${u.onlineMin} min</small></div></div>`;
+    const s = o.stats;
+    openPanel(
+      'adminJunior',
+      head(
+        '🧒 Lobbi Junior',
+        'Børnenes egen server. Du ser tallene her – e-mails og chat bliver på Junior-serveren.',
+      ) +
+        back +
+        `<div class="astats"><div><b>${s.total}</b><small>børn i alt</small></div><div><b>${s.today}</b><small>nye i dag</small></div><div><b>${s.waitingParent ?? 0}</b><small>venter på forælder</small></div><div><b>${s.online}</b><small>online nu</small></div></div>` +
+        (o.reportsOpen || o.feedbackOpen
+          ? `<p class="sub">⚠️ <b>${o.reportsOpen}</b> åbne rapporter · 💬 <b>${o.feedbackOpen}</b> åbne fejl og idéer – se dem i Admin inde i Junior.</p>`
+          : '') +
+        betaHtml(s.beta) +
+        `<div class="row"><button id="ajOpen" class="primary">🛡️ Åbn Lobbi Junior som Lobbi-vagt</button></div>
+        <p class="sub">Du kommer ind som "🛡️ Lobbi-vagt" med Admin og moderation. Børnene kan se, at du er vagt, og vagten kan ikke blive venner, give gaver eller bytte med dem.</p>` +
+        `<h3>Nyeste børn</h3><div class="list">${o.users.map(row).join('') || '<p class="sub">Ingen har oprettet sig endnu.</p>'}</div>`,
+    );
+    $('ajRefresh').addEventListener('click', () => net?.send({ t: 'admin', action: 'junior' }));
+    $('ajOpen').addEventListener('click', () => net?.send({ t: 'admin', action: 'juniorOpen' }));
+  }
+  $('bAdmin').classList.add('on');
+  $('adBack').addEventListener('click', () => net?.send({ t: 'admin', action: 'users' }));
+}
+
+/** The one-time link works for two minutes, so it's a button to click now (popups get blocked). */
+function renderJuniorLink(url: string) {
+  openPanel(
+    'adminJunior',
+    head('🛡️ Lobbi-vagt', 'Linket virker én gang og kun i 2 minutter.') +
+      `<div class="row"><a class="btn primary" id="ajGo" href="${esc(url)}" target="_blank" rel="noopener">Gå ind i Lobbi Junior →</a></div>
+      <div class="chips"><button id="adBack" class="small">← Tilbage</button></div>`,
+  );
+  $('ajGo').addEventListener('click', () =>
+    window.setTimeout(() => net?.send({ t: 'admin', action: 'junior' }), 300),
+  );
+  $('adBack').addEventListener('click', () => net?.send({ t: 'admin', action: 'junior' }));
+}
+
 /* ---------------- feedback ---------------- */
 
 /** "iPhone · Safari · 390×844" – helps reproduce a bug, says nothing about who it is. */
@@ -2546,11 +2607,15 @@ function renderAdminUsers(stats: AdminStats, users: AdminUser[]) {
       `<div class="astats"><div><b>${stats.total}</b><small>brugere i alt</small></div><div><b>${stats.today}</b><small>nye i dag</small></div><div><b>${stats.week}</b><small>nye på 7 dage</small></div><div><b>${stats.online}</b><small>online nu</small></div></div>` +
       betaHtml(stats.beta) +
       `<p class="sub">${stats.lastBackup ? `💾 Seneste backup: ${new Date(stats.lastBackup).toLocaleString('da-DK', { dateStyle: 'short', timeStyle: 'short' })} · ${stats.backups} gemt` : '⚠️ Ingen backup endnu'}</p>` +
-      `<div class="chips" style="margin-bottom:10px"><button id="adRefresh" class="small">🔄 Opdatér</button><button id="adReports" class="small">⚠️ Rapporter</button><button id="adFeedback" class="small">💬 Fejl og idéer</button><button id="adChest" class="small">✨ Gem en guldkiste her</button></div>` +
+      `<div class="chips" style="margin-bottom:10px"><button id="adRefresh" class="small">🔄 Opdatér</button><button id="adReports" class="small">⚠️ Rapporter</button><button id="adFeedback" class="small">💬 Fejl og idéer</button><button id="adChest" class="small">✨ Gem en guldkiste her</button>${junior() ? '' : '<button id="adJunior" class="small">🧒 Lobbi Junior</button>'}</div>` +
       `<h3>Nyeste brugere</h3><div class="list">${users.map(row).join('') || '<p class="sub">Ingen brugere endnu.</p>'}</div>` +
       (users.length >= 100 ? '<p class="sub">Viser de 100 nyeste.</p>' : ''),
   );
   $('adRefresh').addEventListener('click', () => net?.send({ t: 'admin', action: 'users' }));
+  $('adJunior')?.addEventListener('click', () => {
+    openPanel('adminJunior', head('🧒 Lobbi Junior', 'Henter tal fra Junior-serveren …'));
+    net?.send({ t: 'admin', action: 'junior' });
+  });
   $('adReports').addEventListener('click', () => net?.send({ t: 'admin', action: 'reports' }));
   $('adChest').addEventListener('click', () => net?.send({ t: 'admin', action: 'chestSpawn' }));
   $('adFeedback').addEventListener('click', () => net?.send({ t: 'admin', action: 'feedback' }));
@@ -4070,6 +4135,22 @@ async function boot() {
       .catch(() => {});
   }
   if (junior()) setupJunior();
+  // Adult admins arrive in Lobbi Junior with a one-time link (?staff=…) and play as "Lobbi-vagt".
+  const staffCode = new URLSearchParams(location.search).get('staff');
+  if (junior() && staffCode) {
+    history.replaceState(null, '', location.pathname + location.hash);
+    try {
+      const r = await fetch(`${SERVER}/api/staff/redeem`, {
+        method: 'POST',
+        body: JSON.stringify({ code: staffCode }),
+      });
+      const d = (await r.json()) as { ok: boolean; token?: string; error?: string };
+      if (d.ok && d.token) store.set(TOKEN_KEY, d.token);
+      else toast(d.error ?? 'Linket virker ikke længere – hent et nyt i Admin.', 'error');
+    } catch {
+      toast('Kunne ikke logge ind som Lobbi-vagt.', 'error');
+    }
+  }
   const saved = store.get(TOKEN_KEY);
   // The game has moved (e.g. hutel.fly.dev → spil.lobbi.dk): go there and stay logged in.
   if (authCfg.canonicalUrl && !envServer) {

@@ -91,3 +91,15 @@ git pull && fly deploy -c fly.junior.toml
 ```
 
 Efter deployet sendes besøgende på lobbi-junior.fly.dev videre til junior.lobbi.dk, og links i forældre-mails bruger den nye adresse.
+
+## Admin-adgang til Lobbi Junior (Lobbi-vagt)
+
+Admin i den voksne Lobbi har knappen **🧒 Lobbi Junior**. Den viser Junior-tallene og de nyeste børn, og "Åbn Lobbi Junior som Lobbi-vagt" giver et engangslink, der virker i 2 minutter. De to servere taler sammen med en fælles hemmelig nøgle, som sættes én gang på begge apps:
+
+```bash
+KEY=$(openssl rand -hex 32)
+fly secrets set STAFF_API_KEY=$KEY -a hutel
+fly secrets set STAFF_API_KEY=$KEY -a lobbi-junior
+```
+
+Vagten hedder "🛡️ Lobbi-vagt" i Junior, har Admin og moderation, tæller ikke med i statistikken og kan ikke blive venner, give gaver eller bytte med børnene. E-mailadresser og chat bliver på Junior-serveren.

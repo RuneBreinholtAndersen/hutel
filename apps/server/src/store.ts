@@ -38,6 +38,8 @@ export interface UserRecord {
   friends: string[];
   /** Lobbi Junior: code you give to a friend so they can add you (no search by name). */
   friendCode?: string;
+  /** Lobbi Junior: the staff account ("Lobbi-vagt") the adult admins use to moderate. */
+  staff?: boolean;
   /** Joined through this player's invite link. */
   referredBy?: string;
   /** The invite reward has been paid (at level 2). */
