@@ -44,10 +44,9 @@ jobs:
         run: |
           # Ubuntu's package mirrors are sometimes unreachable from GitHub: try a few times,
           # and fall back to a small Node FTPS uploader (from npm) if lftp can't be installed.
-          for i in 1 2 3; do
-            sudo apt-get install -y -qq lftp && break
-            sudo apt-get update -qq || true
-            sleep 15
+          for i in 1 2; do
+            sudo timeout 90 apt-get install -y -qq -o Acquire::Retries=0 lftp && break
+            sudo timeout 90 apt-get update -qq || true
           done
           if command -v lftp >/dev/null; then
             lftp -u "lobbi.dk,$FTP_PASSWORD" ftp.simply.com -e "set ftp:ssl-force true; set ftp:ssl-protect-data true; set ssl:verify-certificate yes; mirror --reverse --delete --verbose --exclude-glob .git* apps/site/dist/ public_html/; quit"
