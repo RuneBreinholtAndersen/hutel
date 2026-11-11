@@ -42,8 +42,28 @@ jobs:
       - name: Upload with FTPS (lftp)
         if: env.SSH_KEY == '' && env.FTP_PASSWORD != ''
         run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq lftp
-          lftp -u "lobbi.dk,$FTP_PASSWORD" ftp.simply.com -e "set ftp:ssl-force true; set ftp:ssl-protect-data true; set ssl:verify-certificate yes; mirror --reverse --delete --verbose --exclude-glob .git* apps/site/dist/ public_html/; quit"
+          # Ubuntu's package mirrors are sometimes unreachable from GitHub: try a few times,
+          # and fall back to a small Node FTPS uploader (from npm) if lftp can't be installed.
+          for i in 1 2 3; do
+            sudo apt-get install -y -qq lftp && break
+            sudo apt-get update -qq || true
+            sleep 15
+          done
+          if command -v lftp >/dev/null; then
+            lftp -u "lobbi.dk,$FTP_PASSWORD" ftp.simply.com -e "set ftp:ssl-force true; set ftp:ssl-protect-data true; set ssl:verify-certificate yes; mirror --reverse --delete --verbose --exclude-glob .git* apps/site/dist/ public_html/; quit"
+          else
+            echo "::warning::lftp kunne ikke installeres – uploader med basic-ftp (sletter ikke gamle filer)"
+            npm i --no-save --prefix /tmp/ftp basic-ftp@5
+            NODE_PATH=/tmp/ftp/node_modules node -e '
+              const ftp = require("basic-ftp");
+              (async () => {
+                const c = new ftp.Client(60000);
+                await c.access({ host: "ftp.simply.com", user: "lobbi.dk", password: process.env.FTP_PASSWORD, secure: true });
+                await c.ensureDir("public_html");
+                await c.uploadFromDir("apps/site/dist");
+                c.close();
+              })().catch((e) => { console.error(e); process.exit(1); });'
+          fi
       - name: No upload secret
         if: env.SSH_KEY == '' && env.FTP_PASSWORD == ''
         run: echo "::warning::Tilføj secret SIMPLY_FTP_PASSWORD (eller SIMPLY_SSH_KEY) for at uploade til lobbi.dk"
