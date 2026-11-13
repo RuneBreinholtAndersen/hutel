@@ -27,6 +27,8 @@ import {
   CLOTHES,
   lookAllowed,
   ClientMsgSchema,
+  LookSchema,
+  repairLook,
   COINS_PER_ONLINE_MINUTE,
   DOOR_TILE,
   filterChat,
@@ -475,6 +477,11 @@ export class Hotel {
     }
     s.user = user;
     this.byUser.set(user.id, s);
+    // A stored look the schema no longer accepts would make every later look change fail.
+    if (!LookSchema.safeParse(user.look).success) {
+      user.look = repairLook(user.look);
+      this.store.touch();
+    }
     this.send(s, {
       t: 'welcome',
       me: this.me(user),

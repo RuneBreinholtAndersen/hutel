@@ -218,6 +218,7 @@ Samme kodebase og grafik som Hutel, men en helt separat verden for børn. Børn 
 
 - ✅ Lobbi Junior flyttet til junior.lobbi.dk (DNS hos Simply, CANONICAL_URL, knapper på lobbi.dk)
 - ✅ Admin kan se Lobbi Junior fra den voksne Lobbi (tal, nyeste børn, hvem der venter på forælder) og gå ind som "🛡️ Lobbi-vagt" via et engangslink. Vagten kan ikke blive venner, give gaver eller bytte med børn
+- ✅ Rettet: Lobbi-vagten kunne ikke skifte udseende (ugyldig trøjefarve). Serveren reparerer nu ugyldige figurer ved login for alle spillere
 - ✅ Upload af lobbi.dk falder tilbage til et andet værktøj, når GitHubs Ubuntu-spejl ikke svarer
 
 ### 8. november

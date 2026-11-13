@@ -384,3 +384,17 @@ describe('beta stats', () => {
     expect(s.week).toEqual({ of: 3, came: 2 });
   });
 });
+
+describe('repairLook', () => {
+  it('keeps valid fields and replaces the ones the schema rejects', async () => {
+    const { repairLook, LookSchema, DEFAULT_LOOK, PALETTE } = await import('./index');
+    const bad = { ...DEFAULT_LOOK, shirt: 0x123456, hair: PALETTE.hair[3], hat: 'nope', gender: 'mand' };
+    const fixed = repairLook(bad);
+    expect(LookSchema.safeParse(fixed).success).toBe(true);
+    expect(fixed.shirt).toBe(DEFAULT_LOOK.shirt);
+    expect(fixed.hair).toBe(PALETTE.hair[3]);
+    expect(fixed.hat).toBeUndefined();
+    expect(fixed.gender).toBe('mand');
+    expect(LookSchema.safeParse(repairLook(null)).success).toBe(true);
+  });
+});

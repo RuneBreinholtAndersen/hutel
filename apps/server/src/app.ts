@@ -299,7 +299,7 @@ export function createApp(cfg: AppConfig, givenStore?: Store) {
     if (found) return found;
     const { user } = store.createUser(
       '🛡️ Lobbi-vagt',
-      { ...DEFAULT_LOOK, shirt: 0x2f6b5a, hairStyle: 'kasket', beard: 'ingen' },
+      { ...DEFAULT_LOOK, shirt: 0x5b8f4a, hairStyle: 'kasket', beard: 'ingen' },
       { password: randomBytes(24).toString('base64url') },
     );
     user.staff = true;

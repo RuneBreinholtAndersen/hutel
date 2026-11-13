@@ -105,3 +105,20 @@ export const DEFAULT_LOOK: Look = {
   glasses: 'ingen',
   beard: 'ingen',
 };
+
+/**
+ * Makes a stored look valid again: every field the schema rejects (an old colour, a removed
+ * hair style …) falls back to the default, or is dropped if it is optional. Without this a single
+ * bad field makes every later "look" message from that player fail validation.
+ */
+export function repairLook(look: unknown): Look {
+  const src = (look && typeof look === 'object' ? look : {}) as Record<string, unknown>;
+  const shape = LookSchema.shape as Record<string, z.ZodTypeAny>;
+  const out: Record<string, unknown> = {};
+  for (const [key, schema] of Object.entries(shape)) {
+    if (src[key] !== undefined && schema.safeParse(src[key]).success) out[key] = src[key];
+    else if (key in DEFAULT_LOOK) out[key] = DEFAULT_LOOK[key as keyof Look];
+  }
+  return out as Look;
+}
+

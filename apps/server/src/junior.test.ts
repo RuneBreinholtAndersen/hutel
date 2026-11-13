@@ -7,6 +7,8 @@ import {
   isJuniorName,
   isJuniorPhrase,
   JUNIOR_PHRASES,
+  LookSchema,
+  PALETTE,
   randomJuniorName,
   type ServerMsg,
 } from '@hutel/shared';
@@ -279,7 +281,14 @@ describe('Lobbi-vagt: adult admins in Junior', () => {
     const w = await vagt.waitFor('welcome');
     expect(w.me.name).toContain('Lobbi-vagt');
     expect(w.me.role).toBe('admin');
+    // The vagt can change clothes like everyone else (its look must pass the schema).
+    expect(LookSchema.safeParse(w.me.look).success).toBe(true);
+    await vagt.waitFor('room');
+    vagt.send({ t: 'look', look: { ...w.me.look, shirt: PALETTE.shirt[2] } });
+    await vagt.waitFor('look', (m) => m.look.shirt === PALETTE.shirt[2]);
     const kid = await child();
+    kid.c.send({ t: 'look', look: { ...DEFAULT_LOOK, hair: PALETTE.hair[3], hairStyle: 'langt' } });
+    await kid.c.waitFor('look', (m) => m.look.hairStyle === 'langt');
     kid.c.send({ t: 'friendRequest', name: (await vagt.waitFor('friends')).code! });
     await kid.c.waitFor('toast', (m) => /Lobbi-vagten/.test(m.text));
     vagt.send({ t: 'friendRequest', name: (await kid.c.waitFor('friends')).code! });
