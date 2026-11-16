@@ -103,3 +103,13 @@ fly secrets set STAFF_API_KEY=$KEY -a lobbi-junior
 ```
 
 Vagten hedder "🛡️ Lobbi-vagt" i Junior, har Admin og moderation, tæller ikke med i statistikken og kan ikke blive venner, give gaver eller bytte med børnene. E-mailadresser og chat bliver på Junior-serveren.
+
+## E-mails til dashboardet
+
+Lobbi gemmer den e-mail, spilleren logger ind med via Supabase (Google eller e-mail), og sender den med i `POST /api/dashboard/users`. For spillere, der loggede ind før det blev indført, kan serveren slå e-mailen op én gang ved opstart:
+
+```
+fly secrets set SUPABASE_SERVICE_ROLE_KEY=<service role key fra Supabase → Project Settings → API> -a hutel
+```
+
+Nøglen må kun ligge som secret på serveren, aldrig i klienten. Uden den bliver e-mailen udfyldt næste gang spilleren logger ind.

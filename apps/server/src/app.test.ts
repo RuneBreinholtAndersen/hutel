@@ -14,7 +14,8 @@ import {
   type ServerMsg,
 } from '@hutel/shared';
 import { createHash } from 'node:crypto';
-import { createApp } from './app';
+import { createServer } from 'node:http';
+import { backfillEmails, createApp } from './app';
 import { QUIZ as QUIZ_FOR_TEST } from './games';
 
 const DASH_SECRET = 'test-dashboard-secret';
@@ -303,6 +304,32 @@ describe('social login (Supabase)', () => {
       profile: { ...profile, name: 'Ejer' },
     });
     expect(took.body.userId).toBe(ejId);
+    // the dashboard gets the e-mail each player logged in with
+    const dash = (await (
+      await fetch(`http://127.0.0.1:${port}/api/dashboard/users`, {
+        method: 'POST',
+        headers: { 'x-dashboard-secret': DASH_SECRET },
+        body: JSON.stringify({ limit: 50 }),
+      })
+    ).json()) as { email: string | null; name: string }[];
+    const mail = (n: string) => dash.find((u) => u.name === n)?.email;
+    expect(mail('Googler')).toBe('user-1@example.com');
+    expect(mail('Gammel')).toBe('user-3@example.com');
+    expect(mail('Ejer')).toBe('ejerkonto@example.com');
+    // existing logins without a stored e-mail are filled in from Supabase (service role)
+    const u1 = sb.store.listUsers().find((u) => u.name === 'Googler')!;
+    delete u1.email;
+    const admin = createServer((req, res) => {
+      const ok = req.headers.authorization === 'Bearer service' && req.headers.apikey === 'service';
+      res.writeHead(ok ? 200 : 401, { 'content-type': 'application/json' });
+      res.end(JSON.stringify(ok ? { users: [{ id: 'user-1', email: 'User-1@Example.com' }] } : {}));
+    });
+    await new Promise<void>((r) => admin.listen(0, r));
+    const adminUrl = `http://127.0.0.1:${(admin.address() as AddressInfo).port}`;
+    expect(await backfillEmails(adminUrl, 'service', sb.store)).toBe(1);
+    expect(u1.email).toBe('user-1@example.com');
+    await expect(backfillEmails(adminUrl, 'forkert', sb.store)).resolves.toBe(0);
+    admin.close();
     await sb.close();
   });
 

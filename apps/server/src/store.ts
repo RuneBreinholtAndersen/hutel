@@ -28,6 +28,8 @@ export interface UserRecord {
   passwordHash?: string;
   /** Id from the external login provider (Supabase Auth: e-mail, Google, Facebook). */
   authId?: string;
+  /** E-mail from the login provider (Google account or e-mail login). Adults only. */
+  email?: string;
   look: Look;
   coins: number;
   onlineSec: number;

@@ -35,6 +35,8 @@ export interface AppConfig extends HotelConfig {
   inviteCodes?: string[];
   /** Supabase project URL + public anon key – enables e-mail/Google/Facebook login. */
   supabaseUrl?: string;
+  /** Supabase service role key (server only): fills in e-mails for existing logins at startup. */
+  supabaseServiceKey?: string;
   /** SHA-256 (hex) of the dashboard secret. Only tests override the built-in value. */
   dashboardSecretSha256?: string;
   supabaseAnonKey?: string;
@@ -72,6 +74,41 @@ function parentPage(title: string, body: string) {
 export interface AuthIdentity {
   id: string;
   email?: string;
+}
+
+/** Fill in e-mails for players who logged in via Supabase before Lobbi stored them. */
+export async function backfillEmails(url: string, serviceKey: string, store: Store) {
+  const missing = new Map(
+    store
+      .listUsers()
+      .filter((u) => u.authId && !u.email)
+      .map((u) => [u.authId!, u]),
+  );
+  if (!missing.size) return 0;
+  let filled = 0;
+  for (let page = 1; page <= 50 && missing.size; page++) {
+    const r = await fetch(
+      `${url.replace(/\/$/, '')}/auth/v1/admin/users?page=${page}&per_page=1000`,
+      {
+        headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` },
+        signal: AbortSignal.timeout(10_000),
+      },
+    );
+    if (!r.ok) throw new Error(`Supabase admin users: HTTP ${r.status}`);
+    const body = (await r.json()) as { users?: { id?: unknown; email?: unknown }[] };
+    const users = body.users ?? [];
+    for (const a of users) {
+      const u = typeof a.id === 'string' ? missing.get(a.id) : undefined;
+      if (u && typeof a.email === 'string' && a.email) {
+        u.email = a.email.trim().toLowerCase();
+        missing.delete(a.id as string);
+        filled++;
+      }
+    }
+    if (users.length < 1000) break;
+  }
+  if (filled) store.touch();
+  return filled;
 }
 
 /** Ask Supabase who owns this access token. Returns null if the token is invalid. */
@@ -230,6 +267,19 @@ export function createApp(cfg: AppConfig, givenStore?: Store) {
     (cfg.supabaseUrl && cfg.supabaseAnonKey
       ? supabaseVerifier(cfg.supabaseUrl, cfg.supabaseAnonKey)
       : null);
+  /** Keep the e-mail the player logged in with (never in Lobbi Junior). */
+  const rememberEmail = (user: UserRecord, email: string | undefined) => {
+    const e = email?.trim().toLowerCase();
+    if (cfg.junior || !e || user.email === e) return;
+    user.email = e;
+    store.touch();
+  };
+  // Existing Supabase logins from before e-mails were stored: look them up once.
+  if (!cfg.junior && cfg.supabaseUrl && cfg.supabaseServiceKey) {
+    void backfillEmails(cfg.supabaseUrl, cfg.supabaseServiceKey, store).catch((e: unknown) =>
+      reportError(e),
+    );
+  }
   const clientIp = (req: IncomingMessage) =>
     (req.headers['fly-client-ip'] as string) ?? req.socket.remoteAddress ?? 'unknown';
   const sendMail = cfg.sendMail ?? smtpMailer();
@@ -383,9 +433,7 @@ export function createApp(cfg: AppConfig, givenStore?: Store) {
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
       .slice(0, limit)
       .map((u) => ({
-        // Lobbi does not store e-mail addresses for adults (Supabase keeps them), so the
-        // player name is sent alongside.
-        email: null,
+        email: u.email ?? null,
         name: u.name,
         created_at: u.createdAt,
         last_sign_in_at: u.lastSeen && u.lastSeen !== u.createdAt ? u.lastSeen : null,
@@ -610,6 +658,7 @@ export function createApp(cfg: AppConfig, givenStore?: Store) {
       if (existing) {
         if (existing.bannedUntil && existing.bannedUntil > Date.now())
           return json(res, 403, { ok: false, error: 'Kontoen er midlertidigt udelukket.' });
+        rememberEmail(existing, who.email);
         return json(res, 200, {
           ok: true,
           token: store.rotateToken(existing),
@@ -623,6 +672,7 @@ export function createApp(cfg: AppConfig, givenStore?: Store) {
       if (claimed && !claimed.authId && claimEmail && who.email?.toLowerCase() === claimEmail) {
         // Rune has approved (via CLAIM_NAMES) that this e-mail may take over the old account.
         claimed.authId = who.id;
+        rememberEmail(claimed, who.email);
         store.touch();
         return json(res, 200, { ok: true, token: store.rotateToken(claimed), userId: claimed.id });
       }
@@ -634,6 +684,7 @@ export function createApp(cfg: AppConfig, givenStore?: Store) {
         if (old.authId || !verifyPassword(profile.password, old.passwordHash))
           return json(res, 401, { ok: false, error: 'Forkert adgangskode til den konto.' });
         old.authId = who.id;
+        rememberEmail(old, who.email);
         store.touch();
         return json(res, 200, { ok: true, token: store.rotateToken(old), userId: old.id });
       }
@@ -643,6 +694,7 @@ export function createApp(cfg: AppConfig, givenStore?: Store) {
       const { user, token } = store.createUser(profile.name.trim(), freeLook(profile.look), {
         authId: who.id,
       });
+      rememberEmail(user, who.email);
       refer(user, profile.ref);
       return json(res, 200, { ok: true, token, userId: user.id });
     }

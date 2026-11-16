@@ -19,6 +19,7 @@ const app = createApp({
   inviteCodes: (process.env.BETA_INVITE_CODES ?? '').split(',').filter((s) => s.trim()),
   supabaseUrl: process.env.SUPABASE_URL || undefined,
   supabaseAnonKey: process.env.SUPABASE_ANON_KEY || undefined,
+  supabaseServiceKey: process.env.SUPABASE_SERVICE_ROLE_KEY || undefined,
   canonicalUrl: process.env.CANONICAL_URL || undefined,
   authProviders: (process.env.AUTH_PROVIDERS ?? 'google')
     .split(',')

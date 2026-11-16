@@ -141,6 +141,7 @@ Det her mener jeg giver mest spil for pengene, i den rækkefølge:
 - ✅ Admin kan se Lobbi Junior fra den voksne Lobbi og gå ind som "🛡️ Lobbi-vagt" (tydeligt markeret, kan ikke blive venner, give gaver eller bytte med børn)
 - ✅ Rettelse: Lobbi-vagten kan skifte udseende, og figurer med en gammel/ugyldig farve bliver repareret ved login, så "Min figur" altid virker
 - ✅ Brugertal til dashboard.breinholtdigital.dk via beskyttede endpoints (`/api/dashboard/stats` og `/users`); Junior giver kun tal
+- ✅ Dashboardets brugerliste viser nu spillernes login-e-mail
 - ✅ Invitér en ven: personligt link, I bliver venner med det samme, og begge får 50 mønter, når vennen når level 2
 - ✅ "💬 Fejl eller idé?" fra spillet direkte til admins, med rum og enhed
 - ✅ Beta-statistik i Admin: aktive pr. dag og hvor mange der kommer igen
