@@ -12,9 +12,11 @@ import {
   randomJuniorName,
   type ServerMsg,
 } from '@hutel/shared';
+import { createHash } from 'node:crypto';
 import { createApp } from './app';
 
 const STAFF_KEY = 'k'.repeat(40);
+const DASH_SECRET = 'test-dashboard-secret';
 const mails: { to: string; text: string }[] = [];
 const app = createApp({
   sendMail: async (m) => {
@@ -33,6 +35,7 @@ const app = createApp({
   chests: false,
   junior: true,
   staffApiKey: STAFF_KEY,
+  dashboardSecretSha256: createHash('sha256').update(DASH_SECRET).digest('hex'),
 });
 let base = '';
 beforeAll(async () => {
@@ -351,5 +354,24 @@ describe('Lobbi-vagt: adult admins in Junior', () => {
     expect(link.url).toContain('?staff=');
     ws.close();
     await adult.close();
+  });
+});
+
+describe('dashboard endpoints in Lobbi Junior', () => {
+  const call = (path: string, secret?: string) =>
+    fetch(`http://${base}/api/dashboard/${path}`, {
+      method: 'POST',
+      headers: secret ? { 'x-dashboard-secret': secret } : {},
+      body: '{}',
+    });
+  it('gives numbers only – the user list never leaves the server', async () => {
+    await child();
+    expect((await call('stats')).status).toBe(401);
+    const r = await call('stats', DASH_SECRET);
+    expect(r.status).toBe(200);
+    const s = (await r.json()) as { total: number; new30: number };
+    expect(s.total).toBeGreaterThan(0);
+    expect((await call('users', DASH_SECRET)).status).toBe(404);
+    expect((await call('users')).status).toBe(404);
   });
 });

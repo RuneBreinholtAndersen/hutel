@@ -35,6 +35,8 @@ export interface AppConfig extends HotelConfig {
   inviteCodes?: string[];
   /** Supabase project URL + public anon key – enables e-mail/Google/Facebook login. */
   supabaseUrl?: string;
+  /** SHA-256 (hex) of the dashboard secret. Only tests override the built-in value. */
+  dashboardSecretSha256?: string;
   supabaseAnonKey?: string;
   /** Social providers shown on the login page (e.g. ['google']). E-mail link is always on. */
   authProviders?: string[];
@@ -335,7 +337,66 @@ export function createApp(cfg: AppConfig, givenStore?: Store) {
     cfg.clientOrigins.includes(origin) ||
     /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
 
+  // Breinholt dashboard (server to server): only the SHA-256 of the shared secret lives here.
+  const DASHBOARD_SECRET_SHA256 = Buffer.from(
+    cfg.dashboardSecretSha256 ??
+      'bfa241471eef22fe37dd57f05c0d4761f8f4d455a027004d6a6a86d577af704d',
+    'hex',
+  );
+  const dashboardOk = (req: IncomingMessage) => {
+    const got = req.headers['x-dashboard-secret'];
+    if (typeof got !== 'string' || !got) return false;
+    return timingSafeEqual(createHash('sha256').update(got).digest(), DASHBOARD_SECRET_SHA256);
+  };
+  /** Real players only: no staff account, no old dev accounts without a login. */
+  const realUsers = () =>
+    store.listUsers().filter((u) => !u.staff && (u.passwordHash || u.authId));
+  const handleDashboard = async (req: IncomingMessage, res: ServerResponse, path: string) => {
+    const plain = (status: number, body?: unknown) => {
+      res.writeHead(status, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'X-Content-Type-Options': 'nosniff',
+      });
+      res.end(body === undefined ? '' : JSON.stringify(body));
+    };
+    if (req.method !== 'POST') return plain(404);
+    if (path === '/api/dashboard/users' && cfg.junior) return plain(404);
+    if (path !== '/api/dashboard/stats' && path !== '/api/dashboard/users') return plain(404);
+    if (!dashboardOk(req)) return plain(401);
+    const users = realUsers();
+    if (path === '/api/dashboard/stats') {
+      const since = Date.now() - 30 * 24 * 3600_000;
+      const new30 = users.filter((u) => Date.parse(u.createdAt) >= since).length;
+      return plain(200, { total: users.length, new30 });
+    }
+    const body = await readBody(req, 1024).catch(() => '');
+    let limit = 200;
+    try {
+      const n = Number((JSON.parse(body || '{}') as { limit?: unknown }).limit);
+      if (Number.isFinite(n) && n > 0) limit = Math.min(1000, Math.floor(n));
+    } catch {
+      /* keep the default */
+    }
+    const list = users
+      .slice()
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, limit)
+      .map((u) => ({
+        // Lobbi does not store e-mail addresses for adults (Supabase keeps them), so the
+        // player name is sent alongside.
+        email: null,
+        name: u.name,
+        created_at: u.createdAt,
+        last_sign_in_at: u.lastSeen && u.lastSeen !== u.createdAt ? u.lastSeen : null,
+      }));
+    return plain(200, list);
+  };
+
   const server: Server = createServer(async (req, res) => {
+    const reqPath = new URL(req.url ?? '/', 'http://x').pathname;
+    // No CORS headers here: only the dashboard's server calls these.
+    if (reqPath.startsWith('/api/dashboard/')) return handleDashboard(req, res, reqPath);
     const origin = req.headers.origin;
     if (origin && allowed(origin)) {
       res.setHeader('Access-Control-Allow-Origin', origin);

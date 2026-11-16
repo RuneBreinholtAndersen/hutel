@@ -13,10 +13,13 @@ import {
   ROOM_CAPACITY,
   type ServerMsg,
 } from '@hutel/shared';
+import { createHash } from 'node:crypto';
 import { createApp } from './app';
 import { QUIZ as QUIZ_FOR_TEST } from './games';
 
+const DASH_SECRET = 'test-dashboard-secret';
 const cfg = {
+  dashboardSecretSha256: createHash('sha256').update(DASH_SECRET).digest('hex'),
   allowReset: true,
   adminNames: ['chefen', 'kassereren'],
   clientOrigins: ['http://localhost:5173'],
@@ -1516,5 +1519,52 @@ describe('beta tools', () => {
     expect(app.store.getUser(host.g.userId)!.invited).toBe(1);
     host.c.ws.close();
     c.ws.close();
+  });
+});
+
+describe('dashboard endpoints', () => {
+  const call = (path: string, secret?: string, body?: unknown, origin?: string) =>
+    fetch(`http://${base}/api/dashboard/${path}`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        ...(secret !== undefined ? { 'x-dashboard-secret': secret } : {}),
+        ...(origin ? { origin } : {}),
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+
+  it('refuses a missing or wrong secret with a bare 401', async () => {
+    for (const s of [undefined, '', 'forkert']) {
+      const r = await call('stats', s);
+      expect(r.status).toBe(401);
+      expect(await r.text()).toBe('');
+      const u = await call('users', s, { limit: 5 });
+      expect(u.status).toBe(401);
+    }
+  });
+
+  it('counts real players and lists the newest first, without CORS headers', async () => {
+    await guest('Dashboardtest');
+    const r = await call('stats', DASH_SECRET, undefined, 'http://localhost:5173');
+    expect(r.status).toBe(200);
+    expect(r.headers.get('access-control-allow-origin')).toBeNull();
+    const s = (await r.json()) as { total: number; new30: number };
+    expect(s.total).toBeGreaterThan(0);
+    expect(s.new30).toBe(s.total);
+    const u = await call('users', DASH_SECRET, { limit: 3 });
+    const list = (await u.json()) as {
+      email: string | null;
+      name: string;
+      created_at: string;
+      last_sign_in_at: string | null;
+    }[];
+    expect(list.length).toBe(Math.min(3, s.total));
+    expect(list[0]!.name).toBe('Dashboardtest');
+    expect(Number.isNaN(Date.parse(list[0]!.created_at))).toBe(false);
+    for (let i = 1; i < list.length; i++)
+      expect(list[i - 1]!.created_at >= list[i]!.created_at).toBe(true);
+    const big = (await (await call('users', DASH_SECRET, { limit: 99999 })).json()) as unknown[];
+    expect(big.length).toBe(s.total);
   });
 });
