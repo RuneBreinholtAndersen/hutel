@@ -2,7 +2,7 @@
 
 Listen sammenligner Lobbi (tidligere Hutel) med de klassiske funktioner fra Habbo Hotel. Navne, grafik og møbler kopieres ikke: vi laver vores egen version af idéen.
 
-_Senest opdateret: 16. november 2026 (brugertal til Breinholt-dashboardet)._
+_Senest opdateret: 22. november 2026 (Supabase holdes vågen)._
 
 **Sådan læses den**
 - **Værdi**: hvor meget det betyder for spillerne (★–★★★)
@@ -142,6 +142,7 @@ Det her mener jeg giver mest spil for pengene, i den rækkefølge:
 - ✅ Rettelse: Lobbi-vagten kan skifte udseende, og figurer med en gammel/ugyldig farve bliver repareret ved login, så "Min figur" altid virker
 - ✅ Brugertal til dashboard.breinholtdigital.dk via beskyttede endpoints (`/api/dashboard/stats` og `/users`); Junior giver kun tal
 - ✅ Dashboardets brugerliste viser nu spillernes login-e-mail
+- ✅ Supabase-login holdes aktivt automatisk (ingen pause på gratis-planen)
 - ✅ Invitér en ven: personligt link, I bliver venner med det samme, og begge får 50 mønter, når vennen når level 2
 - ✅ "💬 Fejl eller idé?" fra spillet direkte til admins, med rum og enhed
 - ✅ Beta-statistik i Admin: aktive pr. dag og hvor mange der kommer igen

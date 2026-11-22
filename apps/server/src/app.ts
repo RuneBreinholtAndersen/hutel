@@ -35,6 +35,8 @@ export interface AppConfig extends HotelConfig {
   inviteCodes?: string[];
   /** Supabase project URL + public anon key – enables e-mail/Google/Facebook login. */
   supabaseUrl?: string;
+  /** Ping Supabase twice a day so the free project is not paused (default on). */
+  supabaseKeepAlive?: boolean;
   /** Supabase service role key (server only): fills in e-mails for existing logins at startup. */
   supabaseServiceKey?: string;
   /** SHA-256 (hex) of the dashboard secret. Only tests override the built-in value. */
@@ -335,6 +337,24 @@ export function createApp(cfg: AppConfig, givenStore?: Store) {
     cfg.dataFile && cfg.backups !== false ? setInterval(takeBackup, 3600_000) : null;
   backupTimer?.unref();
   setTimeout(takeBackup, 5000).unref();
+  // Supabase pauses free projects without activity for 7 days; the login only gets used now
+  // and then, so the server asks Supabase something twice a day to keep it awake.
+  const keepSupabaseAwake = async () => {
+    if (!cfg.supabaseUrl || !cfg.supabaseAnonKey) return;
+    const base = cfg.supabaseUrl.replace(/\/$/, '');
+    const headers = { apikey: cfg.supabaseAnonKey, Authorization: `Bearer ${cfg.supabaseAnonKey}` };
+    for (const path of ['/rest/v1/', '/auth/v1/settings']) {
+      await fetch(base + path, { headers, signal: AbortSignal.timeout(10_000) })
+        .then((r) => r.body?.cancel())
+        .catch((e: unknown) => console.warn('[supabase] keep-alive fejlede', path, e));
+    }
+  };
+  const keepAliveTimer =
+    !cfg.junior && cfg.supabaseUrl && cfg.supabaseKeepAlive !== false
+      ? setInterval(() => void keepSupabaseAwake(), 12 * 3600_000)
+      : null;
+  keepAliveTimer?.unref();
+  if (keepAliveTimer) setTimeout(() => void keepSupabaseAwake(), 60_000).unref();
   /** One-time codes that log the adult admins into Lobbi Junior as "Lobbi-vagt" (2 min). */
   const staffCodes = new Map<string, { userId: string; exp: number }>();
   const staffKeyOk = (req: IncomingMessage) => {
@@ -784,6 +804,7 @@ export function createApp(cfg: AppConfig, givenStore?: Store) {
       new Promise<void>((r) => {
         if (sweep) clearInterval(sweep);
         if (backupTimer) clearInterval(backupTimer);
+        if (keepAliveTimer) clearInterval(keepAliveTimer);
         hotel.stop();
         for (const c of wss.clients) c.terminate();
         wss.close();

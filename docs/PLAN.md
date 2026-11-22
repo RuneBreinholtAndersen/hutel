@@ -221,6 +221,7 @@ Samme kodebase og grafik som Hutel, men en helt separat verden for børn. Børn 
 - ✅ Rettet: Lobbi-vagten kunne ikke skifte udseende (ugyldig trøjefarve). Serveren reparerer nu ugyldige figurer ved login for alle spillere
 - ✅ `POST /api/dashboard/stats` og `/api/dashboard/users` til Breinholt-dashboardet (header `x-dashboard-secret`, kun SHA-256 i koden, ingen CORS). I Junior svarer `/users` 404
 - ✅ Brugerens login-e-mail (Google eller e-mail-login) gemmes ved login/oprettelse og vises i `/api/dashboard/users`. Ældre logins udfyldes ved opstart, hvis `SUPABASE_SERVICE_ROLE_KEY` er sat
+- ✅ Serveren pinger Supabase to gange i døgnet, så gratis-projektet ikke sættes på pause
 - ✅ Upload af lobbi.dk falder tilbage til et andet værktøj, når GitHubs Ubuntu-spejl ikke svarer
 
 ### 8. november
